@@ -1,0 +1,322 @@
+// MindBody Public API v6 client — minimal, typed, and paranoid.
+//
+// Design notes (these matter — BLINK failed exactly here):
+//   1. NEVER call AddClient without GetClients first. Duplicate client records
+//      are the #1 cause of "sync is broken" support tickets.
+//   2. Every write call defaults to Test=true unless MINDBODY_WRITE_MODE === "live".
+//      Even in live mode, individual callers can still opt-in to Test=true.
+//   3. The StaffUserToken is cached in-process for ~50 minutes (MindBody tokens
+//      live for ~60 minutes). In a serverless world this means each cold lambda
+//      does one token issue, not four.
+//   4. Every call gets a correlation ID in the log stream so we can trace a
+//      happy-path run end-to-end.
+//
+// If you're reading this during Phase 3 planning: the abstractions here
+// (`getClientsByEmail`, `upsertClient`, etc.) should move into a real domain
+// layer — this file is the MindBody adapter, not the app's business logic.
+
+import type { Logger } from "./logger";
+
+export interface MindbodyConfig {
+  apiKey: string;
+  siteId: string;
+  baseUrl: string;
+  staffUsername: string;
+  staffPassword: string;
+  writeMode: "test" | "live";
+}
+
+export function loadConfigFromEnv(): MindbodyConfig {
+  const required = ["MINDBODY_API_KEY", "MINDBODY_SITE_ID", "MINDBODY_STAFF_USERNAME", "MINDBODY_STAFF_PASSWORD"];
+  const missing = required.filter((k) => !process.env[k]);
+  if (missing.length > 0) {
+    throw new Error(
+      `Missing required env vars: ${missing.join(", ")}. See .env.example.`,
+    );
+  }
+  const writeModeRaw = process.env.MINDBODY_WRITE_MODE ?? "test";
+  if (writeModeRaw !== "test" && writeModeRaw !== "live") {
+    throw new Error(`MINDBODY_WRITE_MODE must be "test" or "live", got "${writeModeRaw}"`);
+  }
+  return {
+    apiKey: process.env.MINDBODY_API_KEY!,
+    siteId: process.env.MINDBODY_SITE_ID!,
+    baseUrl: process.env.MINDBODY_BASE_URL ?? "https://api.mindbodyonline.com/public/v6",
+    staffUsername: process.env.MINDBODY_STAFF_USERNAME!,
+    staffPassword: process.env.MINDBODY_STAFF_PASSWORD!,
+    writeMode: writeModeRaw,
+  };
+}
+
+// ─── Token cache (per process) ────────────────────────────────────────────────
+
+interface CachedToken {
+  token: string;
+  expiresAt: number; // epoch ms
+}
+
+const TOKEN_TTL_MS = 50 * 60 * 1000; // MindBody tokens live ~60min, refresh at 50.
+let cachedToken: CachedToken | null = null;
+
+export async function issueStaffUserToken(cfg: MindbodyConfig, log: Logger): Promise<string> {
+  if (cachedToken && cachedToken.expiresAt > Date.now()) {
+    log.debug("mindbody.token.cache-hit");
+    return cachedToken.token;
+  }
+  log.info("mindbody.token.issue.start");
+  const res = await fetch(`${cfg.baseUrl}/usertoken/issue`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Api-Key": cfg.apiKey,
+      SiteId: cfg.siteId,
+    },
+    body: JSON.stringify({ Username: cfg.staffUsername, Password: cfg.staffPassword }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok || !body?.AccessToken) {
+    log.error("mindbody.token.issue.fail", { status: res.status, body });
+    throw new MindbodyError("usertoken/issue failed", res.status, body);
+  }
+  cachedToken = { token: body.AccessToken, expiresAt: Date.now() + TOKEN_TTL_MS };
+  log.info("mindbody.token.issue.ok", { tokenPrefix: body.AccessToken.slice(0, 8) });
+  return body.AccessToken;
+}
+
+// ─── Low-level fetch ──────────────────────────────────────────────────────────
+
+async function authedFetch<T>(
+  cfg: MindbodyConfig,
+  log: Logger,
+  opts: {
+    method: "GET" | "POST";
+    path: string;
+    query?: Record<string, string | number | boolean | undefined>;
+    body?: unknown;
+    includeTestFlag?: boolean; // only applies when method === POST
+  },
+): Promise<T> {
+  const token = await issueStaffUserToken(cfg, log);
+  const url = new URL(cfg.baseUrl + opts.path);
+  if (opts.query) {
+    for (const [k, v] of Object.entries(opts.query)) {
+      if (v !== undefined) url.searchParams.set(k, String(v));
+    }
+  }
+
+  // Inject Test=true on writes unless writeMode === "live".
+  let finalBody: unknown = opts.body;
+  if (opts.method === "POST" && opts.includeTestFlag) {
+    const shouldTest = cfg.writeMode !== "live";
+    finalBody = { ...(opts.body as object), Test: shouldTest };
+  }
+
+  const started = Date.now();
+  const res = await fetch(url.toString(), {
+    method: opts.method,
+    headers: {
+      "Content-Type": "application/json",
+      "Api-Key": cfg.apiKey,
+      SiteId: cfg.siteId,
+      Authorization: `Bearer ${token}`,
+    },
+    body: opts.method === "POST" ? JSON.stringify(finalBody) : undefined,
+  });
+  const ms = Date.now() - started;
+  const text = await res.text();
+  let parsed: unknown = text;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    // leave as text
+  }
+
+  if (!res.ok) {
+    log.error("mindbody.request.fail", {
+      path: opts.path,
+      status: res.status,
+      ms,
+      body: parsed,
+    });
+    throw new MindbodyError(`${opts.method} ${opts.path} → ${res.status}`, res.status, parsed);
+  }
+
+  log.info("mindbody.request.ok", { path: opts.path, ms });
+  return parsed as T;
+}
+
+// ─── Typed wrappers ───────────────────────────────────────────────────────────
+
+export interface MindbodyClient {
+  Id: number | string;
+  UniqueId?: number;
+  FirstName?: string;
+  LastName?: string;
+  Email?: string;
+  CreationDate?: string;
+  [k: string]: unknown;
+}
+
+export interface GetClientsResponse {
+  PaginationResponse?: { RequestedLimit: number; RequestedOffset: number; PageSize: number; TotalResults: number };
+  Clients?: MindbodyClient[];
+}
+
+/** Search clients by email. Returns [] if none. */
+export async function getClientsByEmail(
+  cfg: MindbodyConfig,
+  log: Logger,
+  email: string,
+): Promise<MindbodyClient[]> {
+  const res = await authedFetch<GetClientsResponse>(cfg, log, {
+    method: "GET",
+    path: "/client/clients",
+    query: { SearchText: email, Limit: 5 },
+  });
+  return res.Clients ?? [];
+}
+
+export interface AddClientInput {
+  FirstName: string;
+  LastName: string;
+  Email: string;
+  BirthDate?: string; // ISO "YYYY-MM-DD"
+  MobilePhone?: string;
+  ReferredBy?: string;
+}
+
+export interface AddClientResponse {
+  Client: MindbodyClient;
+}
+
+/** Create a new client record. ALWAYS call getClientsByEmail first. */
+export async function addClient(
+  cfg: MindbodyConfig,
+  log: Logger,
+  input: AddClientInput,
+): Promise<MindbodyClient> {
+  const res = await authedFetch<MindbodyClient & { Client?: MindbodyClient }>(cfg, log, {
+    method: "POST",
+    path: "/client/addclient",
+    body: input,
+    includeTestFlag: true,
+  });
+  return res.Client ?? (res as MindbodyClient);
+}
+
+export interface AddRelationshipInput {
+  ClientId: string | number; // parent
+  RelatedClientId: string | number; // child
+  RelationshipId: number; // 20 = Guardian in MindBody's default relationship catalog
+}
+
+/**
+ * Link a parent (ClientId) to a child (RelatedClientId) via a Guardian
+ * relationship. Caller must create both client records first.
+ */
+export async function addClientRelationship(
+  cfg: MindbodyConfig,
+  log: Logger,
+  input: AddRelationshipInput,
+): Promise<unknown> {
+  return authedFetch(cfg, log, {
+    method: "POST",
+    path: "/client/addclientrelationship",
+    body: input,
+    includeTestFlag: true,
+  });
+}
+
+export interface ClassDescription {
+  ClassId?: number;
+  Id?: number;
+  StartDateTime?: string;
+  EndDateTime?: string;
+  ClassDescription?: { Name?: string };
+  Staff?: { Name?: string };
+  Location?: { Id?: number; Name?: string };
+  MaxCapacity?: number;
+  TotalBooked?: number;
+}
+
+export interface GetClassesResponse {
+  Classes?: ClassDescription[];
+  PaginationResponse?: unknown;
+}
+
+/** List upcoming classes — useful to grab a real ClassId to test booking against. */
+export async function getClasses(
+  cfg: MindbodyConfig,
+  log: Logger,
+  opts: { startDateTime?: string; endDateTime?: string; limit?: number } = {},
+): Promise<ClassDescription[]> {
+  const res = await authedFetch<GetClassesResponse>(cfg, log, {
+    method: "GET",
+    path: "/class/classes",
+    query: {
+      StartDateTime: opts.startDateTime,
+      EndDateTime: opts.endDateTime,
+      Limit: opts.limit ?? 20,
+    },
+  });
+  return res.Classes ?? [];
+}
+
+export interface AddClientToClassInput {
+  ClientId: string | number;
+  ClassId: number;
+  /** Pricing option / service id. Optional — MindBody will pick the first applicable pricing if omitted. */
+  ClientServiceId?: number;
+  /** If true, waitlist if class is full instead of erroring. */
+  SendEmail?: boolean;
+  Waitlist?: boolean;
+  CrossRegionalBookingClientId?: string | number;
+}
+
+/** Book a client into a class. Respects Test=true gate. */
+export async function addClientToClass(
+  cfg: MindbodyConfig,
+  log: Logger,
+  input: AddClientToClassInput,
+): Promise<unknown> {
+  return authedFetch(cfg, log, {
+    method: "POST",
+    path: "/class/addclienttoclass",
+    body: input,
+    includeTestFlag: true,
+  });
+}
+
+// ─── Error type ───────────────────────────────────────────────────────────────
+
+export class MindbodyError extends Error {
+  status: number;
+  body: unknown;
+  constructor(msg: string, status: number, body: unknown) {
+    super(msg);
+    this.name = "MindbodyError";
+    this.status = status;
+    this.body = body;
+  }
+  toJSON() {
+    return { name: this.name, message: this.message, status: this.status, body: this.body };
+  }
+}
+
+// ─── Auth helper for API routes ───────────────────────────────────────────────
+
+/**
+ * If TEST_API_TOKEN is set in the environment, require the caller to send
+ * `Authorization: Bearer <token>`. No-op if env var is unset (convenient for
+ * local dev). Does NOT apply to the public home page.
+ */
+export function checkCallerToken(req: Request): { ok: true } | { ok: false; status: number; reason: string } {
+  const required = process.env.TEST_API_TOKEN;
+  if (!required) return { ok: true };
+  const header = req.headers.get("authorization") ?? "";
+  const [scheme, token] = header.split(" ");
+  if (scheme !== "Bearer" || token !== required) {
+    return { ok: false, status: 401, reason: "Missing or invalid Bearer token (set TEST_API_TOKEN)" };
+  }
+  return { ok: true };
+}
