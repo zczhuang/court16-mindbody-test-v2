@@ -103,8 +103,10 @@ if [ "$MODE_SKIP_ENV" -eq 0 ]; then
     fi
 
     # Remove any existing value first (suppresses overwrite prompt), then add.
-    echo "$val" | npx --yes vercel env rm "$key" production --yes >/dev/null 2>&1 || true
-    echo "$val" | npx --yes vercel env add "$key" production >/dev/null
+    # NB: use printf, not echo — echo appends a newline that gets stored as
+    # part of the value and breaks string comparisons (e.g. "test\n" !== "test").
+    npx --yes vercel env rm "$key" production --yes >/dev/null 2>&1 || true
+    printf '%s' "$val" | npx --yes vercel env add "$key" production >/dev/null
     echo "  ✓ $key"
   }
 
