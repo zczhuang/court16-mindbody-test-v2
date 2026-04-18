@@ -183,7 +183,31 @@ export interface AddClientInput {
   BirthDate?: string; // ISO "YYYY-MM-DD"
   MobilePhone?: string;
   ReferredBy?: string;
+  /**
+   * Inline client relationships (v6 has no dedicated AddClientRelationship
+   * endpoint — relationships ride on AddClient / UpdateClient). Each entry
+   * needs BOTH `RelationshipName` AND the nested `Relationship` object;
+   * MindBody validates both layers and rejects if either is missing.
+   * For Guardian: RelationshipName = "Guardian", Relationship.Id = 20,
+   * RelationshipName1 = "Guardian", RelationshipName2 = "Dependent".
+   */
+  ClientRelationships?: Array<{
+    RelatedClientId: string | number;
+    RelationshipName: string;
+    Relationship: {
+      Id: number;
+      RelationshipName1: string;
+      RelationshipName2: string;
+    };
+  }>;
 }
+
+/** Canonical Guardian relationship descriptor. Pass as `Relationship` inside a ClientRelationships entry. */
+export const GUARDIAN_RELATIONSHIP = {
+  Id: 20,
+  RelationshipName1: "Guardian",
+  RelationshipName2: "Dependent",
+} as const;
 
 export interface AddClientResponse {
   Client: MindbodyClient;
@@ -211,18 +235,39 @@ export interface AddRelationshipInput {
 }
 
 /**
- * Link a parent (ClientId) to a child (RelatedClientId) via a Guardian
- * relationship. Caller must create both client records first.
+ * Add a Guardian relationship between two existing clients via UpdateClient.
+ *
+ * MindBody Public API v6 does NOT expose a standalone AddClientRelationship
+ * endpoint — every path variant returns 404 (confirmed against the -99
+ * sandbox). Relationships ride on the Client object itself. This helper
+ * issues an UpdateClient to `ClientId` with a ClientRelationships array
+ * pointing to `RelatedClientId`.
+ *
+ * Prefer the inline form on `addClient` when creating a new child that
+ * already knows its parent's ID — it saves a round-trip.
  */
 export async function addClientRelationship(
   cfg: MindbodyConfig,
   log: Logger,
   input: AddRelationshipInput,
 ): Promise<unknown> {
+  const clientPayload = {
+    Id: input.ClientId,
+    ClientRelationships: [
+      {
+        RelatedClientId: String(input.RelatedClientId),
+        RelationshipName: GUARDIAN_RELATIONSHIP.RelationshipName1,
+        Relationship: { ...GUARDIAN_RELATIONSHIP },
+      },
+    ],
+  };
+  // CrossRegionalUpdate defaults to true, which errors on single-site
+  // subscribers ("The current site does not belong to a region"). Force
+  // false — this always works whether the site is in a region or not.
   return authedFetch(cfg, log, {
     method: "POST",
-    path: "/client/addclientrelationship",
-    body: input,
+    path: "/client/updateclient",
+    body: { Client: clientPayload, CrossRegionalUpdate: false },
     includeTestFlag: true,
   });
 }
@@ -284,6 +329,59 @@ export async function addClientToClass(
     path: "/class/addclienttoclass",
     body: input,
     includeTestFlag: true,
+  });
+}
+
+export interface ClientService {
+  Id?: number;
+  Count?: number;
+  Remaining?: number;
+  Name?: string;
+  PaymentDate?: string;
+  ActiveDate?: string;
+  ExpirationDate?: string;
+  [k: string]: unknown;
+}
+
+export interface GetClientServicesResponse {
+  ClientServices?: ClientService[];
+  PaginationResponse?: unknown;
+}
+
+/**
+ * List the pricing options / service credits on a client. Used after an
+ * adult's intro-offer payment to verify the purchase landed before calling
+ * AddClientToClass.
+ */
+export async function getClientServices(
+  cfg: MindbodyConfig,
+  log: Logger,
+  clientId: string | number,
+): Promise<ClientService[]> {
+  const res = await authedFetch<GetClientServicesResponse>(cfg, log, {
+    method: "GET",
+    path: "/client/clientservices",
+    query: { ClientId: String(clientId), Limit: 50 },
+  });
+  return res.ClientServices ?? [];
+}
+
+/** In-process age-band filter for class lists. MindBody has no server-side age filter. */
+export function filterClassesByAgeBand(
+  classes: ClassDescription[],
+  ageMin: number | undefined,
+  ageMax: number | undefined,
+): ClassDescription[] {
+  if (ageMin === undefined && ageMax === undefined) return classes;
+  return classes.filter((c) => {
+    const name = c.ClassDescription?.Name ?? "";
+    const m = name.match(/(\d+)\s*[-–]\s*(\d+)/);
+    if (!m) return true;
+    const lo = Number(m[1]);
+    const hi = Number(m[2]);
+    if (ageMin !== undefined && hi < ageMin) return false;
+    if (ageMax !== undefined && lo > ageMax) return false;
+    return true;
   });
 }
 
