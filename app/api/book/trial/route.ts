@@ -16,42 +16,40 @@ import {
 import { buildStaffUrl } from "@/lib/staff-tokens";
 import { classifyIntent } from "@/lib/intent";
 import { createLogger, makeCorrelationId } from "@/lib/logger";
-import {
-  CHILD_AGE_BAND_VALUES,
-  getLocation,
-  LEAD_SOURCES,
-  PLAYING_LEVEL_VALUES,
-  WAIVER_VERSION,
-  type ChildAgeBand,
-  type LeadSource,
-  type PlayingLevel,
-} from "@/lib/config";
+import { getLocationById } from "@/config/locations";
+import type { TrialRequest } from "@/lib/trial-types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-interface TrialBody {
-  location: string; // app slug
-  parent: {
-    firstName: string;
-    lastName: string;
-    email: string;
-    mobilePhone?: string;
-    birthDate: string;
-  };
-  child: {
-    firstName: string;
-    lastName: string;
-    ageBand: ChildAgeBand;
-    birthDate: string; // ISO "YYYY-MM-DD"
-    playingLevel: PlayingLevel;
-    school: string;
-  };
-  leadSource: LeadSource;
-  referrerEmail?: string;
-  notes?: string;
-  classId?: number; // optional — if known at submit time
-  waiverVersion: string;
+const WAIVER_VERSION = "v1.0";
+
+// HubSpot's form has required fields we don't collect in the slim UI.
+// Fill silently; staff completes at the trial.
+const HUBSPOT_DEFAULTS = {
+  child_1___playing_level: "New to Tennis",
+  school: "—",
+  lead_source: "Other",
+} as const;
+
+// MindBody's -99 sandbox requires BirthDate; prod sites may not.
+const PARENT_DOB_PLACEHOLDER = "1985-01-01";
+
+/** Map an integer age to the closest HubSpot `childage` band value. */
+function ageToBand(age: number): string {
+  if (age <= 3) return "2.5 - 3 yo";
+  if (age === 4) return "3 - 4 yo";
+  if (age <= 6) return "5 - 6 yo";
+  if (age <= 8) return "7 - 8 yo";
+  if (age <= 11) return "9 - 11 yo";
+  if (age <= 15) return "12 yo or older";
+  return "15 and older";
+}
+
+/** Compute a placeholder child DOB from an integer age, Jan 1 of the year they'd be that age. */
+function dobFromAge(age: number): string {
+  const year = new Date().getFullYear() - Math.max(0, age);
+  return `${year}-01-01`;
 }
 
 export async function POST(req: Request) {
@@ -63,9 +61,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, correlationId, error: auth.reason }, { status: auth.status });
   }
 
-  let body: TrialBody;
+  let body: TrialRequest;
   try {
-    body = (await req.json()) as TrialBody;
+    body = (await req.json()) as TrialRequest;
   } catch {
     return NextResponse.json({ ok: false, correlationId, error: "Invalid JSON body" }, { status: 400 });
   }
@@ -75,17 +73,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, correlationId, errors }, { status: 400 });
   }
 
-  const location = getLocation(body.location);
+  const location = getLocationById(body.locationId);
   if (!location) {
     return NextResponse.json(
-      { ok: false, correlationId, error: `unknown location: ${body.location}` },
+      { ok: false, correlationId, error: `unknown locationId: ${body.locationId}` },
       { status: 400 },
     );
   }
 
   let mbCfg;
   try {
-    mbCfg = { ...loadConfigFromEnv(), siteId: location.mindbodySiteId };
+    const base = loadConfigFromEnv();
+    // Match /api/mindbody/calendar: in sandbox-fallback mode use the -99
+    // env SiteId, otherwise use the per-location production SiteId.
+    const useSandbox = process.env.MINDBODY_USE_SANDBOX_FALLBACK === "true";
+    mbCfg = { ...base, siteId: useSandbox ? base.siteId : String(location.siteId) };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, correlationId, error: msg }, { status: 500 });
@@ -93,19 +95,26 @@ export async function POST(req: Request) {
   const hsCfg = loadHubspotConfig();
   const baseUrl = process.env.APP_BASE_URL ?? `http://localhost:3000`;
 
+  // For Track 1 we process the first child only; multi-child is Track 2.
+  const primaryKid = body.children[0] ?? {
+    firstName: body.childFirstName,
+    age: body.childAge,
+  };
+  const childDob = dobFromAge(primaryKid.age);
+  const ageBand = ageToBand(primaryKid.age);
+
   log.info("trial.start", {
     writeMode: mbCfg.writeMode,
-    parentEmail: body.parent.email,
-    childName: body.child.firstName,
-    location: location.slug,
-    classId: body.classId ?? null,
+    parentEmail: body.parentEmail,
+    childName: primaryKid.firstName,
+    location: location.id,
+    classScheduleId: body.classScheduleId,
   });
 
   const trace: Array<{ step: string; status: "ok" | "skipped" | "error"; data?: unknown; error?: unknown }> = [];
 
   try {
-    // 1. Identity resolution — MindBody first.
-    const existing = await getClientsByEmail(mbCfg, log, body.parent.email);
+    const existing = await getClientsByEmail(mbCfg, log, body.parentEmail);
     trace.push({ step: "getClientsByEmail", status: "ok", data: { matched: existing.length } });
 
     const intent = classifyIntent({
@@ -114,45 +123,45 @@ export async function POST(req: Request) {
     });
 
     if (intent === "existing_user_softwall") {
-      await submitFormSafely(hsCfg, log, buildFormFields({
-        correlationId,
-        body,
-        location,
-        status: "duplicate_email_softwall",
-        parentMbId: existing[0]?.Id != null ? String(existing[0].Id) : undefined,
-        childMbId: undefined,
-        baseUrl,
-      }), trace, "hubspot.submitTrialForm (softwall)");
-      return NextResponse.json({
-        ok: true,
-        correlationId,
-        status: "duplicate_email_softwall",
+      await submitFormSafely(
+        hsCfg,
+        log,
+        buildFormFields({
+          correlationId,
+          body,
+          primaryKid,
+          childDob,
+          ageBand,
+          location,
+          status: "duplicate_email_softwall",
+          parentMbId: existing[0]?.Id != null ? String(existing[0].Id) : undefined,
+          childMbId: undefined,
+          baseUrl,
+        }),
         trace,
-      });
+        "hubspot.submitTrialForm (softwall)",
+      );
+      return NextResponse.json({ ok: true, correlationId, status: "duplicate_email_softwall", trace });
     }
 
-    // 2. Create parent in MindBody.
     const parent = await addClient(mbCfg, log, {
-      FirstName: body.parent.firstName,
-      LastName: body.parent.lastName,
-      Email: body.parent.email,
-      MobilePhone: body.parent.mobilePhone,
-      BirthDate: body.parent.birthDate,
+      FirstName: body.parentFirstName,
+      LastName: "-", // HubSpot collects last name, MindBody needs non-empty
+      Email: body.parentEmail,
+      MobilePhone: body.parentPhone,
+      BirthDate: PARENT_DOB_PLACEHOLDER,
     });
     trace.push({ step: "addClient (parent)", status: "ok", data: { id: parent.Id } });
 
-    // 3. Create child. Synthetic email because MindBody requires unique
-    // emails; kids don't have their own.
     const childEmail = `kid+${correlationId}@court16-test.invalid`;
     const child = await addClient(mbCfg, log, {
-      FirstName: body.child.firstName,
-      LastName: body.child.lastName,
+      FirstName: primaryKid.firstName,
+      LastName: "-",
       Email: childEmail,
-      BirthDate: body.child.birthDate,
+      BirthDate: childDob,
     });
     trace.push({ step: "addClient (child)", status: "ok", data: { id: child.Id } });
 
-    // 4. Link parent → child (Guardian). In Test mode Id is null, skip.
     let relationshipStatus: "ok" | "skipped" | "error" = "skipped";
     let relationshipError: unknown = undefined;
     if (parent.Id && child.Id) {
@@ -168,22 +177,26 @@ export async function POST(req: Request) {
         relationshipError = serialize(e);
       }
     }
-    trace.push({
-      step: "addClientRelationship",
-      status: relationshipStatus,
-      error: relationshipError,
-    });
+    trace.push({ step: "addClientRelationship", status: relationshipStatus, error: relationshipError });
 
-    // 5. Submit to HubSpot's existing trial form.
-    await submitFormSafely(hsCfg, log, buildFormFields({
-      correlationId,
-      body,
-      location,
-      status: "pending_staff",
-      parentMbId: parent.Id ? String(parent.Id) : undefined,
-      childMbId: child.Id ? String(child.Id) : undefined,
-      baseUrl,
-    }), trace, "hubspot.submitTrialForm");
+    await submitFormSafely(
+      hsCfg,
+      log,
+      buildFormFields({
+        correlationId,
+        body,
+        primaryKid,
+        childDob,
+        ageBand,
+        location,
+        status: "pending_staff",
+        parentMbId: parent.Id ? String(parent.Id) : undefined,
+        childMbId: child.Id ? String(child.Id) : undefined,
+        baseUrl,
+      }),
+      trace,
+      "hubspot.submitTrialForm",
+    );
 
     log.info("trial.done", { trace: trace.map((t) => ({ step: t.step, status: t.status })) });
 
@@ -207,42 +220,44 @@ export async function POST(req: Request) {
 
 interface BuildFieldsArgs {
   correlationId: string;
-  body: TrialBody;
-  location: NonNullable<ReturnType<typeof getLocation>>;
+  body: TrialRequest;
+  primaryKid: { firstName: string; age: number };
+  childDob: string;
+  ageBand: string;
+  location: NonNullable<ReturnType<typeof getLocationById>>;
   status: "pending_staff" | "duplicate_email_softwall" | "pending_payment";
   parentMbId?: string;
   childMbId?: string;
   baseUrl: string;
 }
 function buildFormFields(args: BuildFieldsArgs) {
-  const { correlationId, body, location, status, parentMbId, childMbId, baseUrl } = args;
-  const [yyyy, mm, dd] = body.child.birthDate.split("-");
+  const { correlationId, body, primaryKid, childDob, ageBand, location, status, parentMbId, childMbId, baseUrl } = args;
+  const [yyyy, mm, dd] = childDob.split("-");
 
   return {
-    firstname: body.parent.firstName,
-    lastname: body.parent.lastName,
-    email: body.parent.email,
-    phone: body.parent.mobilePhone,
+    firstname: body.parentFirstName,
+    lastname: "-",
+    email: body.parentEmail,
+    phone: body.parentPhone,
 
-    preferred_location: location.hubspotValue,
-    child_name: body.child.firstName,
-    child_1___last_name: body.child.lastName,
-    childage: body.child.ageBand,
+    preferred_location: location.fullName,
+    child_name: primaryKid.firstName,
+    child_1___last_name: "-",
+    childage: ageBand,
     child_date_of_birth__YYYY: yyyy,
     child_date_of_birth__MM: mm,
     child_date_of_birth__DD: dd,
-    child_1___playing_level: body.child.playingLevel,
-    school: body.child.school,
-    lead_source: body.leadSource,
-    referrer: body.referrerEmail,
+    child_1___playing_level: HUBSPOT_DEFAULTS.child_1___playing_level,
+    school: HUBSPOT_DEFAULTS.school,
+    lead_source: HUBSPOT_DEFAULTS.lead_source,
     any_question_just_let_us_know: body.notes,
 
     court16_correlation_id: correlationId,
     court16_intent: "kid_trial" as const,
     court16_booking_status: status,
-    court16_class_id: body.classId != null ? String(body.classId) : undefined,
-    court16_location_slug: location.slug,
-    court16_waiver_version: body.waiverVersion,
+    court16_class_id: String(body.classScheduleId),
+    court16_location_slug: location.id,
+    court16_waiver_version: WAIVER_VERSION,
     court16_mindbody_parent_id: parentMbId,
     court16_mindbody_child_id: childMbId,
     court16_staff_confirm_url: buildStaffUrl({ action: "confirm", correlationId, baseUrl }),
@@ -272,35 +287,17 @@ async function submitFormSafely(
   }
 }
 
-function validate(body: TrialBody | undefined): string[] {
+function validate(body: TrialRequest | undefined): string[] {
   if (!body) return ["Body is required"];
   const errors: string[] = [];
-  if (!body.location) errors.push("location is required");
-  if (!body.parent) errors.push("parent is required");
-  if (!body.child) errors.push("child is required");
-  if (body.parent) {
-    if (!body.parent.firstName) errors.push("parent.firstName is required");
-    if (!body.parent.lastName) errors.push("parent.lastName is required");
-    if (!/^\S+@\S+\.\S+$/.test(body.parent.email ?? "")) errors.push("parent.email is invalid");
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(body.parent.birthDate ?? ""))
-      errors.push('parent.birthDate must be "YYYY-MM-DD"');
-  }
-  if (body.child) {
-    if (!body.child.firstName) errors.push("child.firstName is required");
-    if (!body.child.lastName) errors.push("child.lastName is required");
-    if (!CHILD_AGE_BAND_VALUES.includes(body.child.ageBand))
-      errors.push(`child.ageBand must be one of: ${CHILD_AGE_BAND_VALUES.join(" | ")}`);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(body.child.birthDate ?? ""))
-      errors.push('child.birthDate must be "YYYY-MM-DD"');
-    if (!PLAYING_LEVEL_VALUES.includes(body.child.playingLevel))
-      errors.push(`child.playingLevel must be one of: ${PLAYING_LEVEL_VALUES.join(" | ")}`);
-    if (!body.child.school || body.child.school.trim().length < 2)
-      errors.push("child.school is required");
-  }
-  if (!LEAD_SOURCES.includes(body.leadSource))
-    errors.push(`leadSource must be one of: ${LEAD_SOURCES.join(" | ")}`);
-  if (body.waiverVersion !== WAIVER_VERSION)
-    errors.push(`waiverVersion must equal current version "${WAIVER_VERSION}"`);
+  if (!body.parentFirstName) errors.push("parentFirstName is required");
+  if (!/^\S+@\S+\.\S+$/.test(body.parentEmail ?? "")) errors.push("parentEmail is invalid");
+  if (!body.parentPhone || body.parentPhone.replace(/\D/g, "").length < 7)
+    errors.push("parentPhone is required");
+  if (!body.childFirstName && (!body.children || body.children.length === 0))
+    errors.push("childFirstName or children[] is required");
+  if (!body.locationId) errors.push("locationId is required");
+  if (typeof body.classScheduleId !== "number") errors.push("classScheduleId must be a number");
   return errors;
 }
 

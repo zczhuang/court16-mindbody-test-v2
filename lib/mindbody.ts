@@ -85,6 +85,25 @@ export async function issueStaffUserToken(cfg: MindbodyConfig, log: Logger): Pro
 
 // ─── Low-level fetch ──────────────────────────────────────────────────────────
 
+/**
+ * Exposed helper for route handlers that want to hit a raw MindBody endpoint
+ * under a specific SiteId without copy-pasting the config-load + site-override
+ * dance. Loads config from env, sets the SiteId header for this call, and
+ * returns the parsed JSON.
+ */
+export async function authedMindbodyGet<T>(
+  log: Logger,
+  opts: {
+    siteIdOverride?: string;
+    path: string;
+    query?: Record<string, string | number | boolean | undefined>;
+  },
+): Promise<T> {
+  const cfg = loadConfigFromEnv();
+  const cfgWithSite = opts.siteIdOverride ? { ...cfg, siteId: opts.siteIdOverride } : cfg;
+  return authedFetch<T>(cfgWithSite, log, { method: "GET", path: opts.path, query: opts.query });
+}
+
 async function authedFetch<T>(
   cfg: MindbodyConfig,
   log: Logger,

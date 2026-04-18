@@ -12,7 +12,7 @@ import {
 } from "@/lib/hubspot";
 import { InvalidTokenError, verifyToken } from "@/lib/staff-tokens";
 import { createLogger } from "@/lib/logger";
-import { getLocation } from "@/lib/config";
+import { getLocationById } from "@/config/locations";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -83,8 +83,8 @@ async function handle(req: Request) {
   // Per-location MindBody Site ID override
   const locationSlug = contact.properties.court16_location_slug;
   if (locationSlug) {
-    const location = getLocation(locationSlug);
-    if (location) mbCfg = { ...mbCfg, siteId: location.mindbodySiteId };
+    const location = getLocationById(locationSlug);
+    if (location) mbCfg = { ...mbCfg, siteId: String(location.siteId) };
   }
 
   const classId = contact.properties.court16_class_id

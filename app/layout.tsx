@@ -1,17 +1,15 @@
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Court 16 — MindBody Happy Path Test",
-  description: "De-risks the BLINK failure mode before Phase 3 build.",
+  title: "Court 16 | Book a Kids Trial",
+  description: "Book a free trial class for your child at Court 16 Tennis Remixed",
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body style={{ margin: 0, fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif", background: "#fafafa", color: "#111" }}>
-        {children}
-      </body>
+    <html lang="en" className="h-full scroll-smooth antialiased">
+      <body className="min-h-full flex flex-col font-sans">{children}</body>
     </html>
   );
 }
