@@ -32,7 +32,7 @@ export default function Home() {
               title="Kids free trial"
               description="Ages 3–17. Browse real classes, pick a time, and staff confirms within a few hours."
               cta="Start kids trial"
-              href="/trial"
+              href="/book"
               accentColor="#FFE033"
             />
             <PathCard
@@ -40,7 +40,7 @@ export default function Home() {
               title="Adult intro"
               description="Tennis Intro Special ($75) or Pickleball Clinic Intro ($58). Book a session and pay online in a few clicks."
               cta="Start adult intro"
-              href="/intro"
+              href="/book"
               accentColor="#1a1a1a"
             />
           </div>

@@ -11,6 +11,20 @@ export interface Location {
   address: string;
   city: string;
   state: string;
+  /**
+   * Per-location Sign in destination. Falls back to the generic
+   * court16.com/login when undefined. Replace with per-location URLs
+   * once Squarespace has them (e.g. /login/brooklyn or a MindBody
+   * classic URL with studioid={siteId}).
+   */
+  loginUrl?: string;
+}
+
+/** Default login URL used when a location's `loginUrl` is undefined. */
+export const DEFAULT_LOGIN_URL = "https://www.court16.com/login";
+
+export function getLoginUrlFor(loc: Location): string {
+  return loc.loginUrl ?? DEFAULT_LOGIN_URL;
 }
 
 export const LOCATIONS: Location[] = [

@@ -1,24 +1,37 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Header from "@/components/Header";
 import LocationSelector from "@/components/LocationSelector";
 import OfferPicker from "@/components/OfferPicker";
 import CalendarView from "@/components/CalendarView";
 import DayDetail from "@/components/DayDetail";
 import AdultRequestForm, { type AdultRequest } from "@/components/AdultRequestForm";
-import type { Location } from "@/config/locations";
+import { getLocationById, type Location } from "@/config/locations";
 import type { AdultOffer } from "@/config/adult-config";
 import type { TrialClass, MindBodyClass } from "@/lib/trial-types";
 import { parseClass, filterAdultOnly, filterAvailable } from "@/lib/class-utils";
+import { useSelectedLocation } from "@/lib/location-state";
 
 type Step = "setup" | "calendar";
 
-export default function IntroPage() {
+function IntroInner() {
   const router = useRouter();
+  const params = useSearchParams();
+  const { location: globalLoc, setLocation: setGlobalLoc } = useSelectedLocation();
+  const urlLocation = params.get("location");
+  const preResolved =
+    (urlLocation ? getLocationById(urlLocation) : null) ?? globalLoc ?? null;
+
   const [step, setStep] = useState<Step>("setup");
-  const [location, setLocation] = useState<Location | null>(null);
+  const [location, setLocation] = useState<Location | null>(preResolved);
+  useEffect(() => {
+    if (urlLocation) {
+      const loc = getLocationById(urlLocation);
+      if (loc && loc.id !== globalLoc?.id) setGlobalLoc(loc);
+    }
+  }, [urlLocation, globalLoc, setGlobalLoc]);
   const [offer, setOffer] = useState<AdultOffer | null>(null);
   const [allClasses, setAllClasses] = useState<TrialClass[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -331,5 +344,13 @@ export default function IntroPage() {
         />
       )}
     </>
+  );
+}
+
+export default function IntroPage() {
+  return (
+    <Suspense fallback={null}>
+      <IntroInner />
+    </Suspense>
   );
 }

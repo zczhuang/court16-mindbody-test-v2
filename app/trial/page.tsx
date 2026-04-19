@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Header from "@/components/Header";
 import ProgressBar from "@/components/ProgressBar";
 import LocationSelector from "@/components/LocationSelector";
@@ -8,8 +9,9 @@ import CalendarView from "@/components/CalendarView";
 import DayDetail from "@/components/DayDetail";
 import TrialRequestForm from "@/components/TrialRequestForm";
 import ConfirmationScreen from "@/components/ConfirmationScreen";
-import type { Location } from "@/config/locations";
+import { getLocationById, type Location } from "@/config/locations";
 import type { TrialClass, TrialRequest, MindBodyClass } from "@/lib/trial-types";
+import { useSelectedLocation } from "@/lib/location-state";
 import {
   parseClass,
   filterByTrialEligibility,
@@ -20,9 +22,23 @@ import type { ChildEntry } from "@/components/AgeSelector";
 
 type Step = "location" | "calendar" | "confirmed";
 
-export default function TrialPage() {
-  const [step, setStep] = useState<Step>("location");
-  const [location, setLocation] = useState<Location | null>(null);
+function TrialInner() {
+  const params = useSearchParams();
+  const { location: globalLoc, setLocation: setGlobalLoc } = useSelectedLocation();
+  const urlLocation = params.get("location");
+  const preResolved =
+    (urlLocation ? getLocationById(urlLocation) : null) ?? globalLoc ?? null;
+
+  const [step, setStep] = useState<Step>(preResolved ? "calendar" : "location");
+  const [location, setLocation] = useState<Location | null>(preResolved);
+
+  // Mirror into global state the first time we see a URL-provided location.
+  useEffect(() => {
+    if (urlLocation) {
+      const loc = getLocationById(urlLocation);
+      if (loc && loc.id !== globalLoc?.id) setGlobalLoc(loc);
+    }
+  }, [urlLocation, globalLoc, setGlobalLoc]);
   const [allClasses, setAllClasses] = useState<TrialClass[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedClass, setSelectedClass] = useState<TrialClass | null>(null);
@@ -298,3 +314,11 @@ export default function TrialPage() {
 // Modal collects child age + name inline; we seed a single placeholder kid
 // entry with age=0 so the form's per-kid inputs render correctly.
 const DEFAULT_KIDS: ChildEntry[] = [{ label: "Kid 1", age: 0 }];
+
+export default function TrialPage() {
+  return (
+    <Suspense fallback={null}>
+      <TrialInner />
+    </Suspense>
+  );
+}
