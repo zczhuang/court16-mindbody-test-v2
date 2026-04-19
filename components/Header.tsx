@@ -20,7 +20,7 @@ export default function Header() {
         <nav className="c16-nav">
           <Link className="pill yellow" href="/">Book now</Link>
           <a
-            href="https://clients.mindbodyonline.com/ASP/main_class.asp"
+            href="https://www.court16.com/login"
             className="link"
             target="_blank"
             rel="noopener noreferrer"
