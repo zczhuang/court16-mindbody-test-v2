@@ -101,9 +101,25 @@ export async function POST(req: Request) {
 
   const trace: Array<{ step: string; status: "ok" | "skipped" | "error"; data?: unknown; error?: unknown }> = [];
 
+  // Degraded-mode flag: when MindBody token issue is failing (sandbox
+  // outage, Go-Live pending, creds rotated), we skip MindBody entirely
+  // and capture the lead in HubSpot with status=manual_review so parents
+  // still get a confirmation instead of a 502.
+  let mbDegraded = false;
+
   try {
-    const existing = await getClientsByEmail(mbCfg, log, body.adult.email);
-    trace.push({ step: "getClientsByEmail", status: "ok", data: { matched: existing.length } });
+    let existing: Awaited<ReturnType<typeof getClientsByEmail>>;
+    try {
+      existing = await getClientsByEmail(mbCfg, log, body.adult.email);
+    } catch (e) {
+      log.warn("intro.mindbody.degraded", { step: "getClientsByEmail", error: serialize(e) });
+      mbDegraded = true;
+      existing = [];
+      trace.push({ step: "getClientsByEmail", status: "error", error: serialize(e) });
+    }
+    if (!mbDegraded) {
+      trace.push({ step: "getClientsByEmail", status: "ok", data: { matched: existing.length } });
+    }
 
     const intent = classifyIntent({
       bookingFor: "adult",
@@ -129,14 +145,54 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, correlationId, status: "duplicate_email_softwall", trace });
     }
 
-    const adult = await addClient(mbCfg, log, {
-      FirstName: body.adult.firstName,
-      LastName: body.adult.lastName,
-      Email: body.adult.email,
-      MobilePhone: body.adult.phone,
-      BirthDate: body.adult.birthDate,
-    });
-    trace.push({ step: "addClient (adult)", status: "ok", data: { id: adult.Id } });
+    let adult: Awaited<ReturnType<typeof addClient>> | null = null;
+    if (!mbDegraded) {
+      try {
+        adult = await addClient(mbCfg, log, {
+          FirstName: body.adult.firstName,
+          LastName: body.adult.lastName,
+          Email: body.adult.email,
+          MobilePhone: body.adult.phone,
+          BirthDate: body.adult.birthDate,
+        });
+        trace.push({ step: "addClient (adult)", status: "ok", data: { id: adult.Id } });
+      } catch (e) {
+        log.warn("intro.mindbody.degraded", { step: "addClient", error: serialize(e) });
+        mbDegraded = true;
+        trace.push({ step: "addClient (adult)", status: "error", error: serialize(e) });
+      }
+    }
+
+    // Degraded path: MindBody is down. Log to HubSpot as manual_review
+    // so staff can call the parent and book manually, and return a
+    // confirmation that the app can display as a soft "we'll reach out".
+    if (mbDegraded || !adult) {
+      await submitFormSafely(
+        hsCfg,
+        log,
+        buildFormFields({
+          correlationId,
+          body,
+          offer,
+          location,
+          status: "manual_review",
+          adultMbId: undefined,
+          baseUrl,
+        }),
+        trace,
+        "hubspot.submitTrialForm (manual_review)",
+      );
+      log.info("intro.done", { trace: trace.map((t) => ({ step: t.step, status: t.status })), degraded: true });
+      return NextResponse.json({
+        ok: true,
+        correlationId,
+        writeMode: mbCfg.writeMode,
+        status: "manual_review",
+        adultId: null,
+        cartUrl: null,
+        trace,
+      });
+    }
 
     // Cart URL — uses per-location service ID when configured, else the
     // generic redirect works too.

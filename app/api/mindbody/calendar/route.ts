@@ -56,6 +56,10 @@ export async function GET(request: NextRequest) {
         EndDateTime: `${endDate}T23:59:59`,
         Limit: 200,
       },
+      // /class/classes is fully public under Consumer Mode — skip the
+      // staff-user-token dance so the calendar still loads when token
+      // issue is down or not yet Go-Live approved.
+      consumerMode: true,
     });
     return NextResponse.json({ classes: result.Classes ?? [], correlationId, siteId });
   } catch (err) {

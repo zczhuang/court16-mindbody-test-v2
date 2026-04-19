@@ -90,6 +90,13 @@ export async function issueStaffUserToken(cfg: MindbodyConfig, log: Logger): Pro
  * under a specific SiteId without copy-pasting the config-load + site-override
  * dance. Loads config from env, sets the SiteId header for this call, and
  * returns the parsed JSON.
+ *
+ * Pass `consumerMode: true` to SKIP the staff-user-token issue. MindBody
+ * treats most GET endpoints (notably /class/classes, /site/sites,
+ * /site/locations) as public under "Consumer Mode" — just Api-Key +
+ * SiteId is enough. Use this for read-only routes so we don't fail when
+ * MindBody's token endpoint 500s or when the Api-Key lacks Go-Live
+ * staff-auth privileges but still has Consumer Mode access.
  */
 export async function authedMindbodyGet<T>(
   log: Logger,
@@ -97,11 +104,52 @@ export async function authedMindbodyGet<T>(
     siteIdOverride?: string;
     path: string;
     query?: Record<string, string | number | boolean | undefined>;
+    consumerMode?: boolean;
   },
 ): Promise<T> {
   const cfg = loadConfigFromEnv();
   const cfgWithSite = opts.siteIdOverride ? { ...cfg, siteId: opts.siteIdOverride } : cfg;
+  if (opts.consumerMode) {
+    return consumerFetch<T>(cfgWithSite, log, { path: opts.path, query: opts.query });
+  }
   return authedFetch<T>(cfgWithSite, log, { method: "GET", path: opts.path, query: opts.query });
+}
+
+/** Unauthenticated GET — Api-Key + SiteId only, no staff user token. */
+async function consumerFetch<T>(
+  cfg: MindbodyConfig,
+  log: Logger,
+  opts: { path: string; query?: Record<string, string | number | boolean | undefined> },
+): Promise<T> {
+  const url = new URL(cfg.baseUrl + opts.path);
+  if (opts.query) {
+    for (const [k, v] of Object.entries(opts.query)) {
+      if (v !== undefined) url.searchParams.set(k, String(v));
+    }
+  }
+  const started = Date.now();
+  const res = await fetch(url.toString(), {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "Api-Key": cfg.apiKey,
+      SiteId: cfg.siteId,
+    },
+  });
+  const ms = Date.now() - started;
+  const text = await res.text();
+  let parsed: unknown = text;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    // leave as text
+  }
+  if (!res.ok) {
+    log.error("mindbody.consumer.fail", { path: opts.path, status: res.status, ms, body: parsed });
+    throw new MindbodyError(`GET ${opts.path} → ${res.status}`, res.status, parsed);
+  }
+  log.info("mindbody.consumer.ok", { path: opts.path, ms });
+  return parsed as T;
 }
 
 async function authedFetch<T>(

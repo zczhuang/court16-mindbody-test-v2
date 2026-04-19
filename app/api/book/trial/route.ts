@@ -113,9 +113,21 @@ export async function POST(req: Request) {
 
   const trace: Array<{ step: string; status: "ok" | "skipped" | "error"; data?: unknown; error?: unknown }> = [];
 
+  // Degraded mode: if MindBody is down (token 500, Go-Live pending),
+  // still capture the lead in HubSpot with status=manual_review so the
+  // parent doesn't see a 502 and staff can follow up by hand.
+  let mbDegraded = false;
+
   try {
-    const existing = await getClientsByEmail(mbCfg, log, body.parentEmail);
-    trace.push({ step: "getClientsByEmail", status: "ok", data: { matched: existing.length } });
+    let existing: Awaited<ReturnType<typeof getClientsByEmail>> = [];
+    try {
+      existing = await getClientsByEmail(mbCfg, log, body.parentEmail);
+      trace.push({ step: "getClientsByEmail", status: "ok", data: { matched: existing.length } });
+    } catch (e) {
+      log.warn("trial.mindbody.degraded", { step: "getClientsByEmail", error: serialize(e) });
+      mbDegraded = true;
+      trace.push({ step: "getClientsByEmail", status: "error", error: serialize(e) });
+    }
 
     const intent = classifyIntent({
       bookingFor: "kid",
@@ -144,25 +156,70 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, correlationId, status: "duplicate_email_softwall", trace });
     }
 
-    const parent = await addClient(mbCfg, log, {
-      FirstName: body.parentFirstName,
-      LastName: body.parentLastName,
-      Email: body.parentEmail,
-      MobilePhone: body.parentPhone,
-      // Use the parent's actual DOB when provided; fall back to a
-      // placeholder only because the -99 sandbox 400s without BirthDate.
-      BirthDate: body.parentBirthDate || PARENT_DOB_PLACEHOLDER,
-    });
-    trace.push({ step: "addClient (parent)", status: "ok", data: { id: parent.Id } });
+    // If getClientsByEmail already failed above, skip straight to the
+    // manual_review degrade-out at the bottom of this block.
+    let parent: Awaited<ReturnType<typeof addClient>> | null = null;
+    let child: Awaited<ReturnType<typeof addClient>> | null = null;
+    if (!mbDegraded) {
+      try {
+        parent = await addClient(mbCfg, log, {
+          FirstName: body.parentFirstName,
+          LastName: body.parentLastName,
+          Email: body.parentEmail,
+          MobilePhone: body.parentPhone,
+          // Use the parent's actual DOB when provided; fall back to a
+          // placeholder only because the -99 sandbox 400s without BirthDate.
+          BirthDate: body.parentBirthDate || PARENT_DOB_PLACEHOLDER,
+        });
+        trace.push({ step: "addClient (parent)", status: "ok", data: { id: parent.Id } });
 
-    const childEmail = `kid+${correlationId}@court16-test.invalid`;
-    const child = await addClient(mbCfg, log, {
-      FirstName: primaryKid.firstName,
-      LastName: "-",
-      Email: childEmail,
-      BirthDate: childDob,
-    });
-    trace.push({ step: "addClient (child)", status: "ok", data: { id: child.Id } });
+        const childEmail = `kid+${correlationId}@court16-test.invalid`;
+        child = await addClient(mbCfg, log, {
+          FirstName: primaryKid.firstName,
+          LastName: "-",
+          Email: childEmail,
+          BirthDate: childDob,
+        });
+        trace.push({ step: "addClient (child)", status: "ok", data: { id: child.Id } });
+      } catch (e) {
+        log.warn("trial.mindbody.degraded", { step: "addClient", error: serialize(e) });
+        mbDegraded = true;
+        trace.push({ step: "addClient", status: "error", error: serialize(e) });
+      }
+    }
+
+    // Degraded path — capture the lead in HubSpot, return a manual_review
+    // confirmation so the parent still gets a success screen and staff
+    // gets a work item.
+    if (mbDegraded || !parent || !child) {
+      await submitFormSafely(
+        hsCfg,
+        log,
+        buildFormFields({
+          correlationId,
+          body,
+          primaryKid,
+          childDob,
+          ageBand,
+          location,
+          status: "manual_review",
+          parentMbId: undefined,
+          childMbId: undefined,
+          baseUrl,
+        }),
+        trace,
+        "hubspot.submitTrialForm (manual_review)",
+      );
+      return NextResponse.json({
+        ok: true,
+        correlationId,
+        writeMode: mbCfg.writeMode,
+        status: "manual_review",
+        parentId: null,
+        childId: null,
+        trace,
+      });
+    }
 
     let relationshipStatus: "ok" | "skipped" | "error" = "skipped";
     let relationshipError: unknown = undefined;
@@ -227,7 +284,7 @@ interface BuildFieldsArgs {
   childDob: string;
   ageBand: string;
   location: NonNullable<ReturnType<typeof getLocationById>>;
-  status: "pending_staff" | "duplicate_email_softwall" | "pending_payment";
+  status: "pending_staff" | "duplicate_email_softwall" | "pending_payment" | "manual_review";
   parentMbId?: string;
   childMbId?: string;
   baseUrl: string;
