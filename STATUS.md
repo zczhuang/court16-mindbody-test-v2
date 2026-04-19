@@ -80,21 +80,48 @@ Same shape:
 These are the specific unlocks needed. None are big; they're mostly clicks
 in MindBody admin and HubSpot admin.
 
-### 🎾 Anthony — MindBody side (~15 minutes total)
+### 🎾 Anthony — MindBody side
 
-1. **Authorize Cedarwind's API key against each of the 6 Court 16 sites.** In each
-   location's MindBody admin: Settings → API Integrations → Authorize Cedarwind
-   (~2 min per location). Until this is done, the app shows MindBody's generic
-   test data instead of Court 16's real calendar.
-2. **Provide the MindBody "service IDs"** for Tennis Intro Special and Pickleball
-   Clinic Intro at each location. Staff can read these from the MindBody admin;
-   we plug them into our config.
-3. **Verify the two adult intro offers are set up to sell online** in each
-   MindBody site's cart settings. If they're staff-only today, flip them to
-   "sellable online."
+**The big one: MindBody's "Go Live" approval.** This is the blocker. MindBody's
+developer accounts default to sandbox-only; to read or write against real
+sites (even just their public class schedule) the developer account has to go
+through MindBody's formal Go Live review. Typically 1–3 weeks turnaround.
+
+1. **Submit Cedarwind's developer account for Go Live review** at
+   developers.mindbodyonline.com. Stuart files the paperwork; Anthony's role
+   is writing a short email to MindBody confirming "Cedarwind is our
+   authorized integration partner for Court 16 booking, please approve their
+   developer key." Without this, every real-site API call returns 403 with
+   the message *"Before you can use this endpoint, MINDBODY must approve your
+   developer account for live access."* (Confirmed 2026-04-18 against all 6
+   real Court 16 site IDs.)
+2. **Authorize Cedarwind's API key in each site's MindBody admin.** Once Go
+   Live approval lands, Anthony's second step: in each of the 6 sites'
+   Settings → API Integrations, toggle Cedarwind on. ~2 min per location.
+3. **Provide the MindBody "service IDs"** for Tennis Intro Special and
+   Pickleball Clinic Intro at each location. Staff can read these from the
+   MindBody admin; we plug them into `config/locations.ts`.
+4. **Verify the two adult intro offers are set up to sell online** in each
+   site's cart settings. If they're staff-only today, flip them to
+   "sellable online" so the payment flow completes.
 
 Once these are done, Stuart flips two switches in the app (`MINDBODY_WRITE_MODE=live`
 and `MINDBODY_USE_SANDBOX_FALLBACK=false`) and the real data flows.
+
+**What's already confirmed:** Real Court 16 MindBody site IDs have been
+scraped from court16.com/login and are now correct in the app's config:
+
+| Club | Site ID |
+|---|---|
+| Downtown Brooklyn | 135479 |
+| Long Island City | 985499 |
+| FiDi, Manhattan | 5728093 |
+| Ridge Hill, Yonkers | 5748154 |
+| Fishtown, Philadelphia | 5742169 |
+| Newton, MA | 5751422 |
+
+The Sign in ▾ dropdown in the app already deep-links to each club's
+MindBody login page using these IDs.
 
 ### 📧 Ibtissam — HubSpot side (~30 minutes total)
 
