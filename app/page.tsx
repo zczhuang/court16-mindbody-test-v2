@@ -1,5 +1,5 @@
-import Link from "next/link";
 import Header from "@/components/Header";
+import PathCard from "@/components/PathCard";
 
 export default function Home() {
   return (
@@ -33,7 +33,7 @@ export default function Home() {
               description="Ages 3–17. Browse real classes, pick a time, and staff confirms within a few hours."
               cta="Start kids trial"
               href="/trial"
-              accent
+              accentColor="#FFE033"
             />
             <PathCard
               eyebrow="For you"
@@ -41,6 +41,7 @@ export default function Home() {
               description="Tennis Intro Special ($75) or Pickleball Clinic Intro ($58). Book a session and pay online in a few clicks."
               cta="Start adult intro"
               href="/intro"
+              accentColor="#1a1a1a"
             />
           </div>
         </section>
@@ -84,80 +85,6 @@ export default function Home() {
         </section>
       </div>
     </>
-  );
-}
-
-function PathCard({
-  eyebrow,
-  title,
-  description,
-  cta,
-  href,
-  accent,
-}: {
-  eyebrow: string;
-  title: string;
-  description: string;
-  cta: string;
-  href: string;
-  accent?: boolean;
-}) {
-  return (
-    <Link
-      href={href}
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 10,
-        padding: "26px 26px 22px",
-        background: "#fff",
-        border: accent ? "2px solid var(--c16-black)" : "1.5px solid var(--c16-line)",
-        borderRadius: "var(--r-xl)",
-        color: "var(--c16-black)",
-        boxShadow: accent ? "4px 4px 0 var(--c16-yellow)" : "none",
-        transition: "transform .15s ease, box-shadow .15s ease, border-color .15s ease",
-        minHeight: 200,
-      }}
-    >
-      <span className="eyebrow">{eyebrow}</span>
-      <div
-        style={{
-          fontFamily: "var(--f-display)",
-          fontWeight: 800,
-          fontSize: 28,
-          letterSpacing: "-0.03em",
-          lineHeight: 1.05,
-        }}
-      >
-        {title}
-      </div>
-      <p style={{ color: "var(--c16-ink-3)", margin: 0, fontSize: 14, lineHeight: 1.55 }}>
-        {description}
-      </p>
-      <span
-        style={{
-          marginTop: "auto",
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          fontSize: 13,
-          fontWeight: 700,
-          color: "var(--c16-black)",
-        }}
-      >
-        {cta}
-        <svg viewBox="0 0 16 16" width="14" height="14">
-          <path
-            d="M2 8h11M9 4l4 4-4 4"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </span>
-    </Link>
   );
 }
 

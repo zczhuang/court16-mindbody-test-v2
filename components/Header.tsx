@@ -18,7 +18,7 @@ export default function Header() {
           <span className="tag">Tennis Remixed</span>
         </Link>
         <nav className="c16-nav">
-          <Link className="pill yellow" href="/trial">Book Kids Trial</Link>
+          <Link className="pill yellow" href="/">Book now</Link>
           <a
             href="https://court-16-online-enrollment.onrender.com/enroll"
             className="link"
