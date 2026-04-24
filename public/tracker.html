@@ -1,0 +1,970 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Court 16 × Cedarwind — Phase 2 Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --yellow: #F5B800;
+    --yellow-soft: #FFF3DC;
+    --black: #111111;
+    --muted: #5E5A52;
+    --muted-soft: #8C857A;
+    --bg: #FBF7EF;
+    --card: #FFFFFF;
+    --border: #E8E2D4;
+    --green: #2E7D52;
+    --green-soft: #DFF2E6;
+    --amber: #B87514;
+    --amber-soft: #FBE8C4;
+    --gray: #777070;
+    --gray-soft: #ECE7DC;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: 'Geist', -apple-system, 'Segoe UI', sans-serif;
+    background: var(--bg);
+    color: var(--black);
+    line-height: 1.55;
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 48px 24px 80px; }
+  header .brand {
+    font-family: 'Geist Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+  h1 {
+    font-size: 36px;
+    letter-spacing: -0.02em;
+    font-weight: 700;
+    margin: 0 0 8px;
+  }
+  .subtitle {
+    color: var(--muted);
+    font-size: 16px;
+    margin: 0 0 28px;
+  }
+
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  .stat {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 18px 16px;
+  }
+  .stat .label {
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+  .stat .value {
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .stat .value .accent { color: var(--yellow); }
+  .stat .sub {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+
+  .progress-wrap {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 36px;
+  }
+  .progress-wrap .row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .progress-wrap h3 {
+    margin: 0;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .progress-wrap .pct {
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .bar {
+    height: 10px;
+    background: var(--gray-soft);
+    border-radius: 999px;
+    overflow: hidden;
+    position: relative;
+  }
+  .bar .fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--yellow) 0%, #E0A400 100%);
+    transition: width 0.6s ease;
+  }
+  .progress-wrap .caption {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 10px;
+  }
+
+  .timeline {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 36px;
+  }
+  .timeline h3 {
+    margin: 0 0 16px;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .timeline-strip {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+  }
+  .phase {
+    border-radius: 8px;
+    padding: 12px 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    position: relative;
+  }
+  .phase.active {
+    background: var(--yellow-soft);
+    border-color: var(--yellow);
+  }
+  .phase.done {
+    background: var(--green-soft);
+    border-color: #BEDDC9;
+  }
+  .phase.future {
+    opacity: 0.6;
+  }
+  .phase .dates {
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .phase .name {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  h2 {
+    font-size: 20px;
+    letter-spacing: -0.01em;
+    margin: 48px 0 16px;
+    font-weight: 600;
+  }
+
+  .pkg {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px 24px 20px;
+    margin-bottom: 16px;
+  }
+  .pkg.complete { border-left: 4px solid var(--green); }
+  .pkg.progress { border-left: 4px solid var(--amber); }
+  .pkg.blocked { border-left: 4px solid var(--gray); }
+  .pkg.future { border-left: 4px solid var(--border); opacity: 0.85; }
+  .pkg-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 6px;
+  }
+  .pkg-head h3 {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .pkg-head .price {
+    font-family: 'Geist Mono', monospace;
+    font-size: 13px;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .pkg .desc {
+    color: var(--muted);
+    font-size: 13.5px;
+    margin: 0 0 14px;
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: var(--gray-soft);
+    color: var(--gray);
+  }
+  .pill.complete { background: var(--green-soft); color: var(--green); }
+  .pill.progress { background: var(--amber-soft); color: var(--amber); }
+  .pill.blocked { background: var(--gray-soft); color: var(--gray); }
+  .pill.future { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+  .pill .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+
+  .deliverables {
+    list-style: none;
+    margin: 0;
+    padding: 12px 0 0;
+    border-top: 1px solid var(--border);
+  }
+  .deliverables li {
+    padding: 8px 0;
+    font-size: 13.5px;
+    display: grid;
+    grid-template-columns: 18px 1fr;
+    gap: 12px;
+    align-items: start;
+  }
+  .deliverables .icon {
+    font-family: 'Geist Mono', monospace;
+    font-size: 12px;
+    padding-top: 2px;
+  }
+  .deliverables .icon.done { color: var(--green); }
+  .deliverables .icon.pending { color: var(--gray); }
+  .deliverables .icon.partial { color: var(--amber); }
+  .deliverables .text { color: var(--black); }
+  .deliverables .note {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .meta-row {
+    display: grid;
+    grid-template-columns: 120px 1fr;
+    gap: 14px;
+    font-size: 13px;
+    padding: 8px 0;
+    border-top: 1px solid var(--border);
+  }
+  .meta-row:first-of-type { margin-top: 16px; }
+  .meta-row .k {
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding-top: 2px;
+    font-weight: 500;
+  }
+  .meta-row .v { color: var(--black); }
+  .meta-row .v .tag {
+    display: inline-block;
+    padding: 2px 7px;
+    margin: 1px 4px 1px 0;
+    border-radius: 6px;
+    font-size: 12px;
+    background: var(--yellow-soft);
+    color: var(--black);
+    font-weight: 500;
+  }
+
+  .waiting {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-top: 12px;
+  }
+  .waiting .grp {
+    margin-bottom: 20px;
+  }
+  .waiting .grp:last-child { margin-bottom: 0; }
+  .waiting .owner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .waiting .owner-name {
+    font-weight: 600;
+    font-size: 15px;
+  }
+  .waiting .owner-role {
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .waiting ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .waiting ul li {
+    padding: 8px 0;
+    font-size: 13.5px;
+    border-top: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: start;
+  }
+  .waiting ul li .when {
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+    padding-top: 2px;
+  }
+
+  footer {
+    margin-top: 56px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  footer a { color: var(--muted); }
+
+  /* Interactive client-todo checkboxes */
+  .todo-box {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    border: 1.5px solid #C5BFAE;
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+    flex-shrink: 0;
+    margin: 2px 0 0 0;
+    position: relative;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .todo-box:hover { border-color: var(--yellow); }
+  .todo-box:checked {
+    background: var(--green);
+    border-color: var(--green);
+  }
+  .todo-box:checked::after {
+    content: "";
+    position: absolute;
+    top: 2px;
+    left: 5px;
+    width: 4px;
+    height: 9px;
+    border: solid #fff;
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+  }
+  .todo-label { cursor: pointer; display: block; }
+  .todo-label.done { color: var(--muted); text-decoration: line-through; }
+  .waiting ul li.todo-row {
+    grid-template-columns: auto 1fr auto;
+    gap: 12px;
+    align-items: start;
+  }
+  .deliverables li.todo-row {
+    grid-template-columns: 18px 18px 1fr;
+    gap: 10px;
+  }
+  .deliverables li.todo-row .todo-box { margin-top: 3px; }
+
+  /* Client progress summary */
+  .client-progress {
+    background: var(--yellow-soft);
+    border: 1px solid var(--yellow);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 20px 0 8px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .client-progress .count {
+    font-family: 'Geist Mono', monospace;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--black);
+  }
+  .client-progress .label {
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .client-progress .mini-bar {
+    flex: 1;
+    min-width: 140px;
+    height: 8px;
+    background: #fff;
+    border-radius: 999px;
+    overflow: hidden;
+    border: 1px solid #EBD9AD;
+  }
+  .client-progress .mini-bar .mini-fill {
+    height: 100%;
+    background: var(--green);
+    transition: width 0.4s ease;
+  }
+  .client-progress .reset-btn {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 4px 10px;
+    font-size: 11px;
+    font-family: 'Geist Mono', monospace;
+    border-radius: 6px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .client-progress .reset-btn:hover { border-color: var(--yellow); color: var(--black); }
+
+  /* Feedback panel */
+  .feedback {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-top: 36px;
+  }
+  .feedback h2 { margin: 0 0 6px; }
+  .feedback .sub {
+    font-size: 13px;
+    color: var(--muted);
+    margin: 0 0 16px;
+  }
+  .feedback .who-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .feedback label.who-lbl {
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .feedback select.who {
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    background: #fff;
+    font-family: inherit;
+  }
+  .feedback textarea {
+    width: 100%;
+    min-height: 120px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.5;
+    resize: vertical;
+    background: #fff;
+  }
+  .feedback textarea:focus {
+    outline: none;
+    border-color: var(--yellow);
+  }
+  .feedback .actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+  }
+  .feedback button {
+    padding: 10px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: transform 0.1s ease, box-shadow 0.15s ease;
+  }
+  .feedback button.primary {
+    background: var(--black);
+    color: #fff;
+    border: 1px solid var(--black);
+  }
+  .feedback button.primary:hover { transform: translateY(-1px); }
+  .feedback button.secondary {
+    background: #fff;
+    color: var(--black);
+    border: 1px solid var(--border);
+  }
+  .feedback button.secondary:hover { border-color: var(--yellow); }
+  .feedback .hint {
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 10px;
+    min-height: 18px;
+  }
+  .feedback .hint.success { color: var(--green); }
+
+  @media (max-width: 720px) {
+    .wrap { padding: 28px 16px 56px; }
+    h1 { font-size: 28px; }
+    .summary { grid-template-columns: repeat(2, 1fr); }
+    .timeline-strip { grid-template-columns: 1fr; }
+    .pkg-head { flex-direction: column; gap: 6px; }
+    .meta-row { grid-template-columns: 1fr; gap: 4px; }
+    footer { flex-direction: column; align-items: flex-start; gap: 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="brand">Court 16 × Cedarwind Consulting</div>
+  <h1>Phase 2 — New Booking Experience</h1>
+  <p class="subtitle">Live engagement tracker. What's shipped, what's pending, who owns what.</p>
+</header>
+
+<!-- Summary stats -->
+<div class="summary">
+  <div class="stat">
+    <div class="label">Progress</div>
+    <div class="value">$8,000 <span class="accent">/ $13,000</span></div>
+    <div class="sub">62% shipped (by SOW value)</div>
+  </div>
+  <div class="stat">
+    <div class="label">Complete</div>
+    <div class="value">2 <span class="accent">of 4</span></div>
+    <div class="sub">Packages 0 + B</div>
+  </div>
+  <div class="stat">
+    <div class="label">Kickoff</div>
+    <div class="value">May 7</div>
+    <div class="sub">Ibtissam back from PTO</div>
+  </div>
+  <div class="stat">
+    <div class="label">Target go-live</div>
+    <div class="value">Jun 3</div>
+    <div class="sub">Ridge Hill pilot</div>
+  </div>
+</div>
+
+<!-- Progress bar -->
+<div class="progress-wrap">
+  <div class="row">
+    <h3>Phase 2 engineering completion</h3>
+    <div class="pct">62%</div>
+  </div>
+  <div class="bar"><div class="fill" style="width: 62%"></div></div>
+  <p class="caption">Package 0 (Core Booking App) and Package B (Booking Engine Completions) are shipped and sandbox-verified. Package A (HubSpot Deals + Automation) and Package C (Ridge Hill Pilot) begin May 7.</p>
+</div>
+
+<!-- Timeline -->
+<div class="timeline">
+  <h3>Engagement timeline</h3>
+  <div class="timeline-strip">
+    <div class="phase done">
+      <div class="dates">Apr 22 – May 6</div>
+      <div class="name">Pre-kickoff + prep</div>
+    </div>
+    <div class="phase active">
+      <div class="dates">May 7 – 20</div>
+      <div class="name">Package A build</div>
+    </div>
+    <div class="phase">
+      <div class="dates">May 28 – Jun 3</div>
+      <div class="name">Ridge Hill go-live</div>
+    </div>
+    <div class="phase">
+      <div class="dates">Jun 4 – 17</div>
+      <div class="name">10-day pilot</div>
+    </div>
+    <div class="phase future">
+      <div class="dates">by Jul 1</div>
+      <div class="name">Final readout</div>
+    </div>
+  </div>
+</div>
+
+<!-- Packages -->
+<h2>Deliverables</h2>
+
+<!-- Package 0 -->
+<div class="pkg complete">
+  <div class="pkg-head">
+    <h3>Package 0 — Core Booking Application</h3>
+    <div class="price">$5,000</div>
+  </div>
+  <p class="desc">Custom Next.js application replacing Court 16's current trial sign-up. Built, deployed, sandbox-verified.</p>
+  <div><span class="pill complete"><span class="dot"></span>Complete</span></div>
+
+  <ul class="deliverables">
+    <li><span class="icon done">✓</span><div class="text">Homepage with two entry points (Kids Trial, Adult Intro) — Court 16 brand</div></li>
+    <li><span class="icon done">✓</span><div class="text">Kids trial flow — location → age → calendar → form → confirmation (under 2 minutes)</div></li>
+    <li><span class="icon done">✓</span><div class="text">Adult intro flow — offer selection → class → form → MindBody cart → post-payment confirmation</div></li>
+    <li><span class="icon done">✓</span><div class="text">MindBody integration: GetClients dedup, AddClient, AddClientRelationship (Guardian), AddClientToClass, GetClientServices</div></li>
+    <li><span class="icon done">✓</span><div class="text">HubSpot form submission with correlation ID + 12 custom contact fields</div></li>
+    <li><span class="icon done">✓</span><div class="text">Signed HMAC staff-confirm tokens — one-click Confirm / Reassign links</div></li>
+    <li><span class="icon done">✓</span><div class="text">Intent classifier (kid_trial / adult_intro / existing_user_softwall)</div></li>
+    <li><span class="icon done">✓</span><div class="text">Structured per-request logging — every write correlated, failure traceable in under a minute</div></li>
+    <li><span class="icon done">✓</span><div class="text">6-site location registry (Brooklyn, LIC, FiDi, Ridge Hill, Fishtown, Newton) with real MindBody site IDs</div></li>
+    <li><span class="icon done">✓</span><div class="text">Safety gates — MINDBODY_WRITE_MODE flag and Test=true in sandbox mode</div></li>
+  </ul>
+
+  <div class="meta-row"><div class="k">Live at</div><div class="v"><a href="https://court16-mindbody-test.vercel.app" style="color:var(--amber)">court16-mindbody-test.vercel.app</a></div></div>
+  <div class="meta-row"><div class="k">Source</div><div class="v"><a href="https://github.com/zczhuang/court16-mindbody-test-v2" style="color:var(--amber)">github.com/zczhuang/court16-mindbody-test-v2</a></div></div>
+  <div class="meta-row"><div class="k">Goes live</div><div class="v">Against Ridge Hill MindBody site as part of Package C</div></div>
+</div>
+
+<!-- Package A -->
+<div class="pkg blocked">
+  <div class="pkg-head">
+    <h3>Package A — HubSpot Deals Pipeline &amp; Automation</h3>
+    <div class="price">$3,500</div>
+  </div>
+  <p class="desc">Replaces the current form-submission model with a proper Deal-driven pipeline. Covers the five asks Ibtissam raised in her Apr 22 review.</p>
+  <div><span class="pill blocked"><span class="dot"></span>Scheduled · May 7 kickoff</span></div>
+
+  <ul class="deliverables">
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-1"><span class="icon pending">◷</span><label class="todo-label" for="pkgA-1">Create 12 custom properties on HubSpot Contact object<div class="note">Migration spec ready in repo (docs/hubspot-properties.md). Stuart executes Day 1 of kickoff with Ibtissam's admin grant.</div></label></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-2"><span class="icon pending">◷</span><label class="todo-label">Create Trials Deal pipeline: Requested Trial → Scheduled Trial → Attended → No-Show → Denied</label></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-3"><span class="icon pending">◷</span><label class="todo-label">Modify booking app to create a Deal on form submit (in addition to Contact)</label></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-4"><span class="icon pending">◷</span><label class="todo-label">Staff-confirm endpoint moves Deal to Scheduled Trial and fires HubSpot workflow</label></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-5"><span class="icon pending">◷</span><label class="todo-label">Add Deny action alongside Confirm / Reassign — reason picklist, denial email with reason-specific copy, auto-cancel in MindBody</label></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-6"><span class="icon pending">◷</span><label class="todo-label">Parent MindBody password-setup email — fired from HubSpot workflow on Deal create</label></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-7"><span class="icon pending">◷</span><label class="todo-label">24-hour reminder workflow — triggered on Scheduled Trial + class date - 24h</label></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-8"><span class="icon pending">◷</span><label class="todo-label">Four email templates drafted (confirmation, password-setup, 24h reminder, denial) — can be drafted during PTO window</label></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-9"><span class="icon pending">◷</span><label class="todo-label">Turn off reCAPTCHA on existing Court 16 Trial form (unblocks manual_review lead capture)</label></li>
+  </ul>
+
+  <div class="meta-row"><div class="k">Blocked on</div><div class="v"><span class="tag">HubSpot admin access</span><span class="tag">Private App token</span></div></div>
+  <div class="meta-row"><div class="k">Owned by</div><div class="v">Stuart (build), Ibtissam (access + HubSpot workflow UI config)</div></div>
+  <div class="meta-row"><div class="k">Next step</div><div class="v">Anthony signs Phase 2 SOW · Ibtissam grants HubSpot admin + Private App permission on May 7</div></div>
+</div>
+
+<!-- Package B -->
+<div class="pkg complete">
+  <div class="pkg-head">
+    <h3>Package B — Booking Engine Completions</h3>
+    <div class="price">$3,000</div>
+  </div>
+  <p class="desc">Closes the code gaps Ibtissam surfaced in her Apr 21 email and supports the new Tennis / Pickleball adult offers. Sandbox-verified on Apr 24.</p>
+  <div><span class="pill complete"><span class="dot"></span>Complete — awaiting real service IDs</span></div>
+
+  <ul class="deliverables">
+    <li><span class="icon done">✓</span><div class="text">ClientServiceId wiring on AddClientToClass — trial books against "Complimentary Child Intro Session" service line (no more 'unpaid' MindBody appearance)</div></li>
+    <li><span class="icon done">✓</span><div class="text">Per-class age metadata + age-band filter on calendar UI — parents see only classes matching their child's age</div></li>
+    <li><span class="icon done">✓</span><div class="text">Server-side age validation on booking submit — rejects out-of-range bookings with inline error</div></li>
+    <li><span class="icon done">✓</span><div class="text">Tennis Private Ball Machine — new adult offer entry ($45 / 30-min), per-location service ID stubs, updated confirmation copy</div></li>
+    <li><span class="icon done">✓</span><div class="text">Pickleball BOGO staff-assist flow — skips cart, submits HubSpot with pending_staff_assist, dedicated confirmation screen</div></li>
+    <li><span class="icon partial">◐</span><div class="text">serviceIdByLocation populated for existing Tennis Intro + Pickleball Intro offers<div class="note">Awaiting Director of Sales data + Jane to create services per site. Non-blocking — fallback pricing works.</div></div></li>
+  </ul>
+
+  <div class="meta-row"><div class="k">Waiting on</div><div class="v"><span class="tag">Director of Sales pricing data</span><span class="tag">Jane to create services</span></div></div>
+  <div class="meta-row"><div class="k">Acceptance</div><div class="v">Trial booking shows in MindBody as "Complimentary Child Intro" (not unpaid); 4yo cannot book a 10-14 class; adult offers list per-location</div></div>
+</div>
+
+<!-- Package C -->
+<div class="pkg blocked">
+  <div class="pkg-head">
+    <h3>Package C — Ridge Hill Pilot Launch</h3>
+    <div class="price">$1,500</div>
+  </div>
+  <p class="desc">Put real customer traffic onto the system at exactly one location, with tight monitoring. Single-site blast radius until acceptance criteria pass.</p>
+  <div><span class="pill blocked"><span class="dot"></span>Scheduled · May 28 – Jun 3 go-live</span></div>
+
+  <ul class="deliverables">
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgC-1"><span class="icon pending">◷</span><label class="todo-label">MindBody Developer Support "Go Live" approval — currently sandbox-only<div class="note">Stuart files submission; Anthony confirms Cedarwind as authorized integration partner. 1–3 week turnaround — can happen during PTO window.</div></label></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgC-2"><span class="icon pending">◷</span><label class="todo-label">Authorize Cedarwind's MindBody key on Ridge Hill (site 5748154). Other 5 sites remain softwalled.</label></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgC-3"><span class="icon pending">◷</span><label class="todo-label">5-booking smoke test with Ibtissam's staging account before enabling public traffic</label></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgC-4"><span class="icon pending">◷</span><label class="todo-label">Flip MINDBODY_WRITE_MODE=live and MINDBODY_USE_SANDBOX_FALLBACK=false scoped to Ridge Hill requests</label></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgC-5"><span class="icon pending">◷</span><label class="todo-label">Point subdomain (e.g. trial.court16.com) at the Vercel deployment, Ridge Hill traffic only</label></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgC-6"><span class="icon pending">◷</span><label class="todo-label">Operational monitoring — correlation-ID dashboard, failed-booking alert to stuart@ and ibtissam@</label></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgC-7"><span class="icon pending">◷</span><label class="todo-label">10 business days of real-traffic pilot. Target: ≥20 real trial bookings. Weekly readout to Anthony.</label></li>
+  </ul>
+
+  <div class="meta-row"><div class="k">Blocked on</div><div class="v"><span class="tag">Anthony MindBody Go-Live email</span><span class="tag">Ridge Hill API key</span><span class="tag">Jane services setup</span></div></div>
+  <div class="meta-row"><div class="k">Acceptance</div><div class="v">≥95% of trial submissions become confirmed MindBody bookings within 1 business day · Zero duplicate accounts · Every failure traceable to a correlation ID</div></div>
+</div>
+
+<!-- Phase 2.5 -->
+<div class="pkg future">
+  <div class="pkg-head">
+    <h3>Phase 2.5 — Multi-Site Rollout (Option)</h3>
+    <div class="price">$2,000 (if triggered)</div>
+  </div>
+  <p class="desc">After Ridge Hill pilot passes acceptance criteria, rollout to the other 5 locations. Quoted separately; triggered by Court 16 at its discretion after pilot data is in.</p>
+  <div><span class="pill future"><span class="dot"></span>Post-pilot · Not in current SOW</span></div>
+
+  <ul class="deliverables">
+    <li><span class="icon pending">◷</span><div class="text">Authorize Cedarwind's key on Brooklyn, LIC, FiDi, Fishtown, Newton (5 sites × ~2 min admin per site)</div></li>
+    <li><span class="icon pending">◷</span><div class="text">Port per-site service IDs across all locations using Director of Sales data</div></li>
+    <li><span class="icon pending">◷</span><div class="text">Remove softwall; point main court16.com/trial traffic at the app</div></li>
+    <li><span class="icon pending">◷</span><div class="text">Post-rollout review at +14 days — bookings-per-site, time-to-confirm, denial reasons</div></li>
+  </ul>
+</div>
+
+<!-- Waiting on -->
+<h2>Court 16 to-do list</h2>
+<div class="client-progress">
+  <span class="count"><span id="client-done">0</span>/<span id="client-total">0</span></span>
+  <span class="label">items checked off</span>
+  <div class="mini-bar"><div class="mini-fill" id="client-fill" style="width: 0%"></div></div>
+  <button type="button" class="reset-btn" id="reset-todos">Reset</button>
+</div>
+<div class="waiting">
+  <div class="grp">
+    <div class="owner">
+      <div class="owner-name">Anthony Evrard</div>
+      <div class="owner-role">Co-Founder · MindBody owner</div>
+    </div>
+    <ul>
+      <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="anthony-1"><label class="todo-label">Sign Phase 2 SOW</label><span class="when">by May 6</span></li>
+      <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="anthony-2"><label class="todo-label">Email MindBody Developer Support: "Cedarwind is our authorized integration partner — please approve their developer key for Go-Live"</label><span class="when">Apr 23 – May 6</span></li>
+      <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="anthony-3"><label class="todo-label">Authorize Cedarwind API key on Ridge Hill MindBody admin (~2 min)</label><span class="when">May 7</span></li>
+      <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="anthony-4"><label class="todo-label">Confirm Tennis Intro, Pickleball Intro, Tennis Ball Machine flagged 'sellable online' at Ridge Hill</label><span class="when">by May 20</span></li>
+    </ul>
+  </div>
+
+  <div class="grp">
+    <div class="owner">
+      <div class="owner-name">Ibtissam Kahkour</div>
+      <div class="owner-role">Head of Marketing · on PTO Apr 23 – May 6</div>
+    </div>
+    <ul>
+      <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="ibtissam-1"><label class="todo-label">Grant stuart@cedarwind.io HubSpot admin access + Private App permission</label><span class="when">Day 1 · May 7</span></li>
+      <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="ibtissam-2"><label class="todo-label">Hand over Ridge Hill MindBody API key</label><span class="when">Day 1 · May 7</span></li>
+    </ul>
+  </div>
+
+  <div class="grp">
+    <div class="owner">
+      <div class="owner-name">Jane Montoya</div>
+      <div class="owner-role">Operations</div>
+    </div>
+    <ul>
+      <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="jane-1"><label class="todo-label">Create "Complimentary Child Intro Session" service in MindBody at Ridge Hill</label><span class="when">Week 1 of kickoff</span></li>
+    </ul>
+  </div>
+
+  <div class="grp">
+    <div class="owner">
+      <div class="owner-name">Director of Sales</div>
+      <div class="owner-role">Adult programming</div>
+    </div>
+    <ul>
+      <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="sales-1"><label class="todo-label">Per-location adult offer pricing + MindBody service IDs (Tennis Intro, Pickleball Intro, Tennis Ball Machine)</label><span class="when">by May 14</span></li>
+    </ul>
+  </div>
+
+  <div class="grp">
+    <div class="owner">
+      <div class="owner-name">Legal</div>
+      <div class="owner-role"></div>
+    </div>
+    <ul>
+      <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="legal-1"><label class="todo-label">Lawyer review of participation waiver text (~1–2 hours)</label><span class="when">before Ridge Hill go-live</span></li>
+    </ul>
+  </div>
+</div>
+
+<!-- Feedback panel -->
+<section class="feedback">
+  <h2>Feedback for Stuart</h2>
+  <p class="sub">Questions, corrections, scope changes, or anything on your mind. Jot it down and we'll talk on our next sync.</p>
+  <div class="who-row">
+    <label class="who-lbl" for="who-select">From</label>
+    <select class="who" id="who-select">
+      <option value="">— select —</option>
+      <option>Anthony Evrard</option>
+      <option>Ibtissam Kahkour</option>
+      <option>Jane Montoya</option>
+      <option>Director of Sales</option>
+      <option>Other Court 16</option>
+    </select>
+  </div>
+  <textarea id="feedback-text" placeholder="Type your feedback here…&#10;&#10;Example: 'Can we swap the Ridge Hill pilot date to May 29? Also — Jane says Tennis Ball Machine is actually $55 at Brooklyn.'"></textarea>
+  <div class="actions">
+    <button type="button" class="primary" id="send-email">Email to Stuart</button>
+    <button type="button" class="secondary" id="copy-clip">Copy to clipboard</button>
+  </div>
+  <div class="hint" id="feedback-hint">Nothing sends until you click a button. Your notes stay on this device until you do.</div>
+</section>
+
+<footer>
+  <div>Prepared by Stuart Chuang · Cedarwind Consulting · <a href="mailto:stuart@cedarwind.io">stuart@cedarwind.io</a></div>
+  <div>Last updated <span id="updated">Apr 24, 2026</span></div>
+</footer>
+
+</div>
+<script>
+(function () {
+  const STORAGE_KEY = "court16-tracker-todos-v1";
+  const FEEDBACK_KEY = "court16-tracker-feedback-draft-v1";
+  const WHO_KEY = "court16-tracker-who-v1";
+
+  // ── Checkbox persistence + progress counter ────────────────────────────
+  const boxes = Array.from(document.querySelectorAll(".todo-box"));
+  const saved = (() => {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
+    catch { return {}; }
+  })();
+
+  const doneEl = document.getElementById("client-done");
+  const totalEl = document.getElementById("client-total");
+  const fillEl = document.getElementById("client-fill");
+
+  function updateProgress() {
+    const done = boxes.filter((b) => b.checked).length;
+    if (doneEl) doneEl.textContent = String(done);
+    if (totalEl) totalEl.textContent = String(boxes.length);
+    if (fillEl) {
+      const pct = boxes.length === 0 ? 0 : Math.round((done / boxes.length) * 100);
+      fillEl.style.width = pct + "%";
+    }
+  }
+
+  function applyRowStyle(box) {
+    const label = box.parentElement?.querySelector(".todo-label");
+    if (label) label.classList.toggle("done", box.checked);
+  }
+
+  boxes.forEach((box) => {
+    const id = box.dataset.todo;
+    if (id && saved[id]) box.checked = true;
+    applyRowStyle(box);
+    box.addEventListener("change", () => {
+      const state = boxes.reduce((acc, b) => {
+        if (b.dataset.todo && b.checked) acc[b.dataset.todo] = true;
+        return acc;
+      }, {});
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+      applyRowStyle(box);
+      updateProgress();
+    });
+  });
+  updateProgress();
+
+  // ── Reset button ───────────────────────────────────────────────────────
+  const resetBtn = document.getElementById("reset-todos");
+  if (resetBtn) {
+    resetBtn.addEventListener("click", () => {
+      if (!confirm("Clear every checkbox? This only resets your view; nobody else sees your checks.")) return;
+      try { localStorage.removeItem(STORAGE_KEY); } catch {}
+      boxes.forEach((b) => { b.checked = false; applyRowStyle(b); });
+      updateProgress();
+    });
+  }
+
+  // ── Feedback panel ─────────────────────────────────────────────────────
+  const who = document.getElementById("who-select");
+  const text = document.getElementById("feedback-text");
+  const hint = document.getElementById("feedback-hint");
+  const sendBtn = document.getElementById("send-email");
+  const copyBtn = document.getElementById("copy-clip");
+
+  // Restore draft so a reload doesn't lose what they typed.
+  try {
+    const draft = localStorage.getItem(FEEDBACK_KEY);
+    if (draft && text) text.value = draft;
+    const savedWho = localStorage.getItem(WHO_KEY);
+    if (savedWho && who) who.value = savedWho;
+  } catch {}
+
+  if (text) text.addEventListener("input", () => {
+    try { localStorage.setItem(FEEDBACK_KEY, text.value); } catch {}
+  });
+  if (who) who.addEventListener("change", () => {
+    try { localStorage.setItem(WHO_KEY, who.value); } catch {}
+  });
+
+  function composeSubject() {
+    const whoVal = who && who.value ? ` — ${who.value}` : "";
+    return `Phase 2 Tracker feedback${whoVal}`;
+  }
+  function composeBody() {
+    const whoVal = who && who.value ? `From: ${who.value}\n\n` : "";
+    const todosChecked = boxes.filter((b) => b.checked).length;
+    const todoLine = `(${todosChecked} of ${boxes.length} to-do items checked on sender's view)\n\n`;
+    return whoVal + todoLine + (text ? text.value : "");
+  }
+  function showHint(msg, ok) {
+    if (!hint) return;
+    hint.textContent = msg;
+    hint.classList.toggle("success", !!ok);
+    if (ok) setTimeout(() => {
+      hint.textContent = "Nothing sends until you click a button. Your notes stay on this device until you do.";
+      hint.classList.remove("success");
+    }, 4000);
+  }
+
+  if (sendBtn) sendBtn.addEventListener("click", () => {
+    if (!text || text.value.trim() === "") {
+      showHint("Add a note first — the textarea is empty.");
+      return;
+    }
+    const mailto =
+      "mailto:stuart@cedarwind.io" +
+      "?subject=" + encodeURIComponent(composeSubject()) +
+      "&body=" + encodeURIComponent(composeBody());
+    window.location.href = mailto;
+    showHint("Opening your email client…", true);
+  });
+
+  if (copyBtn) copyBtn.addEventListener("click", async () => {
+    if (!text || text.value.trim() === "") {
+      showHint("Add a note first — the textarea is empty.");
+      return;
+    }
+    const payload =
+      composeSubject() + "\n\n" + composeBody() + "\n\n— Sent via court16 tracker";
+    try {
+      await navigator.clipboard.writeText(payload);
+      showHint("Copied. Paste into an email to stuart@cedarwind.io.", true);
+    } catch {
+      showHint("Clipboard blocked — select the text manually and copy.");
+    }
+  });
+})();
+</script>
+</body>
+</html>
