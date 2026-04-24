@@ -1,0 +1,12 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "functions": {
+    "app/api/mindbody/happy-path/route.ts": { "maxDuration": 30 },
+    "app/api/mindbody/classes/route.ts": { "maxDuration": 15 },
+    "app/api/mindbody/get-clients/route.ts": { "maxDuration": 15 },
+    "app/api/mindbody/add-client/route.ts": { "maxDuration": 15 },
+    "app/api/mindbody/add-relationship/route.ts": { "maxDuration": 15 },
+    "app/api/mindbody/add-to-class/route.ts": { "maxDuration": 15 }
+  }
+}
