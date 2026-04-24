@@ -543,6 +543,80 @@
     min-height: 18px;
   }
   .feedback .hint.success { color: var(--green); }
+  .feedback .hint.error { color: #B8301A; }
+
+  /* Comments feed */
+  .comments {
+    margin-top: 28px;
+    padding-top: 24px;
+    border-top: 1px dashed var(--border);
+  }
+  .comments h3 {
+    margin: 0 0 14px;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .comments .empty {
+    font-size: 13px;
+    color: var(--muted);
+    font-style: italic;
+  }
+  .comments .list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .comment {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--yellow);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .comment.resolved {
+    opacity: 0.55;
+    border-left-color: var(--green);
+  }
+  .comment-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 4px;
+    font-size: 12px;
+  }
+  .comment-head .from {
+    font-weight: 600;
+    color: var(--black);
+    font-size: 13px;
+  }
+  .comment-head .when {
+    color: var(--muted);
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px;
+  }
+  .comment .body {
+    font-size: 13.5px;
+    white-space: pre-wrap;
+    color: var(--black);
+    line-height: 1.5;
+  }
+  .comment.resolved .body { text-decoration: line-through; }
+  .comment .resolved-tag {
+    display: inline-block;
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: var(--green-soft);
+    color: var(--green);
+    margin-left: 6px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
 
   @media (max-width: 720px) {
     .wrap { padding: 28px 16px 56px; }
@@ -807,10 +881,10 @@
   </div>
 </div>
 
-<!-- Feedback panel -->
+<!-- Feedback + comments -->
 <section class="feedback">
-  <h2>Feedback for Stuart</h2>
-  <p class="sub">Questions, corrections, scope changes, or anything on your mind. Jot it down and we'll talk on our next sync.</p>
+  <h2>Leave a comment</h2>
+  <p class="sub">Questions, corrections, scope changes — post them here. Stuart gets an email on every new comment. All viewers see the thread.</p>
   <div class="who-row">
     <label class="who-lbl" for="who-select">From</label>
     <select class="who" id="who-select">
@@ -822,12 +896,18 @@
       <option>Other Court 16</option>
     </select>
   </div>
-  <textarea id="feedback-text" placeholder="Type your feedback here…&#10;&#10;Example: 'Can we swap the Ridge Hill pilot date to May 29? Also — Jane says Tennis Ball Machine is actually $55 at Brooklyn.'"></textarea>
+  <textarea id="feedback-text" placeholder="Type your comment here…&#10;&#10;Example: 'Can we swap the Ridge Hill pilot date to May 29? Also — Jane says Tennis Ball Machine is actually $55 at Brooklyn.'"></textarea>
   <div class="actions">
-    <button type="button" class="primary" id="send-email">Email to Stuart</button>
-    <button type="button" class="secondary" id="copy-clip">Copy to clipboard</button>
+    <button type="button" class="primary" id="post-comment">Post comment</button>
   </div>
-  <div class="hint" id="feedback-hint">Nothing sends until you click a button. Your notes stay on this device until you do.</div>
+  <div class="hint" id="feedback-hint">Your comment posts to a private thread Stuart monitors. He gets an email alert on each post.</div>
+
+  <div class="comments">
+    <h3>Thread</h3>
+    <div class="list" id="comments-list">
+      <div class="empty" id="comments-empty">Loading…</div>
+    </div>
+  </div>
 </section>
 
 <footer>
@@ -899,8 +979,10 @@
   const who = document.getElementById("who-select");
   const text = document.getElementById("feedback-text");
   const hint = document.getElementById("feedback-hint");
-  const sendBtn = document.getElementById("send-email");
-  const copyBtn = document.getElementById("copy-clip");
+  const postBtn = document.getElementById("post-comment");
+  const commentsList = document.getElementById("comments-list");
+  const commentsEmpty = document.getElementById("comments-empty");
+  const DEFAULT_HINT = "Your comment posts to a private thread Stuart monitors. He gets an email alert on each post.";
 
   // Restore draft so a reload doesn't lose what they typed.
   try {
@@ -917,53 +999,104 @@
     try { localStorage.setItem(WHO_KEY, who.value); } catch {}
   });
 
-  function composeSubject() {
-    const whoVal = who && who.value ? ` — ${who.value}` : "";
-    return `Phase 2 Tracker feedback${whoVal}`;
-  }
-  function composeBody() {
-    const whoVal = who && who.value ? `From: ${who.value}\n\n` : "";
-    const todosChecked = boxes.filter((b) => b.checked).length;
-    const todoLine = `(${todosChecked} of ${boxes.length} to-do items checked on sender's view)\n\n`;
-    return whoVal + todoLine + (text ? text.value : "");
-  }
-  function showHint(msg, ok) {
+  function showHint(msg, kind) {
     if (!hint) return;
     hint.textContent = msg;
-    hint.classList.toggle("success", !!ok);
-    if (ok) setTimeout(() => {
-      hint.textContent = "Nothing sends until you click a button. Your notes stay on this device until you do.";
-      hint.classList.remove("success");
-    }, 4000);
+    hint.classList.remove("success", "error");
+    if (kind === "ok") hint.classList.add("success");
+    if (kind === "err") hint.classList.add("error");
+    if (kind) setTimeout(() => {
+      hint.textContent = DEFAULT_HINT;
+      hint.classList.remove("success", "error");
+    }, 5000);
   }
 
-  if (sendBtn) sendBtn.addEventListener("click", () => {
-    if (!text || text.value.trim() === "") {
-      showHint("Add a note first — the textarea is empty.");
+  function formatWhen(iso) {
+    try {
+      const d = new Date(iso);
+      const now = new Date();
+      const day = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+      const sameYear = d.getFullYear() === now.getFullYear();
+      return sameYear ? `${day} · ${time}` : `${day} ${d.getFullYear()}`;
+    } catch { return iso; }
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function renderComments(comments) {
+    if (!commentsList) return;
+    if (!Array.isArray(comments) || comments.length === 0) {
+      commentsList.innerHTML = '<div class="empty">No comments yet — be the first.</div>';
       return;
     }
-    const mailto =
-      "mailto:stuart@cedarwind.io" +
-      "?subject=" + encodeURIComponent(composeSubject()) +
-      "&body=" + encodeURIComponent(composeBody());
-    window.location.href = mailto;
-    showHint("Opening your email client…", true);
+    commentsList.innerHTML = comments.map((c) => {
+      const cls = "comment" + (c.state === "closed" ? " resolved" : "");
+      const resolvedTag = c.state === "closed" ? '<span class="resolved-tag">resolved</span>' : "";
+      return `<div class="${cls}"><div class="comment-head"><div class="from">${escapeHtml(c.from)}${resolvedTag}</div><div class="when">${formatWhen(c.createdAt)}</div></div><div class="body">${escapeHtml(c.text)}</div></div>`;
+    }).join("");
+  }
+
+  async function loadComments() {
+    try {
+      const res = await fetch("/api/tracker/comments", { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        if (commentsList) commentsList.innerHTML =
+          '<div class="empty">Comment thread unavailable. ' +
+          escapeHtml((data && data.error) || "") + "</div>";
+        return;
+      }
+      if (data.configured === false && Array.isArray(data.comments) && data.comments.length === 0) {
+        if (commentsList) commentsList.innerHTML =
+          '<div class="empty">Comment thread not yet configured on this deploy.</div>';
+        return;
+      }
+      renderComments(data.comments);
+    } catch (e) {
+      if (commentsList) commentsList.innerHTML =
+        '<div class="empty">Could not load thread. ' + escapeHtml(String(e)) + "</div>";
+    }
+  }
+
+  if (postBtn) postBtn.addEventListener("click", async () => {
+    if (!who || !who.value) {
+      showHint("Pick your name from the From dropdown first.", "err");
+      return;
+    }
+    if (!text || text.value.trim() === "") {
+      showHint("Textarea is empty — type something first.", "err");
+      return;
+    }
+    postBtn.disabled = true;
+    postBtn.textContent = "Posting…";
+    try {
+      const res = await fetch("/api/tracker/comment", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ from: who.value, text: text.value.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error((data && data.error) || `HTTP ${res.status}`);
+      // Clear draft + refresh thread.
+      if (text) text.value = "";
+      try { localStorage.removeItem(FEEDBACK_KEY); } catch {}
+      showHint("Posted. Stuart will see it within a minute.", "ok");
+      loadComments();
+    } catch (e) {
+      showHint("Post failed: " + (e instanceof Error ? e.message : String(e)), "err");
+    } finally {
+      postBtn.disabled = false;
+      postBtn.textContent = "Post comment";
+    }
   });
 
-  if (copyBtn) copyBtn.addEventListener("click", async () => {
-    if (!text || text.value.trim() === "") {
-      showHint("Add a note first — the textarea is empty.");
-      return;
-    }
-    const payload =
-      composeSubject() + "\n\n" + composeBody() + "\n\n— Sent via court16 tracker";
-    try {
-      await navigator.clipboard.writeText(payload);
-      showHint("Copied. Paste into an email to stuart@cedarwind.io.", true);
-    } catch {
-      showHint("Clipboard blocked — select the text manually and copy.");
-    }
-  });
+  // Initial load + refresh when the tab regains focus (catches new comments
+  // posted from other viewers' devices).
+  loadComments();
+  window.addEventListener("focus", loadComments);
 })();
 </script>
 </body>
