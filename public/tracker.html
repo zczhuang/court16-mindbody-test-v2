@@ -618,6 +618,98 @@
     text-transform: uppercase;
   }
 
+  /* Add-a-line-item form */
+  .add-todo-wrap { margin-top: 16px; }
+  .add-todo-btn {
+    background: transparent;
+    border: 1.5px dashed var(--border);
+    color: var(--muted);
+    padding: 10px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    width: 100%;
+    transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+  }
+  .add-todo-btn:hover {
+    border-color: var(--yellow);
+    color: var(--black);
+    background: var(--yellow-soft);
+  }
+  .add-todo-btn.open { display: none; }
+  .add-todo-form {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    background: var(--bg);
+  }
+  .add-todo-form .add-row {
+    display: grid;
+    grid-template-columns: 1.2fr 2fr 1fr;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+  .add-todo-form .add-task { grid-column: span 1; }
+  .add-todo-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .add-todo-form .add-lbl {
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .add-todo-form select,
+  .add-todo-form input[type="text"] {
+    padding: 8px 10px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+    background: #fff;
+  }
+  .add-todo-form select:focus,
+  .add-todo-form input[type="text"]:focus {
+    outline: none;
+    border-color: var(--yellow);
+  }
+  .add-todo-form .add-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .add-todo-form button {
+    padding: 8px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .add-todo-form .add-primary {
+    background: var(--black);
+    color: #fff;
+    border: 1px solid var(--black);
+  }
+  .add-todo-form .add-secondary {
+    background: #fff;
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .add-todo-form .add-hint {
+    font-size: 12px;
+    color: var(--muted);
+    margin-left: auto;
+  }
+  .add-todo-form .add-hint.error { color: #B8301A; }
+  .add-todo-form .add-hint.success { color: var(--green); }
+
   @media (max-width: 720px) {
     .wrap { padding: 28px 16px 56px; }
     h1 { font-size: 28px; }
@@ -817,8 +909,8 @@
   </ul>
 </div>
 
-<!-- Waiting on -->
-<h2>Court 16 to-do list</h2>
+<!-- Pending to-do -->
+<h2>Pending to-do</h2>
 <div class="client-progress">
   <span class="count"><span id="client-done">0</span>/<span id="client-total">0</span></span>
   <span class="label">items checked off</span>
@@ -847,6 +939,7 @@
     <ul>
       <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="ibtissam-1"><label class="todo-label">Grant stuart@cedarwind.io HubSpot admin access + Private App permission</label><span class="when">Day 1 · May 7</span></li>
       <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="ibtissam-2"><label class="todo-label">Hand over Ridge Hill MindBody API key</label><span class="when">Day 1 · May 7</span></li>
+      <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="ibtissam-3"><label class="todo-label">Grant Stuart HubSpot Claude Connector access provision</label><span class="when">Day 1 · May 7</span></li>
     </ul>
   </div>
 
@@ -872,12 +965,56 @@
 
   <div class="grp">
     <div class="owner">
-      <div class="owner-name">Legal</div>
-      <div class="owner-role"></div>
+      <div class="owner-name">Romain Aubanel</div>
+      <div class="owner-role">Legal</div>
     </div>
     <ul>
       <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="legal-1"><label class="todo-label">Lawyer review of participation waiver text (~1–2 hours)</label><span class="when">before Ridge Hill go-live</span></li>
     </ul>
+  </div>
+
+  <!-- User-added to-do items (server-side, shared across all viewers) -->
+  <div class="grp" id="added-todos-grp" style="display: none;">
+    <div class="owner">
+      <div class="owner-name">Added during engagement</div>
+      <div class="owner-role">Visible to all viewers · close on GitHub to archive</div>
+    </div>
+    <ul id="added-todos-list"></ul>
+  </div>
+
+  <!-- Add-a-line-item form -->
+  <div class="add-todo-wrap">
+    <button type="button" class="add-todo-btn" id="add-todo-toggle">+ Add a to-do</button>
+    <form class="add-todo-form" id="add-todo-form" hidden>
+      <div class="add-row">
+        <label>
+          <span class="add-lbl">Owner</span>
+          <select id="add-owner" required>
+            <option value="">—</option>
+            <option>Anthony Evrard</option>
+            <option>Ibtissam Kahkour</option>
+            <option>Jane Montoya</option>
+            <option>Director of Sales</option>
+            <option>Legal</option>
+            <option>Stuart (Cedarwind)</option>
+            <option>Other</option>
+          </select>
+        </label>
+        <label class="add-task">
+          <span class="add-lbl">Task</span>
+          <input type="text" id="add-task" required maxlength="400" placeholder="What needs to happen?">
+        </label>
+        <label>
+          <span class="add-lbl">When (optional)</span>
+          <input type="text" id="add-when" maxlength="80" placeholder="e.g. by May 20">
+        </label>
+      </div>
+      <div class="add-actions">
+        <button type="submit" class="add-primary" id="add-submit">Add to list</button>
+        <button type="button" class="add-secondary" id="add-cancel">Cancel</button>
+        <span class="add-hint" id="add-hint"></span>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -893,6 +1030,7 @@
       <option>Ibtissam Kahkour</option>
       <option>Jane Montoya</option>
       <option>Director of Sales</option>
+      <option>Romain Aubanel</option>
       <option>Other Court 16</option>
     </select>
   </div>
@@ -923,6 +1061,8 @@
   const WHO_KEY = "court16-tracker-who-v1";
 
   // ── Checkbox persistence + progress counter ────────────────────────────
+  // boxes is mutable — server-rendered to-dos add new checkboxes after
+  // load, and we re-wire them through wireBox().
   const boxes = Array.from(document.querySelectorAll(".todo-box"));
   const saved = (() => {
     try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}"); }
@@ -932,6 +1072,14 @@
   const doneEl = document.getElementById("client-done");
   const totalEl = document.getElementById("client-total");
   const fillEl = document.getElementById("client-fill");
+
+  function persistState() {
+    const state = boxes.reduce((acc, b) => {
+      if (b.dataset.todo && b.checked) acc[b.dataset.todo] = true;
+      return acc;
+    }, {});
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+  }
 
   function updateProgress() {
     const done = boxes.filter((b) => b.checked).length;
@@ -948,20 +1096,18 @@
     if (label) label.classList.toggle("done", box.checked);
   }
 
-  boxes.forEach((box) => {
+  function wireBox(box) {
     const id = box.dataset.todo;
     if (id && saved[id]) box.checked = true;
     applyRowStyle(box);
     box.addEventListener("change", () => {
-      const state = boxes.reduce((acc, b) => {
-        if (b.dataset.todo && b.checked) acc[b.dataset.todo] = true;
-        return acc;
-      }, {});
-      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch {}
+      persistState();
       applyRowStyle(box);
       updateProgress();
     });
-  });
+  }
+
+  boxes.forEach(wireBox);
   updateProgress();
 
   // ── Reset button ───────────────────────────────────────────────────────
@@ -974,6 +1120,133 @@
       updateProgress();
     });
   }
+
+  // ── User-added to-dos (shared server-backed list) ─────────────────────
+  const addedList = document.getElementById("added-todos-list");
+  const addedGrp = document.getElementById("added-todos-grp");
+  const addToggle = document.getElementById("add-todo-toggle");
+  const addForm = document.getElementById("add-todo-form");
+  const addOwner = document.getElementById("add-owner");
+  const addTask = document.getElementById("add-task");
+  const addWhen = document.getElementById("add-when");
+  const addCancel = document.getElementById("add-cancel");
+  const addHint = document.getElementById("add-hint");
+  const addSubmit = document.getElementById("add-submit");
+  // Track which todo IDs we've already rendered so re-fetching doesn't
+  // duplicate rows or destroy unsaved checkbox state on other items.
+  const renderedTodoIds = new Set();
+
+  function renderAddedTodo(todo) {
+    if (!addedList || renderedTodoIds.has(todo.id)) return;
+    renderedTodoIds.add(todo.id);
+    const li = document.createElement("li");
+    li.className = "todo-row";
+    const dataId = "todo-" + todo.id;
+    const safeTask = todo.task.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const safeOwner = todo.owner.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const safeWhen = (todo.when || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const ownerTag = safeOwner ? `<strong>${safeOwner}:</strong> ` : "";
+    li.innerHTML =
+      `<input type="checkbox" class="todo-box" data-todo="${dataId}">` +
+      `<label class="todo-label">${ownerTag}${safeTask}</label>` +
+      `<span class="when">${safeWhen || "—"}</span>`;
+    if (todo.state === "closed") {
+      li.style.opacity = "0.55";
+      const lbl = li.querySelector(".todo-label");
+      if (lbl) lbl.classList.add("done");
+    }
+    addedList.appendChild(li);
+    const newBox = li.querySelector(".todo-box");
+    if (newBox) {
+      boxes.push(newBox);
+      wireBox(newBox);
+    }
+    if (addedGrp) addedGrp.style.display = "";
+    updateProgress();
+  }
+
+  async function loadTodos() {
+    try {
+      const res = await fetch("/api/tracker/todos", { cache: "no-store" });
+      const data = await res.json();
+      if (!res.ok || !data.ok) return;
+      // Render oldest-first so they append naturally; the API sorts desc
+      // so we reverse.
+      (data.todos || []).slice().reverse().forEach(renderAddedTodo);
+    } catch {}
+  }
+
+  function showAddHint(msg, kind) {
+    if (!addHint) return;
+    addHint.textContent = msg;
+    addHint.classList.remove("error", "success");
+    if (kind) addHint.classList.add(kind);
+    if (kind === "success") setTimeout(() => {
+      addHint.textContent = "";
+      addHint.classList.remove("success");
+    }, 4000);
+  }
+
+  function closeAddForm() {
+    if (!addForm || !addToggle) return;
+    addForm.hidden = true;
+    addToggle.classList.remove("open");
+    addToggle.style.display = "";
+  }
+  function openAddForm() {
+    if (!addForm || !addToggle) return;
+    addForm.hidden = false;
+    addToggle.classList.add("open");
+    addToggle.style.display = "none";
+    if (addOwner) addOwner.focus();
+  }
+
+  if (addToggle) addToggle.addEventListener("click", openAddForm);
+  if (addCancel) addCancel.addEventListener("click", () => {
+    closeAddForm();
+    if (addTask) addTask.value = "";
+    if (addWhen) addWhen.value = "";
+    showAddHint("");
+  });
+
+  if (addForm) addForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const owner = addOwner ? addOwner.value.trim() : "";
+    const task = addTask ? addTask.value.trim() : "";
+    const when = addWhen ? addWhen.value.trim() : "";
+    if (!owner) { showAddHint("Pick an owner.", "error"); return; }
+    if (!task) { showAddHint("Task can't be blank.", "error"); return; }
+    if (addSubmit) { addSubmit.disabled = true; addSubmit.textContent = "Adding…"; }
+    try {
+      const res = await fetch("/api/tracker/todo", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ owner, task, when }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error((data && data.error) || `HTTP ${res.status}`);
+      // Optimistically render the new item, then clear + close.
+      renderAddedTodo({
+        id: data.id,
+        owner,
+        task,
+        when,
+        state: "open",
+        createdAt: new Date().toISOString(),
+      });
+      if (addTask) addTask.value = "";
+      if (addWhen) addWhen.value = "";
+      showAddHint("Added.", "success");
+      setTimeout(closeAddForm, 800);
+    } catch (err) {
+      showAddHint("Add failed: " + (err instanceof Error ? err.message : String(err)), "error");
+    } finally {
+      if (addSubmit) { addSubmit.disabled = false; addSubmit.textContent = "Add to list"; }
+    }
+  });
+
+  loadTodos();
+  window.addEventListener("focus", () => { loadTodos(); });
 
   // ── Feedback panel ─────────────────────────────────────────────────────
   const who = document.getElementById("who-select");
