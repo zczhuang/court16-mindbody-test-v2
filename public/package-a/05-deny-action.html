@@ -1,0 +1,139 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>05 · Deny action · Package A</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc-head">
+  <a class="back-link" href="./index.html">Back to Package A index</a>
+  <div class="brand">Court 16 × Cedarwind · Package A · Spec 05</div>
+  <h1>Deny action — alongside Confirm and Reassign</h1>
+  <p class="subtitle">A new staff action that closes the loop on trial requests the club can't accept: reason-coded, parent-notified, and MindBody-cancelled if a booking already opened.</p>
+</header>
+
+<section class="summary-pkg">
+  <dl>
+    <dt>What</dt><dd>Scope from the SOW: add a Deny action alongside the existing Confirm / Reassign. A <strong>reason picklist</strong>, a <strong>denial email with reason-specific copy</strong>, and <strong>auto-cancel in MindBody</strong> if a booking was made.</dd>
+    <dt>Why</dt><dd>Today unacceptable requests get silently ignored. Deny closes the loop politely, gives the parent useful context, and produces denial-reason data for pipeline reporting.</dd>
+    <dt>Who</dt><dd><strong>Stuart</strong> builds the route + reason picker. <strong>Ibtissam</strong> owns the reason-specific email copy (spec 08) and the HubSpot workflow that branches on reason.</dd>
+    <dt>Status</dt><dd><span class="pill greenfield"><span class="dot"></span>Greenfield · picklist + copy defined with Ibtissam at kickoff</span></dd>
+  </dl>
+</section>
+
+<h2>The flow — at a glance</h2>
+
+<div class="pipeline">
+  <div class="stage"><div class="stage-num">1</div><div class="stage-name">Staff clicks Deny</div><div class="stage-sub">Third link in the staff email</div></div>
+  <div class="stage"><div class="stage-num">2</div><div class="stage-name">Reason picker loads</div><div class="stage-sub">Tiny HTML page · picklist</div></div>
+  <div class="stage"><div class="stage-num">3</div><div class="stage-name">Cancel MindBody</div><div class="stage-sub">If already booked</div></div>
+  <div class="stage"><div class="stage-num">4</div><div class="stage-name">Move Deal → Denied</div><div class="stage-sub">+ set reason</div></div>
+  <div class="stage no-arrow"><div class="stage-num">5</div><div class="stage-name">Workflow emails parent</div><div class="stage-sub">Reason-specific copy</div></div>
+</div>
+
+<h2>What's defined (per the SOW)</h2>
+<div class="card">
+  <ul>
+    <li>A third signed URL (alongside <code>action: "confirm"</code> and <code>action: "reassign"</code>) with <code>action: "deny"</code>, same HMAC scheme, same 24-hour expiry.</li>
+    <li>Clicking Deny opens a tiny HTML page — not an auto-apply — so staff can select a reason rather than clicking-and-regretting.</li>
+    <li>On submit, the Deal moves to stage <strong>Denied</strong> (from spec 02) and the picked reason lands on a Deal custom property (<code>court16_denial_reason</code>).</li>
+    <li>If a MindBody booking was already created (i.e. staff had previously confirmed and is now reversing), the handler cancels the MindBody enrollment before closing the Deal.</li>
+    <li>A reason-branching HubSpot workflow sends the parent an email tailored to why the request was denied.</li>
+    <li>Every Deny click is logged with correlation ID + chosen reason + staff token, matching the existing Confirm / Reassign audit trail.</li>
+  </ul>
+</div>
+
+<h2>Decide at kickoff</h2>
+
+<div class="callout warn">
+  Ibtissam has domain context on what denial reasons actually come up in
+  Court 16's operations. Cedarwind brings no firm proposals here — the
+  picklist is her call.
+</div>
+
+<div class="card">
+  <h3>The reason picklist</h3>
+  <p>Concrete values + their internal names (<code>court16_denial_reason</code> dropdown options) get agreed at kickoff. Questions to resolve:</p>
+  <ul>
+    <li>How many options? (Fewer is easier on staff; more is better for reporting.)</li>
+    <li>Is an "Other" + free-text staff-internal note needed for edge cases?</li>
+    <li>Which reasons need a reason-specific email vs. share a generic denial template? (Affects spec 08's email count.)</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h3>MindBody cancellation endpoint</h3>
+  <p>MindBody's Public API v6 has <code>/class/removeclientsfromclasses</code> and
+    <code>/class/removefromwaitlist</code> depending on whether a wait-list
+    entry or a regular enrollment exists. Stuart confirms the correct call
+    against the <code>-99</code> sandbox once spec 04 has produced real
+    enrollments to test against.</p>
+</div>
+
+<div class="card">
+  <h3>Token strategy</h3>
+  <p>Two equivalent paths:</p>
+  <ol>
+    <li>Each Contact carries three signed URLs: <code>court16_staff_confirm_url</code>, <code>court16_staff_reassign_url</code>, <code>court16_staff_deny_url</code>.</li>
+    <li>Each Contact carries one token; the staff-facing HTML pages branch on <code>action</code> at click time.</li>
+  </ol>
+  <p>Option 1 matches the existing pattern (spec 01 already lists the two current URLs as Contact properties). Staying with that is the default; confirm at kickoff.</p>
+</div>
+
+<h2>New files + routes Stuart will add</h2>
+<div class="card" style="padding: 0;">
+<table>
+  <thead><tr><th style="padding-left: 14px;">Path</th><th>Kind</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr>
+      <td style="padding-left: 14px;">app/api/staff/deny/route.ts</td>
+      <td>New route</td>
+      <td>GET renders the reason picker · POST handles submission. Mirrors the existing <code>/api/staff/confirm</code> structure.</td>
+    </tr>
+    <tr>
+      <td style="padding-left: 14px;">lib/staff-tokens.ts</td>
+      <td>Modify</td>
+      <td>Extend the action union to include <code>"deny"</code>.</td>
+    </tr>
+    <tr>
+      <td style="padding-left: 14px;">lib/mindbody.ts</td>
+      <td>Modify</td>
+      <td>Add the cancel-class helper (exact endpoint confirmed at kickoff).</td>
+    </tr>
+    <tr>
+      <td style="padding-left: 14px;">app/api/book/trial/route.ts</td>
+      <td>Modify</td>
+      <td>Build the Deny URL via <code>buildStaffUrl</code> and store it as <code>court16_staff_deny_url</code> on the Contact submission.</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>Verification plan</h2>
+<ol class="steps">
+  <li>Submit a test trial. Verify the Contact now has <code>court16_staff_deny_url</code> populated.</li>
+  <li>Visit the URL in a browser → reason picker loads with parent/child/class details visible.</li>
+  <li>Pick a reason, submit → response shows "Denied." Check HubSpot: Deal moved to Denied, <code>court16_denial_reason</code> set.</li>
+  <li>If the test trial had been previously confirmed (i.e. already booked in MindBody), verify the MindBody enrollment was removed.</li>
+  <li>Watch the HubSpot workflow: confirm the correct reason-variant email queued for the parent.</li>
+</ol>
+
+<div class="meta-row"><div class="k">Depends on</div><div class="v"><span class="tag">Spec 01</span><span class="tag">Spec 02</span><span class="tag">Spec 03</span><span class="tag">Spec 08 — email copy per reason</span></div></div>
+<div class="meta-row"><div class="k">Owned by</div><div class="v"><span class="tag">Stuart</span> code · <span class="tag">Ibtissam</span> reason picklist + email copy + workflow branching</div></div>
+<div class="meta-row"><div class="k">Executes on</div><div class="v">Kickoff Day 3 · May 9</div></div>
+
+<footer>
+  <div>Prepared by Stuart Chuang · Cedarwind Consulting · <a href="mailto:stuart@cedarwind.io">stuart@cedarwind.io</a></div>
+  <div><a href="./index.html">Back to Package A index</a></div>
+</footer>
+
+</div>
+</body>
+</html>

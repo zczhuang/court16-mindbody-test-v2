@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Package A — Spec Catalog · Court 16 × Cedarwind</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc-head">
+  <a class="back-link" href="/tracker.html">Back to tracker</a>
+  <div class="brand">Court 16 × Cedarwind · Phase 2 · Package A</div>
+  <h1>HubSpot Deals Pipeline &amp; Automation</h1>
+  <p class="subtitle">Nine spec sheets that cover every deliverable in the $3,500 Package A scope.
+    Ibtissam executes the HubSpot-admin items; Stuart executes the code items.
+    Each spec is a one-pager — scan in 60 seconds, execute in an hour.</p>
+  <div style="margin-top: 14px;">
+    <span class="pill blocked"><span class="dot"></span>Scheduled · May 7 kickoff</span>
+  </div>
+</header>
+
+<h2 style="margin-top: 8px;">Execution order on kickoff day</h2>
+<p>Day 1 is Ibtissam's HubSpot admin work (specs 1, 2, 9) to unblock the rest.
+   Day 2–3 is Stuart's code changes (specs 3, 4, 5). Day 4–5 is Ibtissam's workflow
+   + email work (specs 6, 7, 8) once the Deal pipeline + code changes are live.</p>
+
+<div class="doc-grid">
+
+  <a class="doc-card" href="./01-contact-properties.html">
+    <div class="num">01</div>
+    <div class="body">
+      <h3>12 Contact custom properties</h3>
+      <p>Schema Ibtissam adds in HubSpot so the app can carry booking state + signed staff URLs on each Contact.</p>
+    </div>
+    <div class="open">Open spec →</div>
+  </a>
+
+  <a class="doc-card" href="./02-trials-deal-pipeline.html">
+    <div class="num">02</div>
+    <div class="body">
+      <h3>Trials Deal pipeline</h3>
+      <p>Five-stage pipeline (Requested → Scheduled → Attended / No-Show / Denied) with entry, exit, and automation rules per stage.</p>
+    </div>
+    <div class="open">Open spec →</div>
+  </a>
+
+  <a class="doc-card" href="./03-booking-app-creates-deal.html">
+    <div class="num">03</div>
+    <div class="body">
+      <h3>Booking app creates a Deal on submit</h3>
+      <p>Code change: after the existing Contact write, create a Deal in Requested Trial and associate it to the Contact.</p>
+    </div>
+    <div class="open">Open spec →</div>
+  </a>
+
+  <a class="doc-card" href="./04-staff-confirm-moves-deal.html">
+    <div class="num">04</div>
+    <div class="body">
+      <h3>Staff confirm moves Deal to Scheduled</h3>
+      <p>Code change: the existing one-click staff-confirm URL moves the Deal stage instead of only flipping a Contact property.</p>
+    </div>
+    <div class="open">Open spec →</div>
+  </a>
+
+  <a class="doc-card" href="./05-deny-action.html">
+    <div class="num">05</div>
+    <div class="body">
+      <h3>Deny action (Confirm / Reassign / Deny)</h3>
+      <p>New staff button with a five-reason picklist. Moves Deal to Denied, cancels the MindBody booking, and triggers a reason-specific email.</p>
+    </div>
+    <div class="open">Open spec →</div>
+  </a>
+
+  <a class="doc-card" href="./06-password-setup-email.html">
+    <div class="num">06</div>
+    <div class="body">
+      <h3>Password-setup email workflow</h3>
+      <p>HubSpot workflow: on Deal create, delay 1 hour and send a password-setup email so parents can access their MindBody account.</p>
+    </div>
+    <div class="open">Open spec →</div>
+  </a>
+
+  <a class="doc-card" href="./07-24h-reminder-workflow.html">
+    <div class="num">07</div>
+    <div class="body">
+      <h3>24-hour reminder workflow</h3>
+      <p>HubSpot workflow: 24 hours before the class, email the parent a reminder with directions + "what to bring".</p>
+    </div>
+    <div class="open">Open spec →</div>
+  </a>
+
+  <a class="doc-card" href="./08-email-templates.html">
+    <div class="num">08</div>
+    <div class="body">
+      <h3>Four email templates</h3>
+      <p>Confirmation · password-setup · 24-hour reminder · denial (five reason variants). Subject, preheader, body, and variables per email.</p>
+    </div>
+    <div class="open">Open spec →</div>
+  </a>
+
+  <a class="doc-card" href="./09-recaptcha-toggle.html">
+    <div class="num">09</div>
+    <div class="body">
+      <h3>Turn off reCAPTCHA on the Trial form</h3>
+      <p>Ten-second portal toggle in Marketing → Forms. Unblocks every API-driven submission Cedarwind's app makes.</p>
+    </div>
+    <div class="open">Open spec →</div>
+  </a>
+
+</div>
+
+<footer>
+  <div>Prepared by Stuart Chuang · Cedarwind Consulting · <a href="mailto:stuart@cedarwind.io">stuart@cedarwind.io</a></div>
+  <div><a href="/tracker.html">Return to Phase 2 tracker</a></div>
+</footer>
+
+</div>
+</body>
+</html>

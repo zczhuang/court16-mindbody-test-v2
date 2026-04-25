@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>08 · Four email templates · Package A</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc-head">
+  <a class="back-link" href="./index.html">Back to Package A index</a>
+  <div class="brand">Court 16 × Cedarwind · Package A · Spec 08</div>
+  <h1>Four email templates</h1>
+  <p class="subtitle">Catalog of every email the new automation sends. Two are already drafted in the repo; two are placeholders for Ibtissam to draft.</p>
+</header>
+
+<section class="summary-pkg">
+  <dl>
+    <dt>What</dt><dd>Four email templates: staff notification, parent confirmation, password setup, 24-hour reminder. Plus the denial-reason variants the spec 05 workflow branches on.</dd>
+    <dt>Why</dt><dd>Everything the app does ends in an email. Writing the copy once, in one doc, is the difference between a clean kickoff and a week of tweaking.</dd>
+    <dt>Who</dt><dd>The two drafted templates were written with <strong>Ibtissam</strong> during Phase 1. The two greenfield ones + denial copy are Ibtissam's work with Cedarwind support at kickoff.</dd>
+    <dt>Status</dt><dd><span class="pill partial"><span class="dot"></span>Partial · 2 of 4 drafted</span></dd>
+  </dl>
+</section>
+
+<div class="callout info">
+  The two drafted templates below come verbatim from <code>docs/hubspot-workflows.md</code> in the repo.
+  That file is the canonical source; this doc is its client-facing view.
+</div>
+
+<h2>Template 1 · Staff trial notification</h2>
+<div class="card">
+  <div><span class="pill complete"><span class="dot"></span>Drafted in repo</span></div>
+  <h3 style="margin-top: 14px;">Trigger &amp; workflow</h3>
+  <ul>
+    <li><strong>Workflow:</strong> Workflow 1 — Staff trial notification.</li>
+    <li><strong>Current trigger:</strong> Contact property <code>court16_booking_status</code> equals <code>pending_staff</code> AND <code>court16_intent</code> equals <code>kid_trial</code>.</li>
+    <li><strong>Classification:</strong> Internal notification. Not marketing.</li>
+  </ul>
+</div>
+<div class="email">
+  <div class="email-meta">
+    <div><span class="k">To:</span> <code>STAFF_NOTIFY_EMAIL</code> (app env var)</div>
+    <div><span class="k">Subject:</span> New trial request — {{contact.court16_correlation_id}}</div>
+  </div>
+  <div class="email-body">New trial request received.
+
+Correlation: {{contact.court16_correlation_id}}
+Location: {{contact.preferred_location}}
+Class ID: {{contact.court16_class_id}}
+
+Parent: {{contact.firstname}} {{contact.lastname}}
+Email: {{contact.email}}
+Phone: {{contact.phone}}
+
+Child: {{contact.child_name}} {{contact.child_1___last_name}}
+Age: {{contact.childage}}
+Experience: {{contact.child_1___playing_level}}
+School: {{contact.school}}
+DOB: {{contact.child_date_of_birth}}
+
+Lead source: {{contact.lead_source}}
+
+One-click actions:
+Confirm: {{contact.court16_staff_confirm_url}}
+Reassign: {{contact.court16_staff_reassign_url}}
+Deny: {{contact.court16_staff_deny_url}}</div>
+</div>
+<p><em>Note:</em> The Deny link row is the only addition vs. the current drafted copy — added once spec 05 lands.</p>
+
+<h2>Template 2 · Parent trial confirmation</h2>
+<div class="card">
+  <div><span class="pill complete"><span class="dot"></span>Drafted in repo · body to be finalized</span></div>
+  <h3 style="margin-top: 14px;">Trigger &amp; workflow</h3>
+  <ul>
+    <li><strong>Workflow:</strong> Workflow 2 — Parent trial confirmation.</li>
+    <li><strong>Current trigger:</strong> Contact property <code>court16_booking_status</code> equals <code>confirmed</code> AND <code>court16_intent</code> equals <code>kid_trial</code>.</li>
+    <li><strong>After spec 04:</strong> Trigger moves to "Deal stage changes to Scheduled Trial."</li>
+    <li><strong>Classification:</strong> Transactional.</li>
+  </ul>
+</div>
+<div class="email">
+  <div class="email-meta">
+    <div><span class="k">To:</span> Parent (the Contact email)</div>
+    <div><span class="k">Subject:</span> Your Court 16 trial is confirmed</div>
+  </div>
+  <div class="email-body">Per <code>docs/hubspot-workflows.md</code>: body includes class details merged from the Contact record — "what to bring," location address, and (when we add it) a calendar ICS link. Final copy drafted by Ibtissam at kickoff to match Court 16's voice.</div>
+</div>
+
+<h2>Template 3 · Password setup</h2>
+<div class="card">
+  <div><span class="pill greenfield"><span class="dot"></span>Greenfield · copy to be drafted at kickoff</span></div>
+  <h3 style="margin-top: 14px;">Trigger &amp; workflow</h3>
+  <ul>
+    <li><strong>Workflow:</strong> Spec 06.</li>
+    <li><strong>Trigger:</strong> Deal enters Trials pipeline in Requested Trial.</li>
+    <li><strong>Classification:</strong> Transactional.</li>
+  </ul>
+</div>
+<div class="email">
+  <div class="email-meta">
+    <div><span class="k">To:</span> Parent</div>
+    <div><span class="k">Subject:</span> <em>To be drafted</em></div>
+  </div>
+  <div class="email-body">Body not yet drafted. Must cover:
+ — Welcoming framing tied to the specific trial just booked
+ — A single clear CTA to the MindBody password-setup URL (format confirmed by Stuart per spec 06)
+ — A second-line reassurance: "if you already have a MindBody account with us, you can ignore this"
+ — Court 16 voice and branding
+
+Ibtissam drafts the copy at kickoff; Cedarwind ships the template into HubSpot.</div>
+</div>
+
+<h2>Template 4 · 24-hour reminder</h2>
+<div class="card">
+  <div><span class="pill greenfield"><span class="dot"></span>Greenfield · copy to be drafted at kickoff</span></div>
+  <h3 style="margin-top: 14px;">Trigger &amp; workflow</h3>
+  <ul>
+    <li><strong>Workflow:</strong> Spec 07.</li>
+    <li><strong>Trigger:</strong> Deal in Scheduled Trial + class-datetime minus 24 hours.</li>
+    <li><strong>Classification:</strong> Transactional.</li>
+  </ul>
+</div>
+<div class="email">
+  <div class="email-meta">
+    <div><span class="k">To:</span> Parent</div>
+    <div><span class="k">Subject:</span> <em>To be drafted</em></div>
+  </div>
+  <div class="email-body">Body not yet drafted. Must cover:
+ — Class date, time, location (personalization tokens from the Deal)
+ — What to bring (sneakers, water, etc. per existing Court 16 copy patterns)
+ — Short directions / parking note per location
+ — Contact-us line for cancellations
+
+Ibtissam drafts the copy at kickoff.</div>
+</div>
+
+<h2>Denial emails (reason variants)</h2>
+<div class="card">
+  <div><span class="pill greenfield"><span class="dot"></span>Greenfield · reason picklist + copy to be decided at kickoff (see spec 05)</span></div>
+  <p style="margin-top: 12px;">The number of denial email variants depends on how many denial reasons
+     Ibtissam settles on for <a href="./05-deny-action.html">spec 05</a>.
+     The HubSpot workflow branches on <code>court16_denial_reason</code>
+     and routes to the matching copy. At minimum one generic denial email
+     is needed; additional variants are Ibtissam's call.</p>
+</div>
+
+<h2>Optional · Workflow 3 — manual review / failed alerts</h2>
+<div class="card">
+  <p><code>docs/hubspot-workflows.md</code> notes an optional third workflow:
+     consolidate alerts for <code>status = manual_review</code> or
+     <code>status = failed</code> into a single internal email to
+     <code>STAFF_NOTIFY_EMAIL</code> with <code>court16_failure_reason</code>
+     and <code>court16_admin_retry_url</code>. Marked optional in the repo;
+     out of scope for Package A unless kickoff adds it.</p>
+</div>
+
+<div class="meta-row"><div class="k">Canonical source</div><div class="v"><code>docs/hubspot-workflows.md</code> for the 2 drafted templates; this doc for the 2 greenfield + denial variants once drafted</div></div>
+<div class="meta-row"><div class="k">Owned by</div><div class="v"><span class="tag">Ibtissam</span> drafts copy · <span class="tag">Stuart</span> wires into HubSpot workflows</div></div>
+<div class="meta-row"><div class="k">Executes on</div><div class="v">Copy drafting during Ibtissam's PTO or kickoff Day 3–4 · May 9–10</div></div>
+
+<footer>
+  <div>Prepared by Stuart Chuang · Cedarwind Consulting · <a href="mailto:stuart@cedarwind.io">stuart@cedarwind.io</a></div>
+  <div><a href="./index.html">Back to Package A index</a></div>
+</footer>
+
+</div>
+</body>
+</html>

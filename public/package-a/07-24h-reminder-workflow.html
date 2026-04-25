@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>07 · 24-hour reminder workflow · Package A</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc-head">
+  <a class="back-link" href="./index.html">Back to Package A index</a>
+  <div class="brand">Court 16 × Cedarwind · Package A · Spec 07</div>
+  <h1>24-hour class reminder workflow</h1>
+  <p class="subtitle">A HubSpot workflow that emails the parent the day before their scheduled trial — class time, location, and a short "what to bring" nudge.</p>
+</header>
+
+<section class="summary-pkg">
+  <dl>
+    <dt>What</dt><dd>Scope from the SOW: a HubSpot workflow "triggered on Scheduled Trial + class date - 24h" that sends the parent a reminder email.</dd>
+    <dt>Why</dt><dd>Reducing no-show rates without adding staff work. The reminder is a classic operational touch that pays back every time.</dd>
+    <dt>Who</dt><dd><strong>Ibtissam</strong> builds the workflow. Template copy drafted in <a href="./08-email-templates.html">spec 08</a>.</dd>
+    <dt>Status</dt><dd><span class="pill greenfield"><span class="dot"></span>Greenfield · delay + branching + copy decided at kickoff</span></dd>
+  </dl>
+</section>
+
+<h2>What's defined (per the SOW)</h2>
+<div class="card">
+  <ul>
+    <li><strong>Trigger:</strong> Deal is in pipeline Trials and stage Scheduled Trial — matches the SOW phrasing "triggered on Scheduled Trial."</li>
+    <li><strong>Timing:</strong> 24 hours before the class starts. The class datetime lives on the Deal as a custom property (exact name finalized with spec 02's property list).</li>
+    <li><strong>Classification:</strong> Transactional. Tied to a specific confirmed booking.</li>
+    <li><strong>Recipient:</strong> The Deal's associated Contact (the parent).</li>
+  </ul>
+</div>
+
+<h2>Decide at kickoff</h2>
+
+<div class="card">
+  <h3>Delay mechanic</h3>
+  <p>HubSpot supports "wait until a date property minus N hours." The delay targets the Deal's class-datetime property minus 24 hours. If the trial is confirmed less than 24 hours before the class (same-day confirmation), the delay resolves to the past — the workflow should send immediately. Exact delay-step configuration is finalized when Ibtissam builds the workflow.</p>
+</div>
+
+<div class="card">
+  <h3>Guard against sending on cancelled / denied Deals</h3>
+  <p>Between enrollment and send time, the Deal might move to Denied (staff action) or otherwise out of Scheduled Trial. The workflow needs an if/then branch right before the email action: "is the Deal still in Scheduled Trial?" If no, end. This prevents reminders firing on cancelled bookings.</p>
+</div>
+
+<div class="card">
+  <h3>Re-enrollment on reschedule</h3>
+  <p>If staff reschedules a class, the Deal's class-datetime changes but the stage stays Scheduled Trial. The workflow's re-enrollment rules need to fire on "class datetime updated," not just "stage changed to Scheduled Trial" (which wouldn't re-trigger on a reschedule). Ibtissam sets re-enrollment at kickoff.</p>
+</div>
+
+<div class="card">
+  <h3>Timezone</h3>
+  <p>Class datetime should be stored as UTC ISO 8601 on the Deal. The email body renders local time via HubSpot's personalization-token date formatting. Stuart confirms the Deal-property format when he wires spec 03.</p>
+</div>
+
+<h2>Setup steps in HubSpot (once the decisions above are settled)</h2>
+<ol class="steps">
+  <li>Marketing → Workflows → Create workflow → Based on a Deal.</li>
+  <li>Enrollment trigger: pipeline is Trials, stage is Scheduled Trial.</li>
+  <li>Configure re-enrollment per the decision above.</li>
+  <li>Delay: wait until the Deal's class-datetime property minus 1 day.</li>
+  <li>If/then: Deal stage is Scheduled Trial. True → send email. False → end.</li>
+  <li>Pick the 24-hour reminder template from spec 08.</li>
+  <li>Turn the workflow on.</li>
+</ol>
+
+<h2>Verification plan</h2>
+<ol class="steps">
+  <li>Create a test Deal manually with class-datetime set to "now + 25 hours."</li>
+  <li>Move it to Scheduled Trial. Confirm the workflow enrolled, delay shows ~23 hours pending.</li>
+  <li>Edit class-datetime to "now + 5 minutes" to fast-forward. Confirm the delay recalculates.</li>
+  <li>After the delay clears, check the workflow history: branch evaluated true, email sent.</li>
+  <li>On a second test, move the Deal to Denied before the delay clears. Confirm the false branch ends the workflow without sending.</li>
+</ol>
+
+<div class="meta-row"><div class="k">Depends on</div><div class="v"><span class="tag">Spec 02 — pipeline + class-datetime property</span><span class="tag">Spec 04 — Scheduled Trial stage move</span><span class="tag">Spec 08 — email template</span></div></div>
+<div class="meta-row"><div class="k">Owned by</div><div class="v"><span class="tag">Ibtissam</span> builds workflow</div></div>
+<div class="meta-row"><div class="k">Executes on</div><div class="v">Kickoff Day 4 · May 10</div></div>
+
+<footer>
+  <div>Prepared by Stuart Chuang · Cedarwind Consulting · <a href="mailto:stuart@cedarwind.io">stuart@cedarwind.io</a></div>
+  <div><a href="./index.html">Back to Package A index</a></div>
+</footer>
+
+</div>
+</body>
+</html>

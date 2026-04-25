@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>03 · Booking app creates a Deal · Package A</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc-head">
+  <a class="back-link" href="./index.html">Back to Package A index</a>
+  <div class="brand">Court 16 × Cedarwind · Package A · Spec 03</div>
+  <h1>Booking app creates a Deal on submit</h1>
+  <p class="subtitle">A code change in the booking app so every successful form submission produces a Deal in the Trials pipeline alongside the Contact it already creates.</p>
+</header>
+
+<section class="summary-pkg">
+  <dl>
+    <dt>What</dt><dd>Extend <code>/api/book/trial/route.ts</code> (kids trial flow) — and later, the equivalent intro path — so after the existing HubSpot Contact submission succeeds, the handler creates a Deal associated to that Contact at stage <strong>Requested Trial</strong>.</dd>
+    <dt>Why</dt><dd>Downstream workflows (specs 04, 05, 06, 07) react to Deal stage changes. Without a Deal per submission, the automation still has to hang off Contact-property changes, which works for one booking per Contact but breaks the moment a parent books a second trial.</dd>
+    <dt>Who</dt><dd><strong>Stuart</strong> codes the change; sandbox-testable against the <code>-99</code> site before kickoff.</dd>
+    <dt>Status</dt><dd><span class="pill greenfield"><span class="dot"></span>Greenfield · schema locked in with spec 02 at kickoff</span></dd>
+  </dl>
+</section>
+
+<h2>How the flow runs today</h2>
+
+<p>The current kids-trial handler (<code>app/api/book/trial/route.ts</code>) does these
+steps in order:</p>
+
+<ol>
+  <li>Validate the incoming payload (parent + child details, age band vs. class level).</li>
+  <li>Call MindBody: look up the parent by email, create parent + child if new, wire the Guardian relationship.</li>
+  <li>Submit to the existing Court 16 trial form via HubSpot's Forms v3 Integration endpoint. HubSpot creates-or-updates a Contact and copies the <code>court16_*</code> custom properties the app passes through.</li>
+  <li>Return <code>status: pending_staff</code> to the client so the UI shows the "we got it" screen.</li>
+</ol>
+
+<p>There is no Deal today. All booking state lives on the Contact.</p>
+
+<h2>What changes</h2>
+
+<div class="pipeline">
+  <div class="stage"><div class="stage-num">Step 1–2</div><div class="stage-name">MindBody writes</div><div class="stage-sub">Unchanged</div></div>
+  <div class="stage"><div class="stage-num">Step 3</div><div class="stage-name">HubSpot Contact</div><div class="stage-sub">Unchanged · Forms API</div></div>
+  <div class="stage" style="border-color: var(--yellow); background: var(--yellow-soft);"><div class="stage-num">Step 3b · new</div><div class="stage-name">HubSpot Deal</div><div class="stage-sub">CRM v3 API · Requested Trial</div></div>
+  <div class="stage no-arrow"><div class="stage-num">Step 4</div><div class="stage-name">Return to client</div><div class="stage-sub">Unchanged</div></div>
+</div>
+
+<p>A single new step: after the Forms API submission returns 200, the handler
+issues one <code>POST /crm/v3/objects/deals</code> that creates the Deal and
+associates it to the Contact by correlation ID.</p>
+
+<h2>What's defined</h2>
+<div class="card">
+  <ul>
+    <li>The Deal is created on the same booking-app server-side request, immediately after the Contact write succeeds.</li>
+    <li>Every Deal is associated to exactly one Contact (standard HubSpot Deal→Contact association).</li>
+    <li>Deals start in stage <strong>Requested Trial</strong> (per spec 02).</li>
+    <li>The correlation ID already threaded through every booking (today it's already on the Contact as <code>court16_correlation_id</code>) is the Deal's unique key too. Same value, same property name, on both objects — which is how spec 04's Confirm handler finds the right Deal.</li>
+    <li>HubSpot property uniqueness prevents duplicate Deals on retry — a re-submission with the same correlation ID returns the existing Deal.</li>
+  </ul>
+</div>
+
+<h2>Decide at kickoff</h2>
+
+<div class="card">
+  <h3>Final Deal property schema</h3>
+  <p>Depends on spec 02's pipeline setup. Candidates are listed there. Once
+    Ibtissam picks the exact internal names, Stuart wires them into the
+    create call.</p>
+</div>
+
+<div class="card">
+  <h3>Failure behavior</h3>
+  <p>The MindBody write is already done by the time the Deal create runs, so a
+    HubSpot 5xx at this step cannot roll back the MindBody booking. Three
+    options to choose between:</p>
+  <ol>
+    <li>Log + continue + reconcile nightly with a sweep script.</li>
+    <li>Retry inline with exponential backoff, fail the whole response if all retries fail.</li>
+    <li>Queue the Deal create to a background job (new surface — more infra).</li>
+  </ol>
+  <p>Cedarwind's recommendation is option 1: the Contact already carries the
+    correlation ID + booking status, so the Deal is cosmetic until Confirm
+    fires. Staff can still confirm via the Contact-workflow path if the Deal
+    never lands. A short reconciliation script (under an hour to write) sweeps
+    orphan Contacts daily.</p>
+</div>
+
+<div class="card">
+  <h3>Whether adult intros are in scope</h3>
+  <p>The SOW lists "Modify booking app to create a Deal on form submit" —
+    reads as kids-only unless otherwise decided. Adult intros (Tennis Intro,
+    Pickleball Intro, Pickleball BOGO from Package B) currently land in
+    HubSpot as Contacts only. Adding the Deal write there is cheap
+    (~30 min of code) but not in the current SOW. Confirm at kickoff
+    whether it's in or out.</p>
+</div>
+
+<h2>Files Stuart will modify</h2>
+<div class="card" style="padding: 0;">
+<table>
+  <thead>
+    <tr><th style="padding-left: 14px;">File</th><th>Change</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="padding-left: 14px;">lib/hubspot.ts</td>
+      <td>Add Deal-create helper next to the existing Contact helpers (<code>findContactByCorrelationId</code>, <code>updateContact</code>). Uses the same Bearer-auth pattern.</td>
+    </tr>
+    <tr>
+      <td style="padding-left: 14px;">app/api/book/trial/route.ts</td>
+      <td>Insert the Deal create call after <code>submitTrialForm</code> succeeds. Trace gets a new <code>createDeal</code> step for diagnostics.</td>
+    </tr>
+    <tr>
+      <td style="padding-left: 14px;">app/api/book/intro/route.ts</td>
+      <td>Same pattern if adult intros are in scope (see "Decide at kickoff").</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>Verification plan</h2>
+<ol class="steps">
+  <li>Sandbox-test against the <code>-99</code> MindBody site with a fresh email.</li>
+  <li>Submit a trial through the UI. Response should include the correlation ID.</li>
+  <li>In HubSpot sandbox portal → Deals → Trials pipeline → find the Deal with that correlation ID in stage Requested Trial. The associated Contact should appear in the right-rail.</li>
+  <li>Retry the same submission (same correlation). Confirm 200 with no second Deal created — property uniqueness rejects the duplicate.</li>
+  <li>Temporarily break the HubSpot token to simulate a failure. Confirm the Contact still lands but the Deal create is logged as a failed trace step and the handler returns success to the client.</li>
+</ol>
+
+<div class="meta-row"><div class="k">Depends on</div><div class="v"><span class="tag">Spec 01 — 12 Contact properties</span><span class="tag">Spec 02 — Deal pipeline config</span></div></div>
+<div class="meta-row"><div class="k">Owned by</div><div class="v"><span class="tag">Stuart</span> code change</div></div>
+<div class="meta-row"><div class="k">Executes on</div><div class="v">Kickoff Day 2 · May 8</div></div>
+
+<footer>
+  <div>Prepared by Stuart Chuang · Cedarwind Consulting · <a href="mailto:stuart@cedarwind.io">stuart@cedarwind.io</a></div>
+  <div><a href="./index.html">Back to Package A index</a></div>
+</footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>04 · Staff confirm moves Deal to Scheduled · Package A</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc-head">
+  <a class="back-link" href="./index.html">Back to Package A index</a>
+  <div class="brand">Court 16 × Cedarwind · Package A · Spec 04</div>
+  <h1>Staff confirm moves Deal to Scheduled Trial</h1>
+  <p class="subtitle">The existing one-click staff-confirm URL extends to move the associated Deal's stage, which is what workflows downstream hang off.</p>
+</header>
+
+<section class="summary-pkg">
+  <dl>
+    <dt>What</dt><dd>Extend <code>/api/staff/confirm</code> so after MindBody <code>AddClientToClass</code> succeeds, the handler also PATCHes the associated Deal from <strong>Requested Trial</strong> to <strong>Scheduled Trial</strong>, which is the signal HubSpot Workflow 2 (parent confirmation) + spec 07 (24h reminder) listen for.</dd>
+    <dt>Why</dt><dd>Today Workflow 2 fires on Contact property <code>court16_booking_status</code> changing to <code>confirmed</code>. Once the Deal pipeline is live, stage change is the cleaner and more extensible signal. It also makes the "Denied" and "No-Show" transitions natural extensions of the same pattern.</dd>
+    <dt>Who</dt><dd><strong>Stuart</strong> codes the handler change. <strong>Ibtissam</strong> updates Workflow 2's trigger to listen on the Deal stage instead of the Contact property.</dd>
+    <dt>Status</dt><dd><span class="pill greenfield"><span class="dot"></span>Greenfield · trigger-change + PATCH wiring decided at kickoff</span></dd>
+  </dl>
+</section>
+
+<h2>The confirm flow — end to end (as it'll run after the change)</h2>
+
+<ol class="steps">
+  <li>
+    Parent submits the form → Deal lands in <strong>Requested Trial</strong>
+    (per spec 03). Workflow 1 emails staff with three signed URLs:
+    Confirm · Reassign · Deny.
+  </li>
+  <li>
+    Staff clicks the Confirm URL. The URL is a signed JWT with a 24-hour
+    expiry and <code>action: "confirm"</code> baked in — this part is already
+    shipped in <code>lib/staff-tokens.ts</code>.
+  </li>
+  <li>
+    <code>/api/staff/confirm</code> verifies the HMAC, rejects if expired,
+    rejects if the action isn't <code>confirm</code>. Also already shipped.
+  </li>
+  <li>
+    Handler looks up the Contact by <code>court16_correlation_id</code>.
+    Idempotency: if <code>court16_booking_status === "confirmed"</code>
+    already, the route returns "already confirmed" with no side effects.
+    Also already shipped.
+  </li>
+  <li>
+    MindBody <code>AddClientToClass</code> with <code>ClientId</code> from
+    <code>court16_mindbody_child_id</code> and class from
+    <code>court16_class_id</code>. Service ID threads through from
+    <code>TRIAL_CONFIG[locationSlug].trialServiceId</code> when populated
+    (Package B shipped that wiring).
+  </li>
+  <li style="background: var(--yellow-soft); border-left: 3px solid var(--yellow);">
+    <strong>New in Package A.</strong> After MindBody succeeds, find the
+    Deal with the matching <code>court16_correlation_id</code> and PATCH its
+    stage from Requested Trial to Scheduled Trial. If no Deal is found
+    (legacy Contact from before spec 03 shipped), skip the PATCH and log —
+    don't fail the handler.
+  </li>
+  <li>
+    Update the Contact's <code>court16_booking_status</code> to
+    <code>confirmed</code> as belt-and-suspenders so any Contact-triggered
+    legacy workflow still reacts. Already shipped.
+  </li>
+  <li>
+    Return the "Confirmed" HTML response to the staff browser.
+  </li>
+</ol>
+
+<h2>What's defined</h2>
+<div class="card">
+  <ul>
+    <li>The confirm URL scheme + HMAC signing + 24-hour expiry are already live in <code>lib/staff-tokens.ts</code> and don't change.</li>
+    <li>The single correlation ID is the join key: same value on the Contact and on the Deal, unique on both.</li>
+    <li>The MindBody write happens <em>before</em> the Deal stage move, so the physical booking is always the source of truth. If the Deal update fails, the parent is still booked.</li>
+  </ul>
+</div>
+
+<h2>Decide at kickoff</h2>
+<div class="card">
+  <h3>Workflow 2 trigger change</h3>
+  <p>Today: "Contact property <code>court16_booking_status</code> is equal to
+    <code>confirmed</code>." Proposed: "Deal stage changes to Scheduled Trial."
+    Ibtissam confirms the switch at kickoff and reshapes the workflow.</p>
+</div>
+<div class="card">
+  <h3>Graceful-fallback strategy if the Deal PATCH fails</h3>
+  <p>Options discussed:</p>
+  <ol>
+    <li>Log + continue; set <code>court16_booking_status = confirmed</code> on the Contact and return 200. Rely on the daily reconciliation script (spec 03) to catch the orphan.</li>
+    <li>Fail the handler with 502 so staff sees an error + retries manually.</li>
+  </ol>
+  <p>Cedarwind's recommendation: option 1. The booking is real in MindBody; one missed stage update shouldn't block the staff from moving on. Confirm at kickoff.</p>
+</div>
+
+<h2>Files Stuart will modify</h2>
+<div class="card" style="padding: 0;">
+<table>
+  <thead><tr><th style="padding-left: 14px;">File</th><th>Change</th></tr></thead>
+  <tbody>
+    <tr>
+      <td style="padding-left: 14px;">lib/hubspot.ts</td>
+      <td>Add helpers to find a Deal by correlation ID and move its stage — mirroring the existing Contact helpers.</td>
+    </tr>
+    <tr>
+      <td style="padding-left: 14px;">app/api/staff/confirm/route.ts</td>
+      <td>Insert the Deal-stage PATCH between <code>addClientToClass</code> success and the final Contact <code>updateContact</code> call.</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>Verification plan</h2>
+<ol class="steps">
+  <li>Submit a trial through the UI (after spec 03 is live). Confirm the Deal appears in Requested Trial.</li>
+  <li>Sign a confirm URL locally via <code>lib/staff-tokens.ts</code> and visit it. Expect a "Confirmed" response.</li>
+  <li>In HubSpot: the Deal has moved to Scheduled Trial. Associated Contact's <code>court16_booking_status = confirmed</code>.</li>
+  <li>Click the same URL again: expect "already confirmed" with no side effects (idempotency).</li>
+  <li>Manually break the Deal association (delete the Deal in HubSpot) and trigger confirm on a fresh token: expect success, with a "no Deal found" note in the trace and MindBody + Contact both updated.</li>
+</ol>
+
+<div class="meta-row"><div class="k">Depends on</div><div class="v"><span class="tag">Spec 01</span><span class="tag">Spec 02</span><span class="tag">Spec 03</span></div></div>
+<div class="meta-row"><div class="k">Owned by</div><div class="v"><span class="tag">Stuart</span> code · <span class="tag">Ibtissam</span> Workflow 2 trigger update</div></div>
+<div class="meta-row"><div class="k">Executes on</div><div class="v">Kickoff Day 2 · May 8</div></div>
+
+<footer>
+  <div>Prepared by Stuart Chuang · Cedarwind Consulting · <a href="mailto:stuart@cedarwind.io">stuart@cedarwind.io</a></div>
+  <div><a href="./index.html">Back to Package A index</a></div>
+</footer>
+
+</div>
+</body>
+</html>

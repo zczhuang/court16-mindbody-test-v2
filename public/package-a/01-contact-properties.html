@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>01 · 12 Contact Custom Properties · Package A</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc-head">
+  <a class="back-link" href="./index.html">Back to Package A index</a>
+  <div class="brand">Court 16 × Cedarwind · Package A · Spec 01</div>
+  <h1>12 HubSpot Contact custom properties</h1>
+  <p class="subtitle">The state-machine fields Cedarwind's app writes to every Contact alongside the existing form submission.</p>
+</header>
+
+<section class="summary-pkg">
+  <dl>
+    <dt>What</dt><dd>Twelve new custom properties on the HubSpot Contact object, keyed <code>court16_*</code>, covering booking state, MindBody IDs, signed staff-action URLs, and failure diagnostics.</dd>
+    <dt>Why</dt><dd>The booking app needs per-Contact state so workflows can react to status changes, staff can one-click confirm via signed URL, and failed bookings are traceable back to a correlation ID in under a minute.</dd>
+    <dt>Who</dt><dd><strong>Ibtissam</strong> creates them in HubSpot (Settings → Properties → Contact properties). Estimated 15 minutes.</dd>
+  </dl>
+</section>
+
+<h2>The twelve properties</h2>
+<p>All are single-line text unless otherwise noted.</p>
+
+<div class="card" style="padding: 0;">
+<table>
+  <thead>
+    <tr>
+      <th style="padding-left: 14px;">Internal name</th>
+      <th>Label</th>
+      <th>Type</th>
+      <th>Options</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="padding-left: 14px;">court16_correlation_id</td>
+      <td>Court 16 correlation ID</td>
+      <td>Single-line text</td>
+      <td><em>Must have unique values: <strong>yes</strong></em></td>
+    </tr>
+    <tr>
+      <td style="padding-left: 14px;">court16_intent</td>
+      <td>Court 16 intent</td>
+      <td>Dropdown</td>
+      <td><code>kid_trial</code>, <code>adult_intro</code></td>
+    </tr>
+    <tr>
+      <td style="padding-left: 14px;">court16_booking_status</td>
+      <td>Court 16 booking status</td>
+      <td>Dropdown</td>
+      <td><code>pending_staff</code>, <code>pending_payment</code>, <code>pending_staff_assist</code>, <code>confirmed</code>, <code>failed</code>, <code>duplicate_email_softwall</code>, <code>manual_review</code></td>
+    </tr>
+    <tr>
+      <td style="padding-left: 14px;">court16_class_id</td>
+      <td>Court 16 class ID</td>
+      <td>Single-line text</td>
+      <td>MindBody class ID as string</td>
+    </tr>
+    <tr>
+      <td style="padding-left: 14px;">court16_location_slug</td>
+      <td>Court 16 location slug</td>
+      <td>Single-line text</td>
+      <td><code>brooklyn</code>, <code>lic</code>, <code>fidi</code>, <code>ridgehill</code>, <code>fishtown</code>, <code>newton</code></td>
+    </tr>
+    <tr>
+      <td style="padding-left: 14px;">court16_waiver_version</td>
+      <td>Court 16 waiver version</td>
+      <td>Single-line text</td>
+      <td>e.g. <code>v1.0</code></td>
+    </tr>
+    <tr>
+      <td style="padding-left: 14px;">court16_offer_key</td>
+      <td>Court 16 offer key</td>
+      <td>Single-line text</td>
+      <td>Adult-intro offer, e.g. <code>tennis-intro-75</code></td>
+    </tr>
+    <tr>
+      <td style="padding-left: 14px;">court16_mindbody_parent_id</td>
+      <td>Court 16 MindBody parent ID</td>
+      <td>Single-line text</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td style="padding-left: 14px;">court16_mindbody_child_id</td>
+      <td>Court 16 MindBody child ID</td>
+      <td>Single-line text</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td style="padding-left: 14px;">court16_staff_confirm_url</td>
+      <td>Court 16 staff confirm URL</td>
+      <td>Single-line text</td>
+      <td>Signed, 24h expiry</td>
+    </tr>
+    <tr>
+      <td style="padding-left: 14px;">court16_staff_reassign_url</td>
+      <td>Court 16 staff reassign URL</td>
+      <td>Single-line text</td>
+      <td>Signed, 24h expiry</td>
+    </tr>
+    <tr>
+      <td style="padding-left: 14px;">court16_admin_retry_url</td>
+      <td>Court 16 admin retry URL</td>
+      <td>Single-line text</td>
+      <td>Signed, 24h expiry</td>
+    </tr>
+    <tr>
+      <td style="padding-left: 14px;">court16_failure_reason</td>
+      <td>Court 16 failure reason</td>
+      <td>Multi-line text</td>
+      <td>Populated when status = <code>failed</code> or <code>manual_review</code></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="callout">
+  That's 12 new properties. <strong>One</strong> of the three URL fields
+  (<code>court16_staff_confirm_url</code>) is the single trigger for
+  Workflow 1 (staff notification). The other two are passed through to
+  the same email body so staff has one-click access to every action.
+</div>
+
+<h2>Required Private App scopes</h2>
+<p>The HubSpot Private App that holds <code>HUBSPOT_ACCESS_TOKEN</code> needs:</p>
+<ul>
+  <li><code>crm.objects.contacts.read</code></li>
+  <li><code>crm.objects.contacts.write</code></li>
+  <li><code>crm.schemas.contacts.read</code> — so the app can verify the 12 properties exist on boot</li>
+</ul>
+<p>No custom-object scopes are needed. The Deal-pipeline work in spec 02 uses
+standard Deal scopes which are requested separately when that work lands.</p>
+
+<h2>Verifying the schema once created</h2>
+<p>After the properties are added, one curl call confirms all 12 exist:</p>
+
+<div class="card" style="padding: 16px; font-family: 'Geist Mono', monospace; font-size: 12px; background: #fff; overflow-x: auto;">
+curl -sS "https://api.hubapi.com/crm/v3/properties/contacts?archived=false" \<br>
+&nbsp;&nbsp;-H "Authorization: Bearer $HUBSPOT_ACCESS_TOKEN" \<br>
+&nbsp;&nbsp;| jq '.results | map(.name) | map(select(startswith("court16_")))'
+</div>
+
+<p>Should print all 12 names. If any are missing, the app's first run will log a
+boot-time warning that names the gap.</p>
+
+<h2>Known limitation to note (Track 1)</h2>
+<div class="callout warn">
+  <strong>One booking per Contact at a time.</strong> Each new submission
+  overwrites the Contact's <code>court16_correlation_id</code> and
+  <code>court16_booking_status</code>. Returning users are soft-walled
+  before they ever reach the submit step, so this is effectively
+  "new customer, one kid, one trial" scope for Track 1.
+  The Deal pipeline in spec 02 is the path forward for multi-booking support.
+</div>
+
+<div class="meta-row"><div class="k">Canonical source</div><div class="v"><code>docs/hubspot-properties.md</code> in the repo</div></div>
+<div class="meta-row"><div class="k">Owned by</div><div class="v"><span class="tag">Ibtissam</span> creates the properties · <span class="tag">Stuart</span> references them in code</div></div>
+<div class="meta-row"><div class="k">Executes on</div><div class="v">Kickoff Day 1 · May 7 · ~15 min</div></div>
+
+<footer>
+  <div>Prepared by Stuart Chuang · Cedarwind Consulting · <a href="mailto:stuart@cedarwind.io">stuart@cedarwind.io</a></div>
+  <div><a href="./index.html">Back to Package A index</a></div>
+</footer>
+
+</div>
+</body>
+</html>

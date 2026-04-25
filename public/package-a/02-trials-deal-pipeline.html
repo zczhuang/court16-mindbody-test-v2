@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>02 · Trials Deal Pipeline · Package A</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc-head">
+  <a class="back-link" href="./index.html">Back to Package A index</a>
+  <div class="brand">Court 16 × Cedarwind · Package A · Spec 02</div>
+  <h1>Trials Deal pipeline</h1>
+  <p class="subtitle">Stands up a new HubSpot Deal pipeline so every booking becomes a tracked Deal rather than only a Contact property update.</p>
+</header>
+
+<section class="summary-pkg">
+  <dl>
+    <dt>What</dt><dd>A new Deal pipeline with the five stages the SOW named:
+      <strong>Requested Trial · Scheduled Trial · Attended · No-Show · Denied</strong>.</dd>
+    <dt>Why</dt><dd>Today booking state lives only as Contact properties. A Deal per booking gives HubSpot workflows a first-class object to branch on and supports parents booking multiple trials over time (the current Contact-overwrite pattern doesn't).</dd>
+    <dt>Who</dt><dd><strong>Ibtissam</strong> creates the pipeline in HubSpot (Settings → Objects → Deals → Pipelines → Create). <strong>Stuart</strong> writes Deals into it via specs 03–05.</dd>
+    <dt>Status</dt><dd><span class="pill greenfield"><span class="dot"></span>Greenfield · details decided at kickoff</span></dd>
+  </dl>
+</section>
+
+<h2>Stages</h2>
+
+<div class="pipeline">
+  <div class="stage">
+    <div class="stage-num">Stage 1</div>
+    <div class="stage-name">Requested Trial</div>
+    <div class="stage-sub">Form submit lands a Deal here</div>
+  </div>
+  <div class="stage">
+    <div class="stage-num">Stage 2</div>
+    <div class="stage-name">Scheduled Trial</div>
+    <div class="stage-sub">Staff confirmed + MindBody booked</div>
+  </div>
+  <div class="stage terminal-good no-arrow">
+    <div class="stage-num">Stage 3a</div>
+    <div class="stage-name">Attended</div>
+    <div class="stage-sub">Closed won</div>
+  </div>
+</div>
+<div class="pipeline">
+  <div class="stage terminal-bad no-arrow">
+    <div class="stage-num">Stage 3b</div>
+    <div class="stage-name">No-Show</div>
+    <div class="stage-sub">Closed lost</div>
+  </div>
+  <div class="stage terminal-bad no-arrow">
+    <div class="stage-num">Stage 3c</div>
+    <div class="stage-name">Denied</div>
+    <div class="stage-sub">Closed lost</div>
+  </div>
+</div>
+
+<h2>What's defined</h2>
+<div class="card">
+  <ul>
+    <li>The five stage names and their open / closed-won / closed-lost classification, per the SOW.</li>
+    <li>The Deal pipeline is the single source of truth for booking state once it's live; Contact properties continue to carry parent-identity data.</li>
+    <li>Every Deal is associated to exactly one Contact (the parent) via standard HubSpot Deal→Contact association.</li>
+    <li>The correlation ID that the booking app already generates per submission is the join key between Deal and Contact (both carry <code>court16_correlation_id</code>; the Contact property is defined in spec 01).</li>
+  </ul>
+</div>
+
+<h2>Decide at kickoff</h2>
+<div class="callout warn">
+  The items below are called out as decisions for Day 1 of kickoff (May 7). Stuart brings proposals; Ibtissam + Anthony sign off.
+</div>
+
+<div class="card">
+  <h3>Deal custom properties</h3>
+  <p>Which Deal-level custom properties we create beyond <code>court16_correlation_id</code>. Candidates informed by the existing Contact schema (spec 01):</p>
+  <ul>
+    <li><code>court16_class_id</code>, <code>court16_location_slug</code>, <code>court16_class_datetime</code> — so pipeline views and workflows don't have to hop through the Contact for common reporting.</li>
+    <li><code>court16_denial_reason</code> — populated when the Deal moves to Denied. Values depend on spec 05's picklist decision.</li>
+  </ul>
+  <p>Final list + exact internal names get agreed at kickoff.</p>
+</div>
+
+<div class="card">
+  <h3>Stage probabilities + close-date conventions</h3>
+  <p>HubSpot pipelines require a probability (%) + close-date behavior per stage. Industry defaults for Trials-style pipelines typically put Requested Trial in the 30–50% band and Scheduled Trial in the 70–85% band, but the exact numbers are Ibtissam's call.</p>
+</div>
+
+<div class="card">
+  <h3>Automation triggers per stage</h3>
+  <p>Which workflows fire on which stage transitions is specified in:</p>
+  <ul>
+    <li><a href="./04-staff-confirm-moves-deal.html">Spec 04</a> (Requested Trial → Scheduled Trial)</li>
+    <li><a href="./05-deny-action.html">Spec 05</a> (→ Denied)</li>
+    <li><a href="./06-password-setup-email.html">Spec 06</a> (Requested Trial enrollment)</li>
+    <li><a href="./07-24h-reminder-workflow.html">Spec 07</a> (Scheduled Trial + 24h)</li>
+  </ul>
+</div>
+
+<div class="card">
+  <h3>Deal amount</h3>
+  <p>Kids trials are free, so <code>amount = $0</code>. Adult intros carry the offer price. How we handle the Track-1-vs-Track-2 split (this package only delivers the kids pipeline; adult intros stay on the existing Contact-only path until a follow-on package) is agreed at kickoff.</p>
+</div>
+
+<div class="meta-row"><div class="k">Canonical source</div><div class="v">This doc (structure) + HubSpot Deals settings (the live config, once built)</div></div>
+<div class="meta-row"><div class="k">Owned by</div><div class="v"><span class="tag">Ibtissam</span> builds pipeline · <span class="tag">Stuart</span> writes into it via specs 03–05</div></div>
+<div class="meta-row"><div class="k">Executes on</div><div class="v">Kickoff Day 1 · May 7</div></div>
+
+<footer>
+  <div>Prepared by Stuart Chuang · Cedarwind Consulting · <a href="mailto:stuart@cedarwind.io">stuart@cedarwind.io</a></div>
+  <div><a href="./index.html">Back to Package A index</a></div>
+</footer>
+
+</div>
+</body>
+</html>

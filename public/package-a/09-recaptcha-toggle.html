@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>09 · Turn off reCAPTCHA on the Trial form · Package A</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc-head">
+  <a class="back-link" href="./index.html">Back to Package A index</a>
+  <div class="brand">Court 16 × Cedarwind · Package A · Spec 09</div>
+  <h1>Turn off reCAPTCHA on the Trial form</h1>
+  <p class="subtitle">A ten-second HubSpot portal toggle that unblocks every API-driven submission the booking app makes.</p>
+</header>
+
+<section class="summary-pkg">
+  <dl>
+    <dt>What</dt><dd>Uncheck "Protect this form from spam with Google reCAPTCHA" on the Court 16 Trial form (<code>3e966ac4-872e-49ec-9b93-1f114fa6d39b</code>) in HubSpot.</dd>
+    <dt>Why</dt><dd>The booking app submits to the Forms v3 Integration endpoint server-side. HubSpot currently returns <code>400 FORM_HAS_RECAPTCHA_ENABLED</code> on every submission because reCAPTCHA is turned on. With reCAPTCHA off, the existing nurture + the new Package A workflows receive submissions as intended.</dd>
+    <dt>Who</dt><dd><strong>Ibtissam</strong>. Takes under a minute once she's in the HubSpot portal.</dd>
+    <dt>Status</dt><dd><span class="pill partial"><span class="dot"></span>Instructions documented · awaiting Ibtissam</span></dd>
+  </dl>
+</section>
+
+<h2>Why this is unblocking</h2>
+
+<p>The current booking app has a graceful-degradation path: when MindBody is
+down, the app still submits to HubSpot as <code>status: manual_review</code>
+so a human can follow up. Today those submissions get rejected by HubSpot's
+reCAPTCHA check, so the "we'll reach out" response the parent sees
+corresponds to zero actual lead capture.</p>
+
+<p>Once this toggle flips, every <code>manual_review</code> submission (and
+every other form-backed flow) lands on the Contact as expected. No code
+changes needed on the app side.</p>
+
+<h2>The steps</h2>
+
+<ol class="steps">
+  <li>Log into HubSpot (<code>app.hubspot.com</code>) as an admin with Marketing permissions.</li>
+  <li>Marketing → Forms.</li>
+  <li>Open the <strong>Court 16 Trial</strong> form. Confirm the form ID in the URL matches <code>3e966ac4-872e-49ec-9b93-1f114fa6d39b</code>.</li>
+  <li>Settings tab (top of the form editor).</li>
+  <li>Scroll to the spam-protection section.</li>
+  <li>Uncheck <strong>"Protect this form from spam with Google reCAPTCHA."</strong></li>
+  <li>Publish / Update to save.</li>
+</ol>
+
+<div class="callout warn">
+  The form stays live through the change. Embeds on <code>court16.com</code>
+  continue working; they simply stop requiring users to prove they're not
+  robots. If spam becomes a problem in practice, HubSpot's built-in
+  honeypot field and Akismet-style filtering kick in automatically — no
+  action needed.
+</div>
+
+<h2>Verification</h2>
+
+<ol class="steps">
+  <li>After saving, curl the app's <code>/api/book/intro</code> against a sandbox-degraded MindBody setup — expect the trace to show <code>hubspot.submitTrialForm</code> status=ok rather than the 400 error previously.</li>
+  <li>Open the corresponding Contact in HubSpot → confirm the <code>court16_*</code> custom properties are populated on the Contact.</li>
+  <li>If anything breaks, re-enable the checkbox — it's a one-click reversal.</li>
+</ol>
+
+<div class="meta-row"><div class="k">Canonical source</div><div class="v"><code>STATUS.md</code> lines 139–145 in the repo</div></div>
+<div class="meta-row"><div class="k">Owned by</div><div class="v"><span class="tag">Ibtissam</span> · portal toggle only</div></div>
+<div class="meta-row"><div class="k">Executes on</div><div class="v">Kickoff Day 1 · May 7 (or earlier if portal access available during PTO)</div></div>
+
+<footer>
+  <div>Prepared by Stuart Chuang · Cedarwind Consulting · <a href="mailto:stuart@cedarwind.io">stuart@cedarwind.io</a></div>
+  <div><a href="./index.html">Back to Package A index</a></div>
+</footer>
+
+</div>
+</body>
+</html>

@@ -402,10 +402,29 @@
     align-items: start;
   }
   .deliverables li.todo-row {
-    grid-template-columns: 18px 18px 1fr;
+    grid-template-columns: 18px 18px 1fr auto;
     gap: 10px;
   }
   .deliverables li.todo-row .todo-box { margin-top: 3px; }
+
+  /* Per-row spec link (Package A) */
+  .spec-link {
+    color: var(--amber);
+    font-family: 'Geist Mono', monospace;
+    font-size: 11px;
+    text-decoration: none;
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--amber-soft);
+    white-space: nowrap;
+    align-self: start;
+    margin-top: 1px;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .spec-link:hover {
+    background: var(--amber-soft);
+    border-color: var(--amber);
+  }
 
   /* Client progress summary */
   .client-progress {
@@ -821,17 +840,18 @@
   <div><span class="pill blocked"><span class="dot"></span>Scheduled · May 7 kickoff</span></div>
 
   <ul class="deliverables">
-    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-1"><span class="icon pending">◷</span><label class="todo-label" for="pkgA-1">Create 12 custom properties on HubSpot Contact object<div class="note">Migration spec ready in repo (docs/hubspot-properties.md). Stuart executes Day 1 of kickoff with Ibtissam's admin grant.</div></label></li>
-    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-2"><span class="icon pending">◷</span><label class="todo-label">Create Trials Deal pipeline: Requested Trial → Scheduled Trial → Attended → No-Show → Denied</label></li>
-    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-3"><span class="icon pending">◷</span><label class="todo-label">Modify booking app to create a Deal on form submit (in addition to Contact)</label></li>
-    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-4"><span class="icon pending">◷</span><label class="todo-label">Staff-confirm endpoint moves Deal to Scheduled Trial and fires HubSpot workflow</label></li>
-    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-5"><span class="icon pending">◷</span><label class="todo-label">Add Deny action alongside Confirm / Reassign — reason picklist, denial email with reason-specific copy, auto-cancel in MindBody</label></li>
-    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-6"><span class="icon pending">◷</span><label class="todo-label">Parent MindBody password-setup email — fired from HubSpot workflow on Deal create</label></li>
-    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-7"><span class="icon pending">◷</span><label class="todo-label">24-hour reminder workflow — triggered on Scheduled Trial + class date - 24h</label></li>
-    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-8"><span class="icon pending">◷</span><label class="todo-label">Four email templates drafted (confirmation, password-setup, 24h reminder, denial) — can be drafted during PTO window</label></li>
-    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-9"><span class="icon pending">◷</span><label class="todo-label">Turn off reCAPTCHA on existing Court 16 Trial form (unblocks manual_review lead capture)</label></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-1"><span class="icon pending">◷</span><label class="todo-label" for="pkgA-1">Create 12 custom properties on HubSpot Contact object<div class="note">Migration spec ready in repo (docs/hubspot-properties.md). Stuart executes Day 1 of kickoff with Ibtissam's admin grant.</div></label><a class="spec-link" href="/package-a/01-contact-properties.html" target="_blank">Spec →</a></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-2"><span class="icon pending">◷</span><label class="todo-label">Create Trials Deal pipeline: Requested Trial → Scheduled Trial → Attended → No-Show → Denied</label><a class="spec-link" href="/package-a/02-trials-deal-pipeline.html" target="_blank">Spec →</a></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-3"><span class="icon pending">◷</span><label class="todo-label">Modify booking app to create a Deal on form submit (in addition to Contact)</label><a class="spec-link" href="/package-a/03-booking-app-creates-deal.html" target="_blank">Spec →</a></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-4"><span class="icon pending">◷</span><label class="todo-label">Staff-confirm endpoint moves Deal to Scheduled Trial and fires HubSpot workflow</label><a class="spec-link" href="/package-a/04-staff-confirm-moves-deal.html" target="_blank">Spec →</a></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-5"><span class="icon pending">◷</span><label class="todo-label">Add Deny action alongside Confirm / Reassign — reason picklist, denial email with reason-specific copy, auto-cancel in MindBody</label><a class="spec-link" href="/package-a/05-deny-action.html" target="_blank">Spec →</a></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-6"><span class="icon pending">◷</span><label class="todo-label">Parent MindBody password-setup email — fired from HubSpot workflow on Deal create</label><a class="spec-link" href="/package-a/06-password-setup-email.html" target="_blank">Spec →</a></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-7"><span class="icon pending">◷</span><label class="todo-label">24-hour reminder workflow — triggered on Scheduled Trial + class date - 24h</label><a class="spec-link" href="/package-a/07-24h-reminder-workflow.html" target="_blank">Spec →</a></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-8"><span class="icon pending">◷</span><label class="todo-label">Four email templates drafted (confirmation, password-setup, 24h reminder, denial) — can be drafted during PTO window</label><a class="spec-link" href="/package-a/08-email-templates.html" target="_blank">Spec →</a></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-9"><span class="icon pending">◷</span><label class="todo-label">Turn off reCAPTCHA on existing Court 16 Trial form (unblocks manual_review lead capture)</label><a class="spec-link" href="/package-a/09-recaptcha-toggle.html" target="_blank">Spec →</a></li>
   </ul>
 
+  <div class="meta-row"><div class="k">Spec sheets</div><div class="v"><a href="/package-a/index.html" style="color:var(--amber)" target="_blank">View all 9 deliverable specs →</a></div></div>
   <div class="meta-row"><div class="k">Blocked on</div><div class="v"><span class="tag">HubSpot admin access</span><span class="tag">Private App token</span></div></div>
   <div class="meta-row"><div class="k">Owned by</div><div class="v">Stuart (build), Ibtissam (access + HubSpot workflow UI config)</div></div>
   <div class="meta-row"><div class="k">Next step</div><div class="v">Anthony signs Phase 2 SOW · Ibtissam grants HubSpot admin + Private App permission on May 7</div></div>
