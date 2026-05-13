@@ -56,4 +56,17 @@ export const PACKAGE_A_WORKFLOW_SHELLS = {
    * (1) Date-based delay (class_date - 24h), (2) Send email = reminder24h asset.
    */
   reminder24h: "1820562947",
+  /**
+   * Confirmation workflow — fires when Contact court16_booking_status
+   * flips to 'confirmed' (after staff-confirm or intro/confirm).
+   * Ibtissam adds: Send email = confirmation asset (no delay).
+   */
+  confirmation: "1820575928",
+  /**
+   * Denial workflow — fires when Contact court16_booking_status flips
+   * to 'failed' (after staff/deny). Email uses HUBL conditionals on
+   * court16_failure_reason to render reason-specific copy. Ibtissam
+   * adds: Send email = denial asset (no delay).
+   */
+  denial: "1820568681",
 } as const;

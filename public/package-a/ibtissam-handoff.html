@@ -1,0 +1,397 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Ibtissam handoff · Email copy + workflow assembly · Court 16 × Cedarwind</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./styles.css" />
+<style>
+  .tldr { background: var(--yellow-soft); border-left: 4px solid var(--yellow); padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 20px 0; }
+  .tldr h2 { margin-top: 0; }
+  .step { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 18px 22px; margin: 14px 0; }
+  .step-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 10px; }
+  .step-num { background: var(--black); color: #fff; font-family: 'Geist Mono', monospace; font-weight: 700; font-size: 11px; padding: 3px 8px; border-radius: 4px; min-width: 22px; text-align: center; }
+  .step-title { font-size: 16px; font-weight: 600; margin: 0; flex: 1; }
+  .copy-block { background: #FBF7EF; border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; font-family: 'Geist Mono', monospace; font-size: 12.5px; line-height: 1.55; white-space: pre-wrap; word-break: break-word; margin: 10px 0; max-width: 100%; overflow-x: auto; }
+  .copy-label { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-top: 16px; margin-bottom: 4px; }
+  .field-name { display: inline-block; background: var(--yellow); color: var(--black); font-family: 'Geist Mono', monospace; font-size: 11px; padding: 1px 6px; border-radius: 3px; font-weight: 700; }
+  .info { background: var(--green-soft); border-left: 3px solid var(--green); padding: 10px 14px; margin: 12px 0; font-size: 13px; border-radius: 0 6px 6px 0; }
+  .info strong { color: var(--green); text-transform: uppercase; font-size: 11px; letter-spacing: 0.06em; margin-right: 8px; }
+  .gotcha { background: var(--amber-soft); border-left: 3px solid var(--amber); padding: 10px 14px; margin: 12px 0; font-size: 13px; border-radius: 0 6px 6px 0; }
+  .gotcha strong { color: var(--amber); text-transform: uppercase; font-size: 11px; letter-spacing: 0.06em; margin-right: 8px; }
+  table.toc { width: 100%; border-collapse: collapse; margin: 14px 0; }
+  table.toc td { padding: 6px 8px; border-bottom: 1px solid var(--border); font-size: 14px; }
+  table.toc td.id { font-family: 'Geist Mono', monospace; color: var(--muted); font-size: 12px; }
+  details { margin: 8px 0; }
+  summary { cursor: pointer; padding: 8px 0; font-weight: 600; }
+  details[open] summary { margin-bottom: 10px; }
+  hr.section { border: 0; border-top: 1px solid var(--border); margin: 48px 0 24px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc-head">
+  <a class="back-link" href="./index.html">← Back to Package A index</a>
+  <div class="brand">Court 16 × Cedarwind · Ibtissam handoff</div>
+  <h1>Email copy + workflow assembly</h1>
+  <p class="subtitle">Everything you need to finish Package A: 4 email bodies (copy-paste ready) + 4 workflow walkthroughs. Total time ~45 minutes. After this, the booking app sends parents the right email at every state transition automatically.</p>
+</header>
+
+<section class="tldr">
+  <h2 style="margin-top: 0;">TL;DR</h2>
+  <ol style="margin: 0;">
+    <li><strong>Open 4 emails</strong> in HubSpot — Marketing → Email → find each by name (search "[Cedarwind]"). For each, paste the Subject + Preheader + Body from below.</li>
+    <li><strong>Publish each email</strong> (right-side "Review and publish" → "Publish").</li>
+    <li><strong>Open 4 workflows</strong> in HubSpot — Automation → Workflows → search "[Cedarwind]". For each, drag in 1–2 actions per the instructions, save.</li>
+    <li><strong>Turn on each workflow</strong> when you're ready for real customers (top-right toggle).</li>
+  </ol>
+</section>
+
+<h2>What you're about to set up</h2>
+<table class="toc">
+  <thead>
+    <tr style="background: var(--bg);">
+      <th style="text-align: left; padding: 8px;">Email</th>
+      <th style="text-align: left; padding: 8px;">Fires from workflow</th>
+      <th style="text-align: left; padding: 8px;">Trigger</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>1. Trial confirmation</td>
+      <td>[Cedarwind] Trial confirmed · parent email</td>
+      <td>Contact status → <code>confirmed</code></td>
+    </tr>
+    <tr>
+      <td>2. Password setup</td>
+      <td>[Cedarwind] Password setup · 1h after Requested Trial</td>
+      <td>Deal → Requested Trial</td>
+    </tr>
+    <tr>
+      <td>3. 24h reminder</td>
+      <td>[Cedarwind] 24h reminder · class -24h after Scheduled Trial</td>
+      <td>Deal → Scheduled Trial + class_date - 24h</td>
+    </tr>
+    <tr>
+      <td>4. Trial declined</td>
+      <td>[Cedarwind] Trial declined · parent email with reason</td>
+      <td>Contact status → <code>failed</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<hr class="section" />
+
+<h2>Part 1 · Email copy (paste into HubSpot)</h2>
+
+<p>For each email below, navigate in HubSpot:</p>
+<ul>
+  <li><strong>Marketing → Email</strong> (top nav)</li>
+  <li>Search the listed name in the search bar</li>
+  <li>Click the email → <strong>Edit</strong></li>
+  <li><strong>Settings tab</strong> → paste Subject + Preheader</li>
+  <li><strong>Edit tab</strong> → click the body text module → replace placeholder with the body HTML below</li>
+  <li><strong>Review and publish</strong> top-right → <strong>Publish</strong></li>
+</ul>
+
+<h3>📧 Email 1 · Trial confirmation</h3>
+<p><span class="field-name">HubSpot asset id 212773423758</span> · <span class="field-name">Name: [Cedarwind] Trial confirmation — DRAFT, edit copy + activate</span></p>
+
+<div class="copy-label">Subject line</div>
+<div class="copy-block">{{ contact.child_name }}'s Court 16 trial is confirmed 🎾</div>
+
+<div class="copy-label">Preheader</div>
+<div class="copy-block">What to bring, where to go, and who you'll meet.</div>
+
+<div class="copy-label">Body (paste into the rich-text module)</div>
+<div class="copy-block">&lt;p&gt;Hi {{ contact.firstname }},&lt;/p&gt;
+
+&lt;p&gt;Big news — {{ contact.child_name }}'s Court 16 trial is officially on the calendar. Our team just confirmed the spot.&lt;/p&gt;
+
+&lt;p&gt;&lt;strong&gt;Location:&lt;/strong&gt; {{ contact.preferred_location }}&lt;br/&gt;
+&lt;em&gt;Specific class day, time, and coach are in your follow-up email from our team — keep an eye on your inbox.&lt;/em&gt;&lt;/p&gt;
+
+&lt;h3&gt;What to bring&lt;/h3&gt;
+&lt;ul&gt;
+  &lt;li&gt;Sneakers (non-marking soles preferred)&lt;/li&gt;
+  &lt;li&gt;Water bottle&lt;/li&gt;
+  &lt;li&gt;A light layer — courts can be cool&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;strong&gt;We provide racquets and balls.&lt;/strong&gt; Don't worry if {{ contact.child_name }} has never held one before — our coaches start every trial at the right level.&lt;/p&gt;
+
+&lt;h3&gt;Day-of tip&lt;/h3&gt;
+&lt;p&gt;Drop off 5 minutes early so {{ contact.child_name }} has time to settle in. We do a quick warm-up before the class starts.&lt;/p&gt;
+
+&lt;p&gt;Questions before the trial? Just reply to this email — we're happy to help.&lt;/p&gt;
+
+&lt;p&gt;See you on court,&lt;br/&gt;
+The Court 16 team&lt;/p&gt;
+
+&lt;p&gt;&lt;small&gt;Reference: {{ contact.court16_correlation_id }}&lt;/small&gt;&lt;/p&gt;</div>
+
+<div class="info"><strong>Merge tokens used</strong>{{ contact.firstname }}, {{ contact.child_name }}, {{ contact.preferred_location }}, {{ contact.court16_correlation_id }}. All four exist on the Contact (firstname is standard; child_name + preferred_location come from the form; correlation_id is set by the booking app).</div>
+
+<hr style="margin: 36px 0; border: 0; border-top: 1px dashed var(--border);" />
+
+<h3>📧 Email 2 · Password setup</h3>
+<p><span class="field-name">HubSpot asset id 212772629316</span> · <span class="field-name">Name: [Cedarwind] Password setup — DRAFT, edit copy + activate</span></p>
+
+<div class="copy-label">Subject line</div>
+<div class="copy-block">One quick step for {{ contact.child_name }}'s Court 16 trial</div>
+
+<div class="copy-label">Preheader</div>
+<div class="copy-block">Set your MindBody password so you can manage future bookings.</div>
+
+<div class="copy-label">Body</div>
+<div class="copy-block">&lt;p&gt;Hi {{ contact.firstname }},&lt;/p&gt;
+
+&lt;p&gt;We've got {{ contact.child_name }}'s trial request — thanks for choosing Court 16. While our team locks in the class, here's one thing you can do now to speed things up:&lt;/p&gt;
+
+&lt;h3&gt;Set your Court 16 / MindBody password&lt;/h3&gt;
+&lt;p&gt;We use MindBody behind the scenes to manage class spots. Setting up your account now means you can view, reschedule, or cancel future classes without emailing us.&lt;/p&gt;
+
+&lt;p&gt;&lt;a href="https://www.court16.com/login" style="display:inline-block; padding:12px 20px; background:#F5B800; color:#111; text-decoration:none; font-weight:600; border-radius:6px;"&gt;Set your password →&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;&lt;small&gt;Click "Forgot password?" on the sign-in page and enter {{ contact.email }} — MindBody will email you a setup link.&lt;/small&gt;&lt;/p&gt;
+
+&lt;h3&gt;What's next?&lt;/h3&gt;
+&lt;p&gt;You'll hear from our team within a few hours with {{ contact.child_name }}'s specific class day, time, and coach. Once we send you that confirmation, you're all set.&lt;/p&gt;
+
+&lt;p&gt;Questions? Reply to this email — we read every one.&lt;/p&gt;
+
+&lt;p&gt;See you on court,&lt;br/&gt;
+The Court 16 team&lt;/p&gt;
+
+&lt;p&gt;&lt;small&gt;Reference: {{ contact.court16_correlation_id }}&lt;/small&gt;&lt;/p&gt;</div>
+
+<div class="gotcha"><strong>Per-location login</strong>The link above (court16.com/login) is the generic landing page; it routes to the right MindBody portal per club. If you want per-location precision, swap the href to the specific MindBody URL for the parent's <code>court16_location_slug</code> — that's a Smart Content rule, optional polish for v2.</div>
+
+<hr style="margin: 36px 0; border: 0; border-top: 1px dashed var(--border);" />
+
+<h3>📧 Email 3 · 24h reminder</h3>
+<p><span class="field-name">HubSpot asset id 212773969554</span> · <span class="field-name">Name: [Cedarwind] 24h reminder — DRAFT, edit copy + activate</span></p>
+
+<div class="copy-label">Subject line</div>
+<div class="copy-block">See you tomorrow at Court 16, {{ contact.child_name }} 🎾</div>
+
+<div class="copy-label">Preheader</div>
+<div class="copy-block">Gear list, parking tips, and what to expect.</div>
+
+<div class="copy-label">Body</div>
+<div class="copy-block">&lt;p&gt;Hi {{ contact.firstname }},&lt;/p&gt;
+
+&lt;p&gt;Quick reminder — {{ contact.child_name }}'s Court 16 trial is tomorrow at {{ contact.preferred_location }}.&lt;/p&gt;
+
+&lt;p&gt;&lt;em&gt;Check the team confirmation email for exact class time, court, and coach.&lt;/em&gt;&lt;/p&gt;
+
+&lt;h3&gt;What to bring&lt;/h3&gt;
+&lt;ul&gt;
+  &lt;li&gt;Sneakers&lt;/li&gt;
+  &lt;li&gt;Water bottle&lt;/li&gt;
+  &lt;li&gt;A light layer&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;&lt;strong&gt;Racquets and balls are on us.&lt;/strong&gt;&lt;/p&gt;
+
+&lt;h3&gt;Pro tips&lt;/h3&gt;
+&lt;ul&gt;
+  &lt;li&gt;&lt;strong&gt;Arrive 5 min early&lt;/strong&gt; — quick settle-in helps a lot for first-timers&lt;/li&gt;
+  &lt;li&gt;&lt;strong&gt;If something comes up&lt;/strong&gt; — reply to this email and we'll reschedule. No charge for trial reschedules.&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;Can't wait to meet you both.&lt;/p&gt;
+
+&lt;p&gt;The Court 16 team&lt;/p&gt;
+
+&lt;p&gt;&lt;small&gt;Reference: {{ contact.court16_correlation_id }}&lt;/small&gt;&lt;/p&gt;</div>
+
+<div class="gotcha"><strong>About the date math</strong>This email is supposed to fire 24h before the class, not 24h after the Deal lands in Scheduled Trial. That requires a <code>class_date</code> property on the Deal (a Track 2 add — Cedarwind would extend the booking app to capture it). Until that ships, this workflow fires on enrollment + a flat delay you set in the workflow builder (e.g. 23h after Deal enters Scheduled Trial = roughly evening-before-morning-class).</div>
+
+<hr style="margin: 36px 0; border: 0; border-top: 1px dashed var(--border);" />
+
+<h3>📧 Email 4 · Trial declined (with reason-specific copy)</h3>
+<p><span class="field-name">HubSpot asset id 212773969562</span> · <span class="field-name">Name: [Cedarwind] Trial declined — DRAFT, edit copy + activate</span></p>
+
+<div class="copy-label">Subject line</div>
+<div class="copy-block">About {{ contact.child_name }}'s Court 16 trial request</div>
+
+<div class="copy-label">Preheader</div>
+<div class="copy-block">We need to make a small adjustment before we can confirm.</div>
+
+<div class="copy-label">Body (uses HUBL conditionals on court16_failure_reason)</div>
+<div class="copy-block">&lt;p&gt;Hi {{ contact.firstname }},&lt;/p&gt;
+
+&lt;p&gt;Thanks for your interest in a Court 16 trial for {{ contact.child_name }}. We weren't able to confirm this specific booking — here's what happened:&lt;/p&gt;
+
+{% if "Wrong age band" in contact.court16_failure_reason %}
+&lt;p&gt;&lt;strong&gt;The class you picked is for a different age range.&lt;/strong&gt; Each Court 16 program is tightly age-gated so kids learn alongside peers of similar size and motor skill. The good news: we have a class that's a perfect fit for {{ contact.child_name }}. Reply to this email and we'll send over the options.&lt;/p&gt;
+
+{% elif "No availability" in contact.court16_failure_reason %}
+&lt;p&gt;&lt;strong&gt;That specific class filled up before we could lock in {{ contact.child_name }}'s spot.&lt;/strong&gt; We have other openings this week and next at {{ contact.preferred_location }} — happy to suggest alternatives. Just reply and we'll send a few times that work.&lt;/p&gt;
+
+{% elif "Parent cancelled" in contact.court16_failure_reason %}
+&lt;p&gt;&lt;strong&gt;Per your request, we've cancelled the trial.&lt;/strong&gt; If anything changes and you'd like to re-book later, just reply to this email — your details are saved on our end and we can pick up where we left off.&lt;/p&gt;
+
+{% elif "Duplicate booking" in contact.court16_failure_reason %}
+&lt;p&gt;&lt;strong&gt;We already had a booking for {{ contact.child_name }} on file.&lt;/strong&gt; To avoid sending duplicate confirmations or charging twice, we cancelled this newer request. If you meant to book a different child or a different time, just reply and we'll sort it out.&lt;/p&gt;
+
+{% else %}
+&lt;p&gt;&lt;strong&gt;Detail from our team:&lt;/strong&gt; {{ contact.court16_failure_reason }}&lt;/p&gt;
+{% endif %}
+
+&lt;h3&gt;What now?&lt;/h3&gt;
+&lt;p&gt;The best next step is a quick reply to this email. We read every message and can usually re-book within the same day.&lt;/p&gt;
+
+&lt;p&gt;Sorry for the back-and-forth — we want to make sure {{ contact.child_name }}'s first time at Court 16 goes well.&lt;/p&gt;
+
+&lt;p&gt;The Court 16 team&lt;/p&gt;
+
+&lt;p&gt;&lt;small&gt;Reference: {{ contact.court16_correlation_id }}&lt;/small&gt;&lt;/p&gt;</div>
+
+<div class="info"><strong>How the variants work</strong>Cedarwind's <code>/api/staff/deny</code> route writes the picklist label + optional note into the Contact's <code>court16_failure_reason</code> property (e.g. <em>"Denied: Wrong age band"</em>). The HUBL <code>{% if "..." in contact.court16_failure_reason %}</code> blocks above match on that text. If you change the picklist labels in the deny form, also update the matched strings here.</div>
+
+<div class="gotcha"><strong>HUBL preview gotcha</strong>HubSpot's email editor's "Preview" tab doesn't always render HUBL conditionals against a sample contact — you may see all 5 variants stacked. That's a preview-only quirk; the real send only renders the matching block. To verify, go to the workflow's <strong>Test</strong> tab and enroll a real test contact with each failure reason value.</div>
+
+<hr class="section" />
+
+<h2>Part 2 · Workflow assembly</h2>
+
+<p>For each workflow below, navigate in HubSpot:</p>
+<ul>
+  <li><strong>Automation → Workflows</strong> (top nav)</li>
+  <li>Search "[Cedarwind]" — you should see all 4</li>
+  <li>Click into each → assemble actions per below → save → turn on</li>
+</ul>
+
+<h3>⚙️ Workflow 1 · Trial confirmation</h3>
+<p><span class="field-name">HubSpot id 1820575928</span> · Triggers when Contact <code>court16_booking_status</code> = <code>confirmed</code>.</p>
+
+<div class="step">
+  <div class="step-head"><span class="step-num">1</span><h3 class="step-title">Open the workflow</h3></div>
+  Search "[Cedarwind] Trial confirmed". Click it.
+</div>
+
+<div class="step">
+  <div class="step-head"><span class="step-num">2</span><h3 class="step-title">Verify the trigger</h3></div>
+  Top of canvas: "When filter criteria is met" → "Court 16 booking status is any of: confirmed". Should already be there from Cedarwind's scaffold.
+</div>
+
+<div class="step">
+  <div class="step-head"><span class="step-num">3</span><h3 class="step-title">Add the send-email action</h3></div>
+  Click the <strong>+</strong> below the trigger → choose <strong>Send email</strong> → search "[Cedarwind] Trial confirmation" → select it → Save.
+</div>
+
+<div class="step">
+  <div class="step-head"><span class="step-num">4</span><h3 class="step-title">Save + turn on</h3></div>
+  Top-right "Review and publish" → set re-enrollment to <strong>Off</strong> (don't re-send if status reverts and re-confirms) → "Turn on workflow".
+</div>
+
+<hr style="margin: 30px 0; border: 0; border-top: 1px dashed var(--border);" />
+
+<h3>⚙️ Workflow 2 · Password setup</h3>
+<p><span class="field-name">HubSpot id 1820551993</span> · Triggers when Deal enters Requested Trial in any of the 6 location pipelines.</p>
+
+<div class="step">
+  <div class="step-head"><span class="step-num">1</span><h3 class="step-title">Add a delay action</h3></div>
+  Open the workflow → click <strong>+</strong> after the trigger → <strong>Delay</strong> → <strong>1 hour</strong> → Save.
+</div>
+
+<div class="step">
+  <div class="step-head"><span class="step-num">2</span><h3 class="step-title">Add the send-email action</h3></div>
+  Click <strong>+</strong> after the delay → <strong>Send email</strong> → search "[Cedarwind] Password setup" → select.
+</div>
+
+<div class="step">
+  <div class="step-head"><span class="step-num">3</span><h3 class="step-title">Save + turn on</h3></div>
+  Re-enrollment <strong>Off</strong> → "Turn on workflow".
+</div>
+
+<hr style="margin: 30px 0; border: 0; border-top: 1px dashed var(--border);" />
+
+<h3>⚙️ Workflow 3 · 24h reminder</h3>
+<p><span class="field-name">HubSpot id 1820562947</span> · Triggers when Deal enters Scheduled Trial.</p>
+
+<div class="step">
+  <div class="step-head"><span class="step-num">1</span><h3 class="step-title">Add a delay action</h3></div>
+  Open the workflow → click <strong>+</strong> after the trigger → <strong>Delay</strong>.
+  <div class="gotcha"><strong>Date-based delay limitation</strong>Ideally this is "Delay until: a date property minus 24 hours" with the property being the class start time. But our Deal records don't currently carry a <code>class_date</code> property (Cedarwind would need to extend the booking app to capture it — Track 2). For v1: pick a static delay that works for typical lead times (e.g. <strong>23 hours</strong> if most bookings happen ~24h before the class). Not perfect — but unlocks the reminder for now.</div>
+</div>
+
+<div class="step">
+  <div class="step-head"><span class="step-num">2</span><h3 class="step-title">Add the send-email action</h3></div>
+  Click <strong>+</strong> → <strong>Send email</strong> → "[Cedarwind] 24h reminder".
+</div>
+
+<div class="step">
+  <div class="step-head"><span class="step-num">3</span><h3 class="step-title">Save + turn on (or leave off pending date property)</h3></div>
+  If you want to wait for the Track 2 <code>class_date</code> property to land before going live, leave this workflow Off. Cedarwind can ping you when it's available.
+</div>
+
+<hr style="margin: 30px 0; border: 0; border-top: 1px dashed var(--border);" />
+
+<h3>⚙️ Workflow 4 · Trial declined</h3>
+<p><span class="field-name">HubSpot id 1820568681</span> · Triggers when Contact <code>court16_booking_status</code> = <code>failed</code>.</p>
+
+<div class="step">
+  <div class="step-head"><span class="step-num">1</span><h3 class="step-title">Add the send-email action</h3></div>
+  Open the workflow → click <strong>+</strong> after the trigger → <strong>Send email</strong> → "[Cedarwind] Trial declined".
+  <div class="info"><strong>No delay</strong>Decline emails should fire immediately so the parent isn't left hanging.</div>
+</div>
+
+<div class="step">
+  <div class="step-head"><span class="step-num">2</span><h3 class="step-title">Save + turn on</h3></div>
+  Re-enrollment <strong>Off</strong>.
+</div>
+
+<hr class="section" />
+
+<h2>Part 3 · Final checks before going live</h2>
+
+<div class="step">
+  <div class="step-head"><span class="step-num">A</span><h3 class="step-title">Send-test each email to yourself</h3></div>
+  Open each email → top-right <strong>Actions → Send test email</strong> → enter your email + pick a real Court 16 Contact as the merge-token source. Verify:
+  <ul>
+    <li>Merge tokens render correctly (no <code>{{ contact.… }}</code> visible)</li>
+    <li>HUBL conditionals on the denial email render the right branch</li>
+    <li>The CTA button in Email 2 is clickable</li>
+    <li>Mobile preview renders cleanly</li>
+  </ul>
+</div>
+
+<div class="step">
+  <div class="step-head"><span class="step-num">B</span><h3 class="step-title">Walk one trial through end-to-end</h3></div>
+  Use Cedarwind's <a href="./test-walkthrough.html">test walkthrough</a> Tests 1 + 3 to submit a kids trial then click the staff-confirm URL. Watch your inbox + the workflow's <strong>Performance</strong> tab — emails 1 (confirmation) and 2 (password setup) should fire within 1h.
+</div>
+
+<div class="step">
+  <div class="step-head"><span class="step-num">C</span><h3 class="step-title">Turn off reCAPTCHA on the trial form</h3></div>
+  This is spec 9 — separate from the email work but still pending. Settings → Forms → Court 16 Trial form → uncheck "Use reCAPTCHA". Lets the form-submit-side path complete cleanly when MindBody is down.
+</div>
+
+<hr class="section" />
+
+<h2>Known gaps (Track 2 follow-ups)</h2>
+<ul>
+  <li><strong>Class date/time merge tokens</strong>: emails reference "class time" generically since the booking app doesn't yet store a <code>class_date</code> Deal property. Cedarwind extends this in a Track 2 commit.</li>
+  <li><strong>Per-location password-setup link</strong>: Email 2's CTA points at court16.com/login (generic). Optional polish via Smart Content keyed on <code>court16_location_slug</code>.</li>
+  <li><strong>MindBody booking auto-cancellation on deny</strong>: <code>/api/staff/deny</code> flips state correctly but doesn't yet remove the client from the MindBody class (needs visit-id we don't capture from AddClientToClass — Track 2).</li>
+  <li><strong>Reason picklist drift</strong>: if you change Cedarwind's deny picklist labels, the HUBL conditionals in Email 4 need a matching update.</li>
+</ul>
+
+<footer>
+  <p style="font-size: 12px; color: var(--muted); margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border);">
+    Court 16 × Cedarwind · Ibtissam email + workflow handoff · v1.0 (2026-05-12) ·
+    <a href="./index.html" style="color: var(--amber);">Package A index</a> ·
+    <a href="./test-walkthrough.html" style="color: var(--amber);">Test walkthrough</a> ·
+    <a href="https://court16-mindbody-test.vercel.app/tracker.html" style="color: var(--amber);">Phase 2 tracker</a>
+  </p>
+</footer>
+
+</div>
+</body>
+</html>
