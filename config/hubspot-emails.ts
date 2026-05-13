@@ -24,3 +24,23 @@ export const TRIAL_EMAIL_TEMPLATE_IDS = {
 } as const;
 
 export type TrialEmailTemplateKey = keyof typeof TRIAL_EMAIL_TEMPLATE_IDS;
+
+/**
+ * Pre-built workflow shells on HubSpot. Both have the enrollment trigger
+ * fully configured (Deal in ANY of the 6 location-specific stages); the
+ * v4 flows API rejected rich action graphs (500s on send-email actions),
+ * so the 2 action steps per workflow are Ibtissam's drag-in-builder
+ * task. Both shells were created with enabled=false.
+ */
+export const PACKAGE_A_WORKFLOW_SHELLS = {
+  /**
+   * Spec 6 — fires when Deal enters Requested Trial. Ibtissam adds:
+   * (1) Delay 1h, (2) Send email = passwordSetup asset.
+   */
+  passwordSetup: "1820551993",
+  /**
+   * Spec 7 — fires when Deal enters Scheduled Trial. Ibtissam adds:
+   * (1) Date-based delay (class_date - 24h), (2) Send email = reminder24h asset.
+   */
+  reminder24h: "1820562947",
+} as const;
