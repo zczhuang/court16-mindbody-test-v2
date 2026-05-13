@@ -753,13 +753,13 @@
 <div class="summary">
   <div class="stat">
     <div class="label">Progress</div>
-    <div class="value">$8,000 <span class="accent">/ $13,000</span></div>
-    <div class="sub">62% shipped (by SOW value)</div>
+    <div class="value">$11,500 <span class="accent">/ $13,000</span></div>
+    <div class="sub">88% shipped (by SOW value)</div>
   </div>
   <div class="stat">
     <div class="label">Complete</div>
-    <div class="value">2 <span class="accent">of 4</span></div>
-    <div class="sub">Packages 0 + B</div>
+    <div class="value">3 <span class="accent">of 4</span></div>
+    <div class="sub">Packages 0 + A + B</div>
   </div>
 </div>
 
@@ -767,10 +767,10 @@
 <div class="progress-wrap">
   <div class="row">
     <h3>Phase 2 engineering completion</h3>
-    <div class="pct">62%</div>
+    <div class="pct">88%</div>
   </div>
-  <div class="bar"><div class="fill" style="width: 62%"></div></div>
-  <p class="caption">Package 0 (Core Booking App) and Package B (Booking Engine Completions) are shipped and sandbox-verified. Package A (HubSpot Deals + Automation) and Package C (Ridge Hill Pilot) begin May 7.</p>
+  <div class="bar"><div class="fill" style="width: 88%"></div></div>
+  <p class="caption">Packages 0, A, and B are shipped and sandbox-verified. Only Package C (Ridge Hill Pilot) remains — blocked on MindBody Go-Live + the per-site authorize from Anthony. Ibtissam now flips workflows + reCAPTCHA off on her side; final Cedarwind build kicks off the moment Anthony's email lands.</p>
 </div>
 
 <!-- Timeline -->
@@ -781,8 +781,8 @@
       <div class="dates">Apr 22 – May 6</div>
       <div class="name">Pre-kickoff + prep</div>
     </div>
-    <div class="phase active">
-      <div class="dates">May 7 – 20</div>
+    <div class="phase done">
+      <div class="dates">May 7 – 12</div>
       <div class="name">Package A build</div>
     </div>
     <div class="phase">
@@ -831,30 +831,30 @@
 </div>
 
 <!-- Package A -->
-<div class="pkg blocked">
+<div class="pkg progress">
   <div class="pkg-head">
     <h3>Package A — HubSpot Deals Pipeline &amp; Automation</h3>
     <div class="price">$3,500</div>
   </div>
   <p class="desc">Replaces the current form-submission model with a proper Deal-driven pipeline. Covers the five asks Ibtissam raised in her Apr 22 review.</p>
-  <div><span class="pill blocked"><span class="dot"></span>Scheduled · May 7 kickoff</span></div>
+  <div><span class="pill progress"><span class="dot"></span>Built — Ibtissam reviews + flips workflows live</span></div>
 
   <ul class="deliverables">
-    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-1"><span class="icon pending">◷</span><label class="todo-label" for="pkgA-1">Create 12 custom properties on HubSpot Contact object<div class="note">Migration spec ready in repo (docs/hubspot-properties.md). Stuart executes Day 1 of kickoff with Ibtissam's admin grant.</div></label><a class="spec-link" href="/package-a/01-contact-properties.html" target="_blank">Spec →</a></li>
-    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-2"><span class="icon pending">◷</span><label class="todo-label">Create Trials Deal pipeline: Requested Trial → Scheduled Trial → Attended → No-Show → Denied</label><a class="spec-link" href="/package-a/02-trials-deal-pipeline.html" target="_blank">Spec →</a></li>
-    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-3"><span class="icon pending">◷</span><label class="todo-label">Modify booking app to create a Deal on form submit (in addition to Contact)</label><a class="spec-link" href="/package-a/03-booking-app-creates-deal.html" target="_blank">Spec →</a></li>
-    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-4"><span class="icon pending">◷</span><label class="todo-label">Staff-confirm endpoint moves Deal to Scheduled Trial and fires HubSpot workflow</label><a class="spec-link" href="/package-a/04-staff-confirm-moves-deal.html" target="_blank">Spec →</a></li>
-    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-5"><span class="icon pending">◷</span><label class="todo-label">Add Deny action alongside Confirm / Reassign — reason picklist, denial email with reason-specific copy, auto-cancel in MindBody</label><a class="spec-link" href="/package-a/05-deny-action.html" target="_blank">Spec →</a></li>
-    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-6"><span class="icon pending">◷</span><label class="todo-label">Parent MindBody password-setup email — fired from HubSpot workflow on Deal create</label><a class="spec-link" href="/package-a/06-password-setup-email.html" target="_blank">Spec →</a></li>
-    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-7"><span class="icon pending">◷</span><label class="todo-label">24-hour reminder workflow — triggered on Scheduled Trial + class date - 24h</label><a class="spec-link" href="/package-a/07-24h-reminder-workflow.html" target="_blank">Spec →</a></li>
-    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-8"><span class="icon pending">◷</span><label class="todo-label">Four email templates drafted (confirmation, password-setup, 24h reminder, denial) — can be drafted during PTO window</label><a class="spec-link" href="/package-a/08-email-templates.html" target="_blank">Spec →</a></li>
-    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-9"><span class="icon pending">◷</span><label class="todo-label">Turn off reCAPTCHA on existing Court 16 Trial form (unblocks manual_review lead capture)</label><a class="spec-link" href="/package-a/09-recaptcha-toggle.html" target="_blank">Spec →</a></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-1"><span class="icon done">✓</span><label class="todo-label" for="pkgA-1">13 custom properties created on HubSpot Contact object<div class="note">Live in portal 4832170 under the "Court 16 Booking" group. Includes court16_offer_key for Package B's adult intros (12 from original spec + 1 added).</div></label><a class="spec-link" href="/package-a/01-contact-properties.html" target="_blank">Spec →</a></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-2"><span class="icon done">✓</span><label class="todo-label">Trials Deal pipelines wired: reuses Court 16's existing 6 per-location pipelines<div class="note">Mapped each location's existing "Requested Trial" + "Scheduled Trial" stages in config/hubspot-deals.ts. New court16_correlation_id Deal property added so staff routes can find Deals directly.</div></label><a class="spec-link" href="/package-a/02-trials-deal-pipeline.html" target="_blank">Spec →</a></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-3"><span class="icon done">✓</span><label class="todo-label">Booking app creates Deal on form submit (in addition to Contact)<div class="note">Live: both /api/book/trial and /api/book/intro now upsert the Contact + create a Deal in the location-specific pipeline at "Requested Trial" stage, with full association.</div></label><a class="spec-link" href="/package-a/03-booking-app-creates-deal.html" target="_blank">Spec →</a></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-4"><span class="icon done">✓</span><label class="todo-label">Staff-confirm + intro-confirm move Deal to "Scheduled Trial"<div class="note">Wired into /api/staff/confirm and /api/book/intro/confirm. Soft-failure: if HubSpot is down the booking still succeeds. Reassign intentionally leaves Deal stage alone.</div></label><a class="spec-link" href="/package-a/04-staff-confirm-moves-deal.html" target="_blank">Spec →</a></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-5"><span class="icon done">✓</span><label class="todo-label">Deny action alongside Confirm / Reassign — 5-reason picklist, Contact flips to "failed"<div class="note">New /api/staff/deny route. New Deal properties denial_reason + denial_note. Auto-cancel in MindBody: documented TODO (needs visit-id we don't yet persist from AddClientToClass — Track 2).</div></label><a class="spec-link" href="/package-a/05-deny-action.html" target="_blank">Spec →</a></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-6"><span class="icon partial">◐</span><label class="todo-label">Parent MindBody password-setup email — fired from HubSpot workflow on Deal create<div class="note">Email template scaffolded as DRAFT (id 212772627104). Workflow itself: 5-min HubSpot UI build for Ibtissam using the spec doc + email asset.</div></label><a class="spec-link" href="/package-a/06-password-setup-email.html" target="_blank">Spec →</a></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-7"><span class="icon partial">◐</span><label class="todo-label">24-hour reminder workflow — triggered on Scheduled Trial + class date - 24h<div class="note">Email template scaffolded as DRAFT (id 212772628841). Workflow itself: 5-min UI build for Ibtissam.</div></label><a class="spec-link" href="/package-a/07-24h-reminder-workflow.html" target="_blank">Spec →</a></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-8"><span class="icon done">✓</span><label class="todo-label">Four email templates drafted (confirmation, password-setup, 24h reminder, denial)<div class="note">All 4 created as DRAFT assets (state=DRAFT, never sent). IDs in config/hubspot-emails.ts. Ibtissam edits body copy + flips published state.</div></label><a class="spec-link" href="/package-a/08-email-templates.html" target="_blank">Spec →</a></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgA-9"><span class="icon pending">◷</span><label class="todo-label">Turn off reCAPTCHA on existing Court 16 Trial form (unblocks manual_review lead capture)<div class="note">10-second Ibtissam UI toggle. Not API-built (mutating a live form schema risks breaking embedded copies on court16.com).</div></label><a class="spec-link" href="/package-a/09-recaptcha-toggle.html" target="_blank">Spec →</a></li>
   </ul>
 
   <div class="meta-row"><div class="k">Spec sheets</div><div class="v"><a href="/package-a/index.html" style="color:var(--amber)" target="_blank">View all 9 deliverable specs →</a></div></div>
-  <div class="meta-row"><div class="k">Blocked on</div><div class="v"><span class="tag">HubSpot admin access</span><span class="tag">Private App token</span></div></div>
-  <div class="meta-row"><div class="k">Owned by</div><div class="v">Stuart (build), Ibtissam (access + HubSpot workflow UI config)</div></div>
-  <div class="meta-row"><div class="k">Next step</div><div class="v">Anthony signs Phase 2 SOW · Ibtissam grants HubSpot admin + Private App permission on May 7</div></div>
+  <div class="meta-row"><div class="k">Built by Cedarwind</div><div class="v">Specs 1–5 + 8 shipped to prod. Workflows (6, 7) scaffolded — email assets live, Ibtissam UI-builds the trigger.</div></div>
+  <div class="meta-row"><div class="k">Awaiting Ibtissam</div><div class="v"><span class="tag">Build 2 workflows in UI</span><span class="tag">Polish email copy</span><span class="tag">Flip reCAPTCHA off</span></div></div>
+  <div class="meta-row"><div class="k">Owned by</div><div class="v">Cedarwind (build, complete), Ibtissam (workflow UI + copy polish)</div></div>
 </div>
 
 <!-- Package B -->
