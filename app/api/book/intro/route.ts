@@ -365,6 +365,7 @@ function buildFormFields(args: BuildFieldsArgs) {
     court16_mindbody_parent_id: adultMbId,
     court16_staff_confirm_url: buildStaffUrl({ action: "confirm", correlationId, baseUrl }),
     court16_staff_reassign_url: buildStaffUrl({ action: "reassign", correlationId, baseUrl }),
+    court16_staff_deny_url: buildStaffUrl({ action: "deny", correlationId, baseUrl }),
     court16_admin_retry_url: buildStaffUrl({ action: "retry", correlationId, baseUrl }),
   };
 }
@@ -407,6 +408,7 @@ function contactPropertiesFromFields(fields: ReturnType<typeof buildFormFields>)
     court16_mindbody_parent_id: fields.court16_mindbody_parent_id,
     court16_staff_confirm_url: fields.court16_staff_confirm_url,
     court16_staff_reassign_url: fields.court16_staff_reassign_url,
+    court16_staff_deny_url: fields.court16_staff_deny_url,
     court16_admin_retry_url: fields.court16_admin_retry_url,
   };
 }

@@ -12,7 +12,7 @@
 
 import crypto from "node:crypto";
 
-export type StaffAction = "confirm" | "reassign" | "retry";
+export type StaffAction = "confirm" | "reassign" | "deny" | "retry";
 
 export interface TokenPayload {
   correlationId: string;

@@ -165,6 +165,7 @@ export interface TrialFormFields {
   court16_mindbody_child_id?: string;
   court16_staff_confirm_url?: string;
   court16_staff_reassign_url?: string;
+  court16_staff_deny_url?: string;
   court16_admin_retry_url?: string;
   court16_failure_reason?: string;
 }
