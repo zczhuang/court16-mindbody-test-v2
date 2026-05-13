@@ -20,7 +20,7 @@ import { classifyIntent } from "@/lib/intent";
 import { createLogger, makeCorrelationId } from "@/lib/logger";
 import { extractLevelName } from "@/lib/class-utils";
 import { getLocationById } from "@/config/locations";
-import { getDealPipeline } from "@/config/hubspot-deals";
+import { getDealPipeline, getHubspotPreferredLocation } from "@/config/hubspot-deals";
 import { CLASS_AGE_METADATA } from "@/config/trial-config";
 import type { TrialRequest } from "@/lib/trial-types";
 
@@ -328,7 +328,9 @@ function buildFormFields(args: BuildFieldsArgs) {
     email: body.parentEmail,
     phone: body.parentPhone,
 
-    preferred_location: location.fullName,
+    // Court 16's HubSpot dropdown has portal-baked option strings — must
+    // match exactly. Fall back to fullName if the location isn't mapped.
+    preferred_location: getHubspotPreferredLocation(location.id) ?? location.fullName,
     child_name: primaryKid.firstName,
     child_1___last_name: "-",
     childage: ageBand,

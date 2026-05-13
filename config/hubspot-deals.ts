@@ -88,3 +88,25 @@ export const DEAL_PIPELINES: Record<string, DealPipelineConfig> = {
 export function getDealPipeline(locationId: string): DealPipelineConfig | null {
   return DEAL_PIPELINES[locationId] ?? null;
 }
+
+/**
+ * HubSpot Contact has a `preferred_location` dropdown property whose
+ * options Ibtissam set up to match the public trial form's location
+ * picker. The exact strings are portal-baked — anything else 400s
+ * with `INVALID_OPTION`. Map our internal `location.id` slugs to the
+ * verbatim dropdown labels.
+ *
+ * Verified against the live portal 4832170 on 2026-05-12.
+ */
+export const HUBSPOT_PREFERRED_LOCATION_LABEL: Record<string, string> = {
+  brooklyn: "Gowanus, Brooklyn",
+  lic: "Long Island City, Queens",
+  fidi: "Manhattan-FiDi",
+  ridgehill: "Ridge Hill - Yonkers",
+  fishtown: "Fishtown, Philadelphia",
+  newton: "Newton - Massachusetts",
+};
+
+export function getHubspotPreferredLocation(locationId: string): string | undefined {
+  return HUBSPOT_PREFERRED_LOCATION_LABEL[locationId];
+}

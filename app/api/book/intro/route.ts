@@ -19,7 +19,7 @@ import { classifyIntent } from "@/lib/intent";
 import { createLogger, makeCorrelationId } from "@/lib/logger";
 import { getLocationById } from "@/config/locations";
 import { getOffer } from "@/config/adult-config";
-import { getDealPipeline } from "@/config/hubspot-deals";
+import { getDealPipeline, getHubspotPreferredLocation } from "@/config/hubspot-deals";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -338,7 +338,9 @@ function buildFormFields(args: BuildFieldsArgs) {
     email: body.adult.email,
     phone: body.adult.phone,
 
-    preferred_location: location.fullName,
+    // Court 16's HubSpot dropdown has portal-baked option strings — must
+    // match exactly. Fall back to fullName if the location isn't mapped.
+    preferred_location: getHubspotPreferredLocation(location.id) ?? location.fullName,
     // Reuse the kids form shape for adults. Child fields stay populated so
     // the form submit validates; staff filters on court16_intent to split
     // flows in HubSpot workflows.
