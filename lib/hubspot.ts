@@ -287,6 +287,113 @@ export async function updateContact(
   });
 }
 
+// ─── 3. CRM v3 — Contact upsert + Deal creation for the Trials pipeline ─────
+
+/**
+ * Idempotent Contact upsert keyed on email. Returns the Contact ID
+ * whether the row was newly created or already existed.
+ *
+ * Sits alongside the public Forms v3 submit path (which fires
+ * Ibtissam's nurtures) and serves a second purpose: get a Contact ID
+ * back synchronously so we can associate the Deal with the right
+ * Contact, AND keep the court16_* property values in sync even when
+ * the form endpoint is reCAPTCHA-blocked (which still happens until
+ * Ibtissam toggles it off).
+ */
+export async function upsertContactByEmail(
+  cfg: HubspotConfig,
+  log: Logger,
+  email: string,
+  properties: Record<string, string | undefined>,
+): Promise<{ id: string }> {
+  const stripped = stripUndefined({ ...properties, email });
+  const res = await hsFetch<{ results: { id: string }[] }>(log, {
+    url: `${cfg.apiBaseUrl}/crm/v3/objects/contacts/batch/upsert`,
+    method: "POST",
+    headers: { Authorization: `Bearer ${requireAccessToken(cfg)}` },
+    label: "POST /crm/v3/objects/contacts/batch/upsert",
+    body: { inputs: [{ idProperty: "email", id: email, properties: stripped }] },
+  });
+  if (!res.results[0]?.id) {
+    throw new Error("HubSpot upsertContactByEmail: no id in response");
+  }
+  return { id: res.results[0].id };
+}
+
+interface CreateTrialDealArgs {
+  contactId: string;
+  correlationId: string;
+  /** HubSpot pipeline ID (from config/hubspot-deals.ts). */
+  pipelineId: string;
+  /** Stage ID for "Requested Trial / Intro Offer" (from config/hubspot-deals.ts). */
+  stageId: string;
+  /** Display name shown in HubSpot's Deals UI. */
+  dealName: string;
+  /** USD amount — 0 for kid trials, offer.priceUsd for adult intros. */
+  amount: number;
+}
+
+/**
+ * Create a Deal in the location-specific trials pipeline and associate
+ * it with an existing Contact. Idempotent: if a Deal with the same
+ * `court16_correlation_id` already exists, returns its ID without
+ * creating a duplicate.
+ *
+ * Returns null when the pipeline can't be resolved upstream — callers
+ * should treat that as a soft-skip, not a booking failure.
+ */
+export async function createTrialDeal(
+  cfg: HubspotConfig,
+  log: Logger,
+  args: CreateTrialDealArgs,
+): Promise<{ id: string; cached: boolean }> {
+  // 1. Idempotency check via unique custom property
+  const existing = await hsFetch<{ results: { id: string }[] }>(log, {
+    url: `${cfg.apiBaseUrl}/crm/v3/objects/deals/search`,
+    method: "POST",
+    headers: { Authorization: `Bearer ${requireAccessToken(cfg)}` },
+    label: "POST /crm/v3/objects/deals/search",
+    body: {
+      filterGroups: [
+        {
+          filters: [
+            { propertyName: "court16_correlation_id", operator: "EQ", value: args.correlationId },
+          ],
+        },
+      ],
+      limit: 1,
+    },
+  });
+  if (existing.results[0]) {
+    return { id: existing.results[0].id, cached: true };
+  }
+
+  // 2. Create Deal + Contact association in one call
+  const deal = await hsFetch<{ id: string }>(log, {
+    url: `${cfg.apiBaseUrl}/crm/v3/objects/deals`,
+    method: "POST",
+    headers: { Authorization: `Bearer ${requireAccessToken(cfg)}` },
+    label: "POST /crm/v3/objects/deals",
+    body: {
+      properties: {
+        dealname: args.dealName,
+        amount: String(args.amount),
+        pipeline: args.pipelineId,
+        dealstage: args.stageId,
+        court16_correlation_id: args.correlationId,
+      },
+      associations: [
+        {
+          to: { id: args.contactId },
+          // Deal → Contact: HubSpot-defined association type ID 3
+          types: [{ associationCategory: "HUBSPOT_DEFINED", associationTypeId: 3 }],
+        },
+      ],
+    },
+  });
+  return { id: deal.id, cached: false };
+}
+
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 function stripUndefined(o: Record<string, unknown>): Record<string, string> {

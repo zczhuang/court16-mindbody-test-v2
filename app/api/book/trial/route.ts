@@ -9,15 +9,18 @@ import {
   MindbodyError,
 } from "@/lib/mindbody";
 import {
+  createTrialDeal,
   HubspotError,
   loadHubspotConfig,
   submitTrialForm,
+  upsertContactByEmail,
 } from "@/lib/hubspot";
 import { buildStaffUrl } from "@/lib/staff-tokens";
 import { classifyIntent } from "@/lib/intent";
 import { createLogger, makeCorrelationId } from "@/lib/logger";
 import { extractLevelName } from "@/lib/class-utils";
 import { getLocationById } from "@/config/locations";
+import { getDealPipeline } from "@/config/hubspot-deals";
 import { CLASS_AGE_METADATA } from "@/config/trial-config";
 import type { TrialRequest } from "@/lib/trial-types";
 
@@ -137,23 +140,31 @@ export async function POST(req: Request) {
     });
 
     if (intent === "existing_user_softwall") {
-      await submitFormSafely(
+      const fields = buildFormFields({
+        correlationId,
+        body,
+        primaryKid,
+        childDob,
+        ageBand,
+        location,
+        status: "duplicate_email_softwall",
+        parentMbId: existing[0]?.Id != null ? String(existing[0].Id) : undefined,
+        childMbId: undefined,
+        baseUrl,
+      });
+      await submitFormSafely(hsCfg, log, fields, trace, "hubspot.submitTrialForm (softwall)");
+      await createDealSafely(
         hsCfg,
         log,
-        buildFormFields({
+        {
+          email: body.parentEmail,
           correlationId,
-          body,
-          primaryKid,
-          childDob,
-          ageBand,
-          location,
-          status: "duplicate_email_softwall",
-          parentMbId: existing[0]?.Id != null ? String(existing[0].Id) : undefined,
-          childMbId: undefined,
-          baseUrl,
-        }),
+          locationId: location.id,
+          contactProperties: contactPropertiesFromFields(fields),
+          dealName: `Kids trial (softwall) — ${primaryKid.firstName} · ${location.fullName}`,
+          amount: 0,
+        },
         trace,
-        "hubspot.submitTrialForm (softwall)",
       );
       return NextResponse.json({ ok: true, correlationId, status: "duplicate_email_softwall", trace });
     }
@@ -194,23 +205,31 @@ export async function POST(req: Request) {
     // confirmation so the parent still gets a success screen and staff
     // gets a work item.
     if (mbDegraded || !parent || !child) {
-      await submitFormSafely(
+      const fields = buildFormFields({
+        correlationId,
+        body,
+        primaryKid,
+        childDob,
+        ageBand,
+        location,
+        status: "manual_review",
+        parentMbId: undefined,
+        childMbId: undefined,
+        baseUrl,
+      });
+      await submitFormSafely(hsCfg, log, fields, trace, "hubspot.submitTrialForm (manual_review)");
+      await createDealSafely(
         hsCfg,
         log,
-        buildFormFields({
+        {
+          email: body.parentEmail,
           correlationId,
-          body,
-          primaryKid,
-          childDob,
-          ageBand,
-          location,
-          status: "manual_review",
-          parentMbId: undefined,
-          childMbId: undefined,
-          baseUrl,
-        }),
+          locationId: location.id,
+          contactProperties: contactPropertiesFromFields(fields),
+          dealName: `Kids trial (manual review) — ${primaryKid.firstName} · ${location.fullName}`,
+          amount: 0,
+        },
         trace,
-        "hubspot.submitTrialForm (manual_review)",
       );
       return NextResponse.json({
         ok: true,
@@ -240,23 +259,31 @@ export async function POST(req: Request) {
     }
     trace.push({ step: "addClientRelationship", status: relationshipStatus, error: relationshipError });
 
-    await submitFormSafely(
+    const fields = buildFormFields({
+      correlationId,
+      body,
+      primaryKid,
+      childDob,
+      ageBand,
+      location,
+      status: "pending_staff",
+      parentMbId: parent.Id ? String(parent.Id) : undefined,
+      childMbId: child.Id ? String(child.Id) : undefined,
+      baseUrl,
+    });
+    await submitFormSafely(hsCfg, log, fields, trace, "hubspot.submitTrialForm");
+    await createDealSafely(
       hsCfg,
       log,
-      buildFormFields({
+      {
+        email: body.parentEmail,
         correlationId,
-        body,
-        primaryKid,
-        childDob,
-        ageBand,
-        location,
-        status: "pending_staff",
-        parentMbId: parent.Id ? String(parent.Id) : undefined,
-        childMbId: child.Id ? String(child.Id) : undefined,
-        baseUrl,
-      }),
+        locationId: location.id,
+        contactProperties: contactPropertiesFromFields(fields),
+        dealName: `Kids trial — ${primaryKid.firstName} · ${location.fullName}`,
+        amount: 0,
+      },
       trace,
-      "hubspot.submitTrialForm",
     );
 
     log.info("trial.done", { trace: trace.map((t) => ({ step: t.step, status: t.status })) });
@@ -325,6 +352,91 @@ function buildFormFields(args: BuildFieldsArgs) {
     court16_staff_reassign_url: buildStaffUrl({ action: "reassign", correlationId, baseUrl }),
     court16_admin_retry_url: buildStaffUrl({ action: "retry", correlationId, baseUrl }),
   };
+}
+
+/**
+ * Subset of buildFormFields output that maps cleanly to HubSpot Contact
+ * CRM properties (vs. form-specific fields like `child_name` that only
+ * exist on the form, not the Contact). Used by createDealSafely below
+ * to upsert the Contact in parallel with the form submit — gives us a
+ * synchronous Contact ID for the Deal association.
+ */
+function contactPropertiesFromFields(fields: ReturnType<typeof buildFormFields>): Record<string, string | undefined> {
+  return {
+    firstname: fields.firstname,
+    lastname: fields.lastname,
+    phone: fields.phone,
+    preferred_location: fields.preferred_location,
+    court16_correlation_id: fields.court16_correlation_id,
+    court16_intent: fields.court16_intent,
+    court16_booking_status: fields.court16_booking_status,
+    court16_class_id: fields.court16_class_id,
+    court16_location_slug: fields.court16_location_slug,
+    court16_waiver_version: fields.court16_waiver_version,
+    court16_mindbody_parent_id: fields.court16_mindbody_parent_id,
+    court16_mindbody_child_id: fields.court16_mindbody_child_id,
+    court16_staff_confirm_url: fields.court16_staff_confirm_url,
+    court16_staff_reassign_url: fields.court16_staff_reassign_url,
+    court16_admin_retry_url: fields.court16_admin_retry_url,
+  };
+}
+
+/**
+ * Upsert the Contact via CRM (gets us an ID synchronously, immune to
+ * reCAPTCHA blocking the public form endpoint) and create a Deal in
+ * the location-specific Trials pipeline. Idempotent on correlation
+ * ID. Soft-failure: never throws — degraded result lands in trace.
+ */
+async function createDealSafely(
+  hsCfg: ReturnType<typeof loadHubspotConfig>,
+  log: ReturnType<typeof createLogger>,
+  args: {
+    email: string;
+    correlationId: string;
+    locationId: string;
+    contactProperties: Record<string, string | undefined>;
+    dealName: string;
+    amount: number;
+  },
+  trace: Array<{ step: string; status: "ok" | "skipped" | "error"; data?: unknown; error?: unknown }>,
+): Promise<void> {
+  if (!hsCfg) {
+    trace.push({ step: "hubspot.createTrialDeal", status: "skipped", data: { reason: "HubSpot not configured" } });
+    return;
+  }
+  const pipeline = getDealPipeline(args.locationId);
+  if (!pipeline) {
+    trace.push({
+      step: "hubspot.createTrialDeal",
+      status: "skipped",
+      data: { reason: `no pipeline mapped for location ${args.locationId}` },
+    });
+    return;
+  }
+  try {
+    const contact = await upsertContactByEmail(hsCfg, log, args.email, args.contactProperties);
+    const deal = await createTrialDeal(hsCfg, log, {
+      contactId: contact.id,
+      correlationId: args.correlationId,
+      pipelineId: pipeline.pipelineId,
+      stageId: pipeline.stages.requested,
+      dealName: args.dealName,
+      amount: args.amount,
+    });
+    trace.push({
+      step: "hubspot.createTrialDeal",
+      status: "ok",
+      data: {
+        contactId: contact.id,
+        dealId: deal.id,
+        cached: deal.cached,
+        pipeline: pipeline.pipelineId,
+      },
+    });
+  } catch (e) {
+    log.warn("trial.deal.fail", { error: serialize(e) });
+    trace.push({ step: "hubspot.createTrialDeal", status: "error", error: serialize(e) });
+  }
 }
 
 async function submitFormSafely(
