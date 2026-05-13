@@ -185,17 +185,17 @@
 
 <div class="step">
   <div class="step-head"><span class="step-num">5.2</span><h3 class="step-title">Add the 2 actions per workflow</h3></div>
-  <p>For <strong>Password setup</strong>:</p>
+  <p>For <strong>Password setup</strong> (workflow id <code>1820551993</code>):</p>
   <ol>
     <li>Open the workflow → click <strong>+</strong> after the enrollment trigger</li>
     <li>Add <strong>Delay</strong> → 1 hour</li>
-    <li>Add <strong>Send marketing email</strong> → pick <code>Court 16 — Password setup</code> (asset id <code>212772627104</code>)</li>
+    <li>Add <strong>Send automated email</strong> → pick <code>[Cedarwind] Password setup</code> (asset id <code>212772629316</code>, AUTOMATED_EMAIL type)</li>
     <li>Save</li>
   </ol>
-  <p>For <strong>24h reminder</strong>:</p>
+  <p>For <strong>24h reminder</strong> (workflow id <code>1820562947</code>):</p>
   <ol>
     <li>Add <strong>Delay until a date</strong> → property: a custom class-date property (Cedarwind doesn't store one yet — see notes below), offset -24 hours</li>
-    <li>Add <strong>Send marketing email</strong> → <code>Court 16 — Trial reminder (24h)</code> (asset id <code>212772628841</code>)</li>
+    <li>Add <strong>Send automated email</strong> → <code>[Cedarwind] 24h reminder</code> (asset id <code>212773969554</code>)</li>
     <li>Save</li>
   </ol>
   <div class="gotcha"><strong>Class-date gotcha</strong>The 24h reminder needs a date property on the Deal to subtract 24 hours from. Currently the booking app only stores <code>court16_class_id</code> (MindBody class ID, not a date). For Test 5 you'll need either to (a) add a <code>court16_class_starts_at</code> Deal property and have Cedarwind extend the booking routes to write it, or (b) defer this workflow until Track 2. Spec 7 acknowledges this gap.</div>

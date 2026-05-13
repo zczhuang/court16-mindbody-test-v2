@@ -12,15 +12,28 @@
  * If a template gets archived or replaced, capture the new ID here.
  */
 
+/**
+ * AUTOMATED_EMAIL assets — what HubSpot workflows reference for sends.
+ *
+ * Cloned from Court 16's existing "BK - MINDBODY'S ACCOUNT CREATION
+ * PENDING" automated template (id 47835784786) so they inherit the
+ * brand styling. Subject lines reset; body copy is template
+ * boilerplate until Ibtissam polishes.
+ *
+ * Earlier history: 4 MARKETING_SINGLE_SEND_API emails (212772627101 /
+ * 04 / 28841 / 28844) were created first and archived 2026-05-12 once
+ * we discovered workflows can only send AUTOMATED_EMAIL type, not
+ * single-send API type. The IDs below replace those.
+ */
 export const TRIAL_EMAIL_TEMPLATE_IDS = {
   /** Sent to parents after staff-confirm or intro-confirm advances Deal to "Scheduled Trial". */
-  confirmation: "212772627101", // Court 16 — Trial confirmation
+  confirmation: "212773423758",
   /** Sent 1h after Deal enters "Requested Trial" — sets up the MindBody password. */
-  passwordSetup: "212772627104", // Court 16 — Password setup
+  passwordSetup: "212772629316",
   /** Sent 24h before the scheduled class. */
-  reminder24h: "212772628841", // Court 16 — Trial reminder (24h)
+  reminder24h: "212773969554",
   /** Sent when staff clicks Deny (spec 5). Uses Smart Content keyed on denial_reason. */
-  denial: "212772628844", // Court 16 — Trial declined
+  denial: "212773969562",
 } as const;
 
 export type TrialEmailTemplateKey = keyof typeof TRIAL_EMAIL_TEMPLATE_IDS;
