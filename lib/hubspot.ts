@@ -394,6 +394,56 @@ export async function createTrialDeal(
   return { id: deal.id, cached: false };
 }
 
+/** Find the Deal in the Trials pipeline by correlation ID. Returns null if missing. */
+export async function findDealByCorrelationId(
+  cfg: HubspotConfig,
+  log: Logger,
+  correlationId: string,
+): Promise<{ id: string; properties: Record<string, string | undefined> } | null> {
+  const res = await hsFetch<{
+    results: Array<{ id: string; properties: Record<string, string | undefined> }>;
+  }>(log, {
+    url: `${cfg.apiBaseUrl}/crm/v3/objects/deals/search`,
+    method: "POST",
+    headers: { Authorization: `Bearer ${requireAccessToken(cfg)}` },
+    label: "POST /crm/v3/objects/deals/search (by correlation)",
+    body: {
+      filterGroups: [
+        {
+          filters: [
+            { propertyName: "court16_correlation_id", operator: "EQ", value: correlationId },
+          ],
+        },
+      ],
+      limit: 1,
+      properties: ["dealname", "dealstage", "pipeline", "court16_correlation_id"],
+    },
+  });
+  return res.results[0] ?? null;
+}
+
+/**
+ * PATCH a Deal to move it to a different stage. Used by staff
+ * confirm/reassign/deny + intro/confirm to advance the Trials Deal
+ * through the pipeline.
+ */
+export async function moveDealStage(
+  cfg: HubspotConfig,
+  log: Logger,
+  dealId: string,
+  newStageId: string,
+  extra?: Record<string, string | undefined>,
+): Promise<{ id: string }> {
+  const stripped = stripUndefined({ dealstage: newStageId, ...(extra ?? {}) } as Record<string, unknown>);
+  return hsFetch<{ id: string }>(log, {
+    url: `${cfg.apiBaseUrl}/crm/v3/objects/deals/${encodeURIComponent(dealId)}`,
+    method: "PATCH",
+    headers: { Authorization: `Bearer ${requireAccessToken(cfg)}` },
+    label: "PATCH /crm/v3/objects/deals/:id",
+    body: { properties: stripped },
+  });
+}
+
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 function stripUndefined(o: Record<string, unknown>): Record<string, string> {

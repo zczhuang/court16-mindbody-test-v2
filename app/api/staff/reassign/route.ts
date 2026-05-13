@@ -61,6 +61,11 @@ async function handle(req: Request) {
     court16_booking_status: "manual_review",
     court16_failure_reason: "Staff reassigned — manually place in MindBody then hit admin retry.",
   });
+  // Intentionally do NOT move the Deal stage here. Reassign means
+  // "rebooking a different class" — the Deal stays at Requested Trial
+  // until the admin-retry endpoint actually creates the new booking,
+  // at which point staff confirm will move it forward. The Contact's
+  // manual_review status is the workflow trigger for staff follow-up.
   return html(
     `Flagged for manual review. Reassign the class in MindBody, then visit the admin retry URL. (correlation: ${payload.correlationId})`,
     200,

@@ -7,13 +7,16 @@ import {
 } from "@/lib/mindbody";
 import {
   findContactByCorrelationId,
+  findDealByCorrelationId,
   HubspotError,
   loadHubspotConfig,
+  moveDealStage,
   updateContact,
 } from "@/lib/hubspot";
 import { createLogger, makeCorrelationId } from "@/lib/logger";
 import { getLocationById } from "@/config/locations";
 import { getOffer } from "@/config/adult-config";
+import { getDealPipeline } from "@/config/hubspot-deals";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -156,5 +159,18 @@ export async function POST(req: Request) {
   }
 
   await updateContact(hsCfg, log, contact.id, { court16_booking_status: "confirmed" });
+
+  // Advance the Deal in the Trials pipeline. Soft-failure: log + continue.
+  try {
+    const deal = await findDealByCorrelationId(hsCfg, log, correlationId);
+    const pipeline = locationSlug ? getDealPipeline(locationSlug) : null;
+    if (deal && pipeline) {
+      await moveDealStage(hsCfg, log, deal.id, pipeline.stages.scheduled);
+      log.info("intro.confirm.dealMoved", { dealId: deal.id, stage: pipeline.stages.scheduled });
+    }
+  } catch (e) {
+    log.warn("intro.confirm.dealMove.fail", { error: e instanceof Error ? e.message : String(e) });
+  }
+
   return NextResponse.json({ ok: true, correlationId, status: "confirmed" });
 }

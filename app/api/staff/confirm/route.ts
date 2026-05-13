@@ -6,14 +6,17 @@ import {
 } from "@/lib/mindbody";
 import {
   findContactByCorrelationId,
+  findDealByCorrelationId,
   HubspotError,
   loadHubspotConfig,
+  moveDealStage,
   updateContact,
 } from "@/lib/hubspot";
 import { InvalidTokenError, verifyToken } from "@/lib/staff-tokens";
 import { createLogger } from "@/lib/logger";
 import { getLocationById } from "@/config/locations";
 import { TRIAL_CONFIG } from "@/config/trial-config";
+import { getDealPipeline } from "@/config/hubspot-deals";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -124,6 +127,21 @@ async function handle(req: Request) {
   }
 
   await updateContact(hsCfg, log, contact.id, { court16_booking_status: "confirmed" });
+
+  // Advance the Deal in the Trials pipeline. Soft-failure: log + continue.
+  // The Contact-side status flip above is the canonical signal staff
+  // workflows trigger on; the Deal move is for reporting / kanban.
+  try {
+    const deal = await findDealByCorrelationId(hsCfg, log, payload.correlationId);
+    const pipeline = locationSlug ? getDealPipeline(locationSlug) : null;
+    if (deal && pipeline) {
+      await moveDealStage(hsCfg, log, deal.id, pipeline.stages.scheduled);
+      log.info("staff.confirm.dealMoved", { dealId: deal.id, stage: pipeline.stages.scheduled });
+    }
+  } catch (e) {
+    log.warn("staff.confirm.dealMove.fail", { error: e instanceof Error ? e.message : String(e) });
+  }
+
   return html(
     `Confirmed. Parent will receive a confirmation email shortly. (correlation: ${payload.correlationId})`,
     200,
