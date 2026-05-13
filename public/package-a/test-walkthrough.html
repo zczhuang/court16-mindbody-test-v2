@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Testing Package A end-to-end · Court 16 × Cedarwind</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./styles.css" />
+<style>
+  .step { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 18px 22px; margin: 14px 0; }
+  .step-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 8px; }
+  .step-num { background: var(--yellow); color: var(--black); font-family: 'Geist Mono', monospace; font-weight: 700; font-size: 12px; padding: 2px 8px; border-radius: 4px; }
+  .step-title { font-size: 16px; font-weight: 600; margin: 0; }
+  .step-expect { background: var(--green-soft); border-left: 3px solid var(--green); padding: 8px 12px; margin-top: 10px; font-size: 13px; }
+  .step-expect strong { color: var(--green); text-transform: uppercase; font-size: 11px; letter-spacing: 0.06em; margin-right: 8px; }
+  .badge { display: inline-block; font-family: 'Geist Mono', monospace; font-size: 11px; background: var(--yellow-soft); color: var(--black); padding: 1px 7px; border-radius: 4px; margin-left: 6px; }
+  .badge.who-stuart { background: #E0E7FF; color: #3A47A8; }
+  .badge.who-ibtissam { background: #FCE4EC; color: #93144D; }
+  .badge.who-anyone { background: var(--gray-soft); color: var(--gray); }
+  pre.cli { background: #1A1A1A; color: #F0F0F0; padding: 12px 14px; border-radius: 8px; overflow-x: auto; font-family: 'Geist Mono', monospace; font-size: 12.5px; line-height: 1.5; }
+  pre.cli .c { color: #9AB4D6; }
+  .gotcha { background: var(--amber-soft); border-left: 3px solid var(--amber); padding: 10px 14px; margin-top: 10px; font-size: 13px; border-radius: 0 6px 6px 0; }
+  .gotcha strong { color: var(--amber); text-transform: uppercase; font-size: 11px; letter-spacing: 0.06em; margin-right: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc-head">
+  <a class="back-link" href="./index.html">← Back to Package A index</a>
+  <div class="brand">Court 16 × Cedarwind · Package A · Test walkthrough</div>
+  <h1>Testing Package A end-to-end</h1>
+  <p class="subtitle">A 20-minute hands-on tour of every behavior Cedarwind built. Reproducible from a laptop with the production HubSpot portal open in another tab. No real customer harm — all test artifacts get cleaned up at the end.</p>
+</header>
+
+<section class="summary-pkg">
+  <dl>
+    <dt>For</dt><dd><strong>Ibtissam + Anthony</strong> — verify Package A behaves the way the SOW described before flipping any workflow live.</dd>
+    <dt>Where</dt><dd>Production stack — booking app at <a href="https://court16-mindbody-test.vercel.app" target="_blank">court16-mindbody-test.vercel.app</a>, HubSpot portal <code>4832170</code>.</dd>
+    <dt>Cost</dt><dd>Zero real bookings. The MindBody sandbox flag (<code>MINDBODY_USE_SANDBOX_FALLBACK=true</code>) is still on, so all writes hit MindBody's <code>-99</code> sandbox, not Court 16's live MindBody. HubSpot gets real test Deals + Contacts — those get archived at the end.</dd>
+  </dl>
+</section>
+
+<h2>Pre-flight check (30 seconds)</h2>
+<p>Open these tabs in your browser, signed in to each:</p>
+<ul>
+  <li><strong>HubSpot</strong> — <a href="https://app.hubspot.com/contacts/4832170/objects/0-3/views/all/list" target="_blank">Deals view</a> (portal 4832170)</li>
+  <li><strong>Booking app</strong> — <a href="https://court16-mindbody-test.vercel.app/" target="_blank">court16-mindbody-test.vercel.app</a></li>
+  <li><strong>Tracker</strong> — <a href="https://court16-mindbody-test.vercel.app/tracker.html" target="_blank">/tracker.html</a> (for crossref)</li>
+</ul>
+<p>You'll be jumping between the booking-app tab + the HubSpot Deals tab a lot. The HubSpot Deals view should show all 13 of Court 16's pipelines.</p>
+
+<hr style="margin: 40px 0; border: 0; border-top: 1px solid var(--border);" />
+
+<h2>Test 1 · Kids trial submission creates a Deal <span class="badge who-anyone">Anyone</span></h2>
+<p>The simplest behavior to verify: a parent submits the trial form, a Deal lands in HubSpot.</p>
+
+<div class="step">
+  <div class="step-head"><span class="step-num">1.1</span><h3 class="step-title">Submit a fake trial</h3></div>
+  <ol>
+    <li>Open <a href="https://court16-mindbody-test.vercel.app/" target="_blank">the booking-app homepage</a></li>
+    <li>Click <strong>Kids free trial</strong></li>
+    <li>Pick any location (let's say <strong>Newton</strong>)</li>
+    <li>Pick any class from the calendar</li>
+    <li>Fill the form. Use <code>test+kids-walkthrough@cedarwind.io</code> as the email so it's easy to spot in HubSpot later. Make the child 6 years old.</li>
+    <li>Submit. You should land on the "we'll be in touch" confirmation screen.</li>
+  </ol>
+  <div class="step-expect"><strong>Expect</strong>The confirmation page shows a <em>correlation ID</em> (a short hex string). Copy it — you'll need it for later steps.</div>
+</div>
+
+<div class="step">
+  <div class="step-head"><span class="step-num">1.2</span><h3 class="step-title">Find the Deal in HubSpot</h3></div>
+  <ol>
+    <li>Switch to your HubSpot tab → <strong>Sales → Deals</strong></li>
+    <li>Change the pipeline dropdown to <strong>KIDS TRIALS (NEWTON)</strong></li>
+    <li>You should see a brand-new Deal named something like <em>"Kids trial — &lt;child name&gt; · NY - Newton"</em> at the top, in the <strong>Requested Trial</strong> column</li>
+    <li>Click the Deal to open it</li>
+  </ol>
+  <div class="step-expect"><strong>Expect</strong>
+    The Deal has:
+    <ul style="margin: 6px 0 0 18px;">
+      <li>A <strong>Court 16 correlation ID</strong> property matching the one from step 1.1</li>
+      <li>A <strong>Court 16 Booking</strong> property group on the Contact (scroll the related-contact card)</li>
+      <li>The contact has all 13 <code>court16_*</code> properties populated</li>
+    </ul>
+  </div>
+</div>
+
+<div class="gotcha"><strong>Gotcha</strong>If you don't see the Deal in <em>Newton</em>'s pipeline but it landed in another pipeline (or no pipeline), check that the booking-app form used the right location. The pipeline-to-location mapping lives in <code>config/hubspot-deals.ts</code>.</div>
+
+<hr style="margin: 40px 0; border: 0; border-top: 1px solid var(--border);" />
+
+<h2>Test 2 · Adult intro flow <span class="badge who-anyone">Anyone</span></h2>
+<p>Identical to Test 1 but on the adult side. Confirms the same Deal-creation works for the Tennis / Pickleball intro offers from Package B.</p>
+
+<div class="step">
+  <div class="step-head"><span class="step-num">2.1</span><h3 class="step-title">Submit an adult intro</h3></div>
+  <ol>
+    <li>Booking app homepage → <strong>Adult intro</strong></li>
+    <li>Pick <strong>Brooklyn</strong>, then <strong>Tennis Intro Special ($75)</strong></li>
+    <li>Pick any class</li>
+    <li>Fill the form with <code>test+adult-walkthrough@cedarwind.io</code>, birthdate <code>1990-01-15</code></li>
+    <li>Submit. You'll see a confirmation screen + a redirect prompt to MindBody's cart (sandbox URL — don't actually pay; just close the cart tab).</li>
+  </ol>
+  <div class="step-expect"><strong>Expect</strong>HubSpot → Sales → Deals → KID TRIALS (BK) pipeline shows a new Deal named "Adult intro · Tennis Intro Special · NY - Downtown Brooklyn" in <strong>Requested Trial / Intro Offer</strong>, amount $75.</div>
+</div>
+
+<hr style="margin: 40px 0; border: 0; border-top: 1px solid var(--border);" />
+
+<h2>Test 3 · Staff confirm moves the Deal forward <span class="badge who-stuart">Stuart</span></h2>
+<p>Verifies that when staff clicks the "Confirm" link in the (future) staff notification email, the Deal advances from <em>Requested Trial</em> to <em>Scheduled Trial</em>.</p>
+
+<div class="step">
+  <div class="step-head"><span class="step-num">3.1</span><h3 class="step-title">Build the signed staff URL</h3></div>
+  <p>The staff URLs are HMAC-signed by Cedarwind's app. They live as Contact properties on each booking. From your test booking in Test 1:</p>
+  <ol>
+    <li>HubSpot → click the parent Contact (from the Deal's right-rail "Contact" association)</li>
+    <li>Scroll the Contact's properties → <strong>Court 16 staff confirm URL</strong> — copy the value</li>
+  </ol>
+  <div class="step-expect"><strong>Expect</strong>A URL like <code>https://court16-mindbody-test.vercel.app/api/staff/confirm?token=&lt;signed-jwt&gt;</code></div>
+</div>
+
+<div class="step">
+  <div class="step-head"><span class="step-num">3.2</span><h3 class="step-title">Click it</h3></div>
+  <p>Open the URL in a new tab. (In production this link is in the staff notification email.)</p>
+  <div class="step-expect"><strong>Expect</strong>
+    <ul style="margin: 6px 0 0 18px;">
+      <li>A simple "Confirmed" HTML page</li>
+      <li>HubSpot Deal: stage flips to <strong>Scheduled Trial</strong></li>
+      <li>HubSpot Contact: <strong>Court 16 booking status</strong> flips to <code>confirmed</code></li>
+      <li>MindBody sandbox: the child is now booked into the class (sandbox-only)</li>
+    </ul>
+  </div>
+</div>
+
+<div class="gotcha"><strong>Gotcha</strong>If you click the URL twice, the second click returns "This booking is already confirmed" (HTTP 410). That's the single-use guarantee enforced via the Contact's status field — not via a separate token table. Working as designed.</div>
+
+<hr style="margin: 40px 0; border: 0; border-top: 1px solid var(--border);" />
+
+<h2>Test 4 · Deny action <span class="badge who-stuart">Stuart</span></h2>
+<p>Verifies the new Spec 5 functionality: deny with a 5-reason picklist.</p>
+
+<div class="step">
+  <div class="step-head"><span class="step-num">4.1</span><h3 class="step-title">Get the deny URL</h3></div>
+  <p>Submit a fresh kids trial (repeat Test 1 with a new email like <code>test+deny@cedarwind.io</code>). On its Contact, copy the <strong>Court 16 staff deny URL</strong> property.</p>
+</div>
+
+<div class="step">
+  <div class="step-head"><span class="step-num">4.2</span><h3 class="step-title">Open the deny URL</h3></div>
+  <p>Paste it into a browser. You'll see a form with 5 radio buttons (Wrong age band / No availability / Parent cancelled / Duplicate booking / Other) and an optional note field.</p>
+</div>
+
+<div class="step">
+  <div class="step-head"><span class="step-num">4.3</span><h3 class="step-title">Submit a denial</h3></div>
+  <ol>
+    <li>Pick a reason (e.g. "Wrong age band")</li>
+    <li>Click <strong>Deny + send email</strong></li>
+  </ol>
+  <div class="step-expect"><strong>Expect</strong>
+    <ul style="margin: 6px 0 0 18px;">
+      <li>HTML page confirming the denial</li>
+      <li>HubSpot Deal: <strong>Denial reason</strong> property = "Wrong age band", <strong>Denial note</strong> empty (unless you picked "Other")</li>
+      <li>HubSpot Contact: <strong>Court 16 booking status</strong> = <code>failed</code>, <strong>Court 16 failure reason</strong> = "Denied: Wrong age band"</li>
+    </ul>
+  </div>
+</div>
+
+<div class="gotcha"><strong>Note</strong>MindBody booking-cancellation is documented as a TODO — the deny route flips the Deal + Contact state but doesn't yet auto-remove the client from the MindBody class. Track 2 enhancement; for now staff cancels in MindBody admin if needed.</div>
+
+<hr style="margin: 40px 0; border: 0; border-top: 1px solid var(--border);" />
+
+<h2>Test 5 · Workflows fire (after Ibtissam's setup) <span class="badge who-ibtissam">Ibtissam</span></h2>
+<p>This test only works after Ibtissam adds the 2 actions to each workflow + flips them <code>enabled=true</code>. Skip if you haven't done that yet.</p>
+
+<div class="step">
+  <div class="step-head"><span class="step-num">5.1</span><h3 class="step-title">Verify the workflow shells exist</h3></div>
+  <ol>
+    <li>HubSpot → <strong>Automation → Workflows</strong></li>
+    <li>Search "Cedarwind" — you should see <code>[Cedarwind] Password setup · 1h after Requested Trial</code> and <code>[Cedarwind] 24h reminder · class -24h after Scheduled Trial</code></li>
+    <li>Click each → confirm the enrollment trigger reads "Deal stage is any of …" with 6 stage IDs (one per location)</li>
+  </ol>
+</div>
+
+<div class="step">
+  <div class="step-head"><span class="step-num">5.2</span><h3 class="step-title">Add the 2 actions per workflow</h3></div>
+  <p>For <strong>Password setup</strong>:</p>
+  <ol>
+    <li>Open the workflow → click <strong>+</strong> after the enrollment trigger</li>
+    <li>Add <strong>Delay</strong> → 1 hour</li>
+    <li>Add <strong>Send marketing email</strong> → pick <code>Court 16 — Password setup</code> (asset id <code>212772627104</code>)</li>
+    <li>Save</li>
+  </ol>
+  <p>For <strong>24h reminder</strong>:</p>
+  <ol>
+    <li>Add <strong>Delay until a date</strong> → property: a custom class-date property (Cedarwind doesn't store one yet — see notes below), offset -24 hours</li>
+    <li>Add <strong>Send marketing email</strong> → <code>Court 16 — Trial reminder (24h)</code> (asset id <code>212772628841</code>)</li>
+    <li>Save</li>
+  </ol>
+  <div class="gotcha"><strong>Class-date gotcha</strong>The 24h reminder needs a date property on the Deal to subtract 24 hours from. Currently the booking app only stores <code>court16_class_id</code> (MindBody class ID, not a date). For Test 5 you'll need either to (a) add a <code>court16_class_starts_at</code> Deal property and have Cedarwind extend the booking routes to write it, or (b) defer this workflow until Track 2. Spec 7 acknowledges this gap.</div>
+</div>
+
+<div class="step">
+  <div class="step-head"><span class="step-num">5.3</span><h3 class="step-title">Test the fire</h3></div>
+  <ol>
+    <li>Flip the password-setup workflow to <strong>On</strong></li>
+    <li>Submit a new kids trial via the booking app</li>
+    <li>Watch the HubSpot workflow's <strong>Performance</strong> tab — within ~1 hour you should see the new contact enrolled</li>
+    <li>Check the Contact's <strong>Activity</strong> timeline — the password-setup email should be queued (or sent if the workflow is unpaused beyond test mode)</li>
+  </ol>
+</div>
+
+<hr style="margin: 40px 0; border: 0; border-top: 1px solid var(--border);" />
+
+<h2>Cleanup <span class="badge who-anyone">Anyone</span></h2>
+<p>To leave Court 16's HubSpot clean after the walkthrough:</p>
+<ol>
+  <li>HubSpot → Deals → filter by <strong>Deal name</strong> contains "test" or "walkthrough" — bulk-archive each test deal</li>
+  <li>Contacts → filter by <strong>email</strong> contains "@cedarwind.io" with "walkthrough" in the local-part — bulk-archive each test contact</li>
+</ol>
+<p>HubSpot keeps archived records for 30 days, so accidental archives are recoverable from <em>Recently deleted</em>.</p>
+
+<div class="gotcha"><strong>Tip</strong>Cedarwind also has a 2-factor cleanup script (filter by <code>court16_correlation_id HAS_PROPERTY</code> + name pattern) that only catches Cedarwind-tagged test artifacts and never touches real-customer Deals. Ask Stuart if you'd like that run instead.</div>
+
+<hr style="margin: 40px 0; border: 0; border-top: 1px solid var(--border);" />
+
+<h2>If something fails</h2>
+<p>Every booking-app POST returns a JSON trace with one entry per integration step. To see it: when submitting via the UI, open <strong>DevTools → Network</strong>, find the <code>book/trial</code> or <code>book/intro</code> request, click <strong>Response</strong>. The <code>trace</code> array shows each step's status (<code>ok</code> / <code>error</code> / <code>skipped</code>) with the actual HubSpot or MindBody error message attached.</p>
+<p>Most common failure modes:</p>
+<ul>
+  <li><strong>HubSpot 400 INVALID_OPTION on <code>preferred_location</code></strong> — means our location-to-dropdown map drifted (rare, fixed in 2026-05-12)</li>
+  <li><strong>MindBody <code>usertoken/issue</code> 500</strong> — sandbox is flaky; the booking still completes via the graceful-degradation path (Contact gets <code>court16_booking_status=manual_review</code>)</li>
+  <li><strong>HubSpot form-submit 400 <code>FORM_HAS_RECAPTCHA_ENABLED</code></strong> — the reCAPTCHA toggle in spec 9 still needs flipping. Deal creation still works (different API path).</li>
+</ul>
+
+<footer>
+  <p style="font-size: 12px; color: var(--muted); margin-top: 32px;">
+    Court 16 × Cedarwind · Package A test walkthrough · v1.0 — generated 2026-05-12 ·
+    <a href="./index.html" style="color: var(--amber);">Package A index</a> ·
+    <a href="https://court16-mindbody-test.vercel.app/tracker.html" style="color: var(--amber);">Phase 2 tracker</a>
+  </p>
+</footer>
+
+</div>
+</body>
+</html>
