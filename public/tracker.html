@@ -147,7 +147,7 @@
   }
   .timeline-strip {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: 8px;
   }
   .phase {
@@ -168,6 +168,26 @@
   .phase.future {
     opacity: 0.6;
   }
+  .phase.ooo {
+    background: repeating-linear-gradient(
+      -45deg,
+      var(--gray-soft) 0 6px,
+      var(--bg) 6px 12px
+    );
+    border-color: #D6CFC0;
+  }
+  .phase.ooo .name { color: var(--muted); }
+
+  .ooo-banner {
+    background: repeating-linear-gradient(-45deg, var(--gray-soft) 0 6px, var(--bg) 6px 12px);
+    border: 1px solid #D6CFC0;
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--black);
+    margin: -8px 0 28px;
+  }
+  .ooo-banner strong { color: var(--black); font-weight: 600; }
   .phase .dates {
     font-family: 'Geist Mono', monospace;
     font-size: 11px;
@@ -749,17 +769,21 @@
   <p class="subtitle">Live engagement tracker. What's shipped, what's pending, who owns what.</p>
 </header>
 
+<div class="ooo-banner">
+  Heads-up · Stuart OOO <strong>Jun 27 – Jul 4</strong>. Multi-site go-live target shifts to Jul 7; final readout still Jul 15.
+</div>
+
 <!-- Summary stats -->
 <div class="summary">
   <div class="stat">
     <div class="label">Progress</div>
-    <div class="value">$8,000 <span class="accent">/ $13,000</span></div>
-    <div class="sub">62% shipped (by SOW value)</div>
+    <div class="value">$8,000 <span class="accent">/ $15,000</span></div>
+    <div class="sub">53% shipped (by SOW value)</div>
   </div>
   <div class="stat">
     <div class="label">Complete</div>
-    <div class="value">2 <span class="accent">of 4</span></div>
-    <div class="sub">Packages 0 + B</div>
+    <div class="value">2 <span class="accent">of 5</span></div>
+    <div class="sub">Multi-site live · Jul 7 · all 6 clubs</div>
   </div>
 </div>
 
@@ -767,10 +791,10 @@
 <div class="progress-wrap">
   <div class="row">
     <h3>Phase 2 engineering completion</h3>
-    <div class="pct">62%</div>
+    <div class="pct">53%</div>
   </div>
-  <div class="bar"><div class="fill" style="width: 62%"></div></div>
-  <p class="caption">Package 0 (Core Booking App) and Package B (Booking Engine Completions) are shipped and sandbox-verified. Package A (HubSpot Deals + Automation) and Package C (Ridge Hill Pilot) begin May 7.</p>
+  <div class="bar"><div class="fill" style="width: 53%"></div></div>
+  <p class="caption">Package 0 (Core Booking App) and Package B (Booking Engine Completions) are shipped and sandbox-verified. Package A (HubSpot Deals + Automation) kicks off May 7 alongside Package C (Ridge Hill Pilot). Package D (Multi-Site Rollout to the remaining 5 clubs) scheduled Jun 22 – Jul 7 with Stuart OOO Jun 27 – Jul 4; final readout Jul 15.</p>
 </div>
 
 <!-- Timeline -->
@@ -782,20 +806,24 @@
       <div class="name">Pre-kickoff + prep</div>
     </div>
     <div class="phase active">
-      <div class="dates">May 7 – 20</div>
-      <div class="name">Package A build</div>
-    </div>
-    <div class="phase">
-      <div class="dates">May 28 – Jun 3</div>
-      <div class="name">Ridge Hill go-live</div>
+      <div class="dates">May 7 – Jun 3</div>
+      <div class="name">Ridge Hill kickoff → go-live</div>
     </div>
     <div class="phase">
       <div class="dates">Jun 4 – 17</div>
       <div class="name">10-day pilot</div>
     </div>
+    <div class="phase">
+      <div class="dates">Jun 22 – 26</div>
+      <div class="name">Multi-site prep</div>
+    </div>
+    <div class="phase ooo">
+      <div class="dates">Jun 27 – Jul 4</div>
+      <div class="name">Stuart OOO</div>
+    </div>
     <div class="phase future">
-      <div class="dates">by Jul 1</div>
-      <div class="name">Final readout</div>
+      <div class="dates">Jul 7 – 15</div>
+      <div class="name">Go-live + final readout</div>
     </div>
   </div>
 </div>
@@ -902,21 +930,24 @@
   <div class="meta-row"><div class="k">Acceptance</div><div class="v">≥95% of trial submissions become confirmed MindBody bookings within 1 business day · Zero duplicate accounts · Every failure traceable to a correlation ID</div></div>
 </div>
 
-<!-- Phase 2.5 -->
-<div class="pkg future">
+<!-- Package D -->
+<div class="pkg blocked">
   <div class="pkg-head">
-    <h3>Phase 2.5 — Multi-Site Rollout (Option)</h3>
-    <div class="price">$2,000 (if triggered)</div>
+    <h3>Package D — Multi-Site Rollout</h3>
+    <div class="price">$2,000</div>
   </div>
-  <p class="desc">After Ridge Hill pilot passes acceptance criteria, rollout to the other 5 locations. Quoted separately; triggered by Court 16 at its discretion after pilot data is in.</p>
-  <div><span class="pill future"><span class="dot"></span>Post-pilot · Not in current SOW</span></div>
+  <p class="desc">Roll the booking app out to the remaining 5 Court 16 clubs (Brooklyn, LIC, FiDi, Fishtown, Newton). Per Ibtissam's May 12 confirmation: Ridge Hill staff begin scheduling slots last week of May, other clubs begin scheduling last week of June.</p>
+  <div><span class="pill blocked"><span class="dot"></span>Scheduled · Jun 22 – Jul 7</span></div>
 
   <ul class="deliverables">
-    <li><span class="icon pending">◷</span><div class="text">Authorize Cedarwind's key on Brooklyn, LIC, FiDi, Fishtown, Newton (5 sites × ~2 min admin per site)</div></li>
-    <li><span class="icon pending">◷</span><div class="text">Port per-site service IDs across all locations using Director of Sales data</div></li>
-    <li><span class="icon pending">◷</span><div class="text">Remove softwall; point main court16.com/trial traffic at the app</div></li>
-    <li><span class="icon pending">◷</span><div class="text">Post-rollout review at +14 days — bookings-per-site, time-to-confirm, denial reasons</div></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgD-1"><span class="icon pending">◷</span><label class="todo-label">Authorize Cedarwind's key on Brooklyn, LIC, FiDi, Fishtown, Newton (5 sites × ~2 min admin per site)<div class="note">Anthony action · target Jun 22 (before Stuart OOO)</div></label></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgD-2"><span class="icon pending">◷</span><label class="todo-label">Port per-site service IDs across all locations using Director of Sales data<div class="note">Stuart · Jun 22 – 26 (pre-OOO)</div></label></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgD-3"><span class="icon pending">◷</span><label class="todo-label">Remove softwall; point main court16.com/trial traffic at the app<div class="note">Stuart · Jul 7 (post-OOO, multi-site go-live)</div></label></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgD-4"><span class="icon pending">◷</span><label class="todo-label">Post-rollout review — bookings-per-site, time-to-confirm, denial reasons<div class="note">Jul 15 final readout</div></label></li>
   </ul>
+
+  <div class="meta-row"><div class="k">Schedule</div><div class="v">Setup Jun 22 – 26 · <span class="tag">Stuart OOO Jun 27 – Jul 4</span> · Go-live Jul 7 · Final readout Jul 15</div></div>
+  <div class="meta-row"><div class="k">Blocked on</div><div class="v"><span class="tag">Anthony API-key authorization on 5 sites by Jun 22 (before OOO)</span></div></div>
 </div>
 
 <!-- Pending to-do -->
@@ -937,6 +968,7 @@
       <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="anthony-1"><label class="todo-label">Sign Phase 2 SOW</label><span class="when">by May 6</span></li>
       <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="anthony-2"><label class="todo-label">Email MindBody Developer Support: "Cedarwind is our authorized integration partner — please approve their developer key for Go-Live"</label><span class="when">Apr 23 – May 6</span></li>
       <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="anthony-3"><label class="todo-label">Authorize Cedarwind API key on Ridge Hill MindBody admin (~2 min)</label><span class="when">May 7</span></li>
+      <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="anthony-5"><label class="todo-label">Authorize Cedarwind API key on remaining 5 MindBody sites (Brooklyn, LIC, FiDi, Fishtown, Newton) — needs to land before Stuart's OOO so rollout setup can start</label><span class="when">by Jun 22</span></li>
       <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="anthony-4"><label class="todo-label">Confirm Tennis Intro, Pickleball Intro, Tennis Ball Machine flagged 'sellable online' at Ridge Hill</label><span class="when">by May 20</span></li>
     </ul>
   </div>
@@ -1060,7 +1092,7 @@
 
 <footer>
   <div>Prepared by Stuart Chuang · Cedarwind Consulting · <a href="mailto:stuart@cedarwind.io">stuart@cedarwind.io</a></div>
-  <div>Last updated <span id="updated">Apr 24, 2026</span></div>
+  <div>Last updated <span id="updated">May 12, 2026</span></div>
 </footer>
 
 </div>
