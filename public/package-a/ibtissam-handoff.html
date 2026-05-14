@@ -94,9 +94,22 @@
   <li>Search the listed name in the search bar</li>
   <li>Click the email → <strong>Edit</strong></li>
   <li><strong>Settings tab</strong> → paste Subject + Preheader</li>
-  <li><strong>Edit tab</strong> → click the body text module → replace placeholder with the body HTML below</li>
+  <li><strong>Edit tab</strong> → click the body text module → paste the body HTML below — <strong>via the <code>&lt;/&gt;</code> Source Code view</strong> (read the callout immediately below before pasting any HTML)</li>
   <li><strong>Review and publish</strong> top-right → <strong>Publish</strong></li>
 </ul>
+
+<div class="gotcha" style="margin: 24px 0; padding: 16px 20px;">
+  <strong style="display: block; margin-bottom: 8px; font-size: 12px;">📋 IMPORTANT — How to paste HTML into HubSpot's email body</strong>
+  <p style="margin: 0 0 10px;">HubSpot's rich-text editor renders pasted HTML as <strong>literal escaped text</strong> by default — you'll see <code>&lt;p&gt;Hi {{ contact.firstname }}&lt;/p&gt;</code> as actual text on screen instead of "Hi Ibtissam,". The fix is one button.</p>
+  <ol style="margin: 8px 0 0 18px; padding: 0;">
+    <li>Click into the body text module → the rich-text toolbar appears at the top of the module</li>
+    <li>On the toolbar, find the <code>&lt;/&gt;</code> icon (usually right side of the toolbar, labeled <strong>Source Code</strong> on hover) → click it</li>
+    <li>The view switches to raw HTML — <strong>paste the body code here</strong></li>
+    <li>Click <code>&lt;/&gt;</code> again to flip back to WYSIWYG view → merge tokens like <code>{{ contact.firstname }}</code> render as friendly previews</li>
+    <li>If anything looks broken (tags showing as text, missing line breaks), flip back to Source view and double-check the paste landed cleanly</li>
+  </ol>
+  <p style="margin: 12px 0 0; font-size: 12px; color: var(--muted);"><strong>Screenshot placeholder:</strong> a 1-screenshot annotated walkthrough of the toolbar — coming Friday AM. Until then, hover icons until you find the <code>&lt;/&gt;</code> one — HubSpot tooltips it "Source Code".</p>
+</div>
 
 <h3>📧 Email 1 · Trial confirmation</h3>
 <p><span class="field-name">HubSpot asset id 212773423758</span> · <span class="field-name">Name: [Cedarwind] Trial confirmation — DRAFT, edit copy + activate</span></p>
@@ -107,7 +120,7 @@
 <div class="copy-label">Preheader</div>
 <div class="copy-block">What to bring, where to go, and who you'll meet.</div>
 
-<div class="copy-label">Body (paste into the rich-text module)</div>
+<div class="copy-label">Body (paste via the <code>&lt;/&gt;</code> Source Code view — see top of Part 1)</div>
 <div class="copy-block">&lt;p&gt;Hi {{ contact.firstname }},&lt;/p&gt;
 
 &lt;p&gt;Big news — {{ contact.child_name }}'s Court 16 trial is officially on the calendar. Our team just confirmed the spot.&lt;/p&gt;
@@ -147,7 +160,7 @@ The Court 16 team&lt;/p&gt;
 <div class="copy-label">Preheader</div>
 <div class="copy-block">Set your MindBody password so you can manage future bookings.</div>
 
-<div class="copy-label">Body</div>
+<div class="copy-label">Body (paste via the <code>&lt;/&gt;</code> Source Code view — see top of Part 1)</div>
 <div class="copy-block">&lt;p&gt;Hi {{ contact.firstname }},&lt;/p&gt;
 
 &lt;p&gt;We've got {{ contact.child_name }}'s trial request — thanks for choosing Court 16. While our team locks in the class, here's one thing you can do now to speed things up:&lt;/p&gt;
@@ -182,7 +195,7 @@ The Court 16 team&lt;/p&gt;
 <div class="copy-label">Preheader</div>
 <div class="copy-block">Gear list, parking tips, and what to expect.</div>
 
-<div class="copy-label">Body</div>
+<div class="copy-label">Body (paste via the <code>&lt;/&gt;</code> Source Code view — see top of Part 1)</div>
 <div class="copy-block">&lt;p&gt;Hi {{ contact.firstname }},&lt;/p&gt;
 
 &lt;p&gt;Quick reminder — {{ contact.child_name }}'s Court 16 trial is tomorrow at {{ contact.preferred_location }}.&lt;/p&gt;
@@ -223,7 +236,7 @@ The Court 16 team&lt;/p&gt;
 <div class="copy-label">Preheader</div>
 <div class="copy-block">We need to make a small adjustment before we can confirm.</div>
 
-<div class="copy-label">Body (uses HUBL conditionals on court16_failure_reason)</div>
+<div class="copy-label">Body (paste via the <code>&lt;/&gt;</code> Source Code view — uses HUBL conditionals on court16_failure_reason)</div>
 <div class="copy-block">&lt;p&gt;Hi {{ contact.firstname }},&lt;/p&gt;
 
 &lt;p&gt;Thanks for your interest in a Court 16 trial for {{ contact.child_name }}. We weren't able to confirm this specific booking — here's what happened:&lt;/p&gt;
