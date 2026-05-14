@@ -64,22 +64,22 @@
     <tr>
       <td>1. Trial confirmation</td>
       <td>[Cedarwind] Trial confirmed · parent email</td>
-      <td>Contact status → <code>confirmed</code></td>
+      <td>Contact status = <code>confirmed</code> · location = RH</td>
     </tr>
     <tr>
       <td>2. Password setup</td>
       <td>[Cedarwind] Password setup · 1h after Requested Trial</td>
-      <td>Deal → Requested Trial</td>
+      <td>RH Deal → Requested Trial</td>
     </tr>
     <tr>
       <td>3. 24h reminder</td>
       <td>[Cedarwind] 24h reminder · class -24h after Scheduled Trial</td>
-      <td>Deal → Scheduled Trial + class_date - 24h</td>
+      <td>RH Deal → Scheduled Trial · delay until <code>class_date</code> - 24h</td>
     </tr>
     <tr>
       <td>4. Trial declined</td>
       <td>[Cedarwind] Trial declined · parent email with reason</td>
-      <td>Contact status → <code>failed</code></td>
+      <td>Contact status = <code>failed</code> · location = RH</td>
     </tr>
   </tbody>
 </table>
@@ -223,7 +223,7 @@ The Court 16 team&lt;/p&gt;
 
 &lt;p&gt;&lt;small&gt;Reference: {{ contact.court16_correlation_id }}&lt;/small&gt;&lt;/p&gt;</div>
 
-<div class="gotcha"><strong>About the date math</strong>This email is supposed to fire 24h before the class, not 24h after the Deal lands in Scheduled Trial. That requires a <code>class_date</code> property on the Deal (a Track 2 add — Cedarwind would extend the booking app to capture it). Until that ships, this workflow fires on enrollment + a flat delay you set in the workflow builder (e.g. 23h after Deal enters Scheduled Trial = roughly evening-before-morning-class).</div>
+<div class="info"><strong>Date math is sorted</strong>The booking app now populates a <code>class_date</code> datetime property on every Deal (shipped May 14). Workflow 3 uses HubSpot's "Delay until date property" → <code>Deal.class_date</code> → <strong>-24 hours</strong>. The email fires exactly 24h before each class, automatically.</div>
 
 <hr style="margin: 36px 0; border: 0; border-top: 1px dashed var(--border);" />
 
@@ -282,7 +282,7 @@ The Court 16 team&lt;/p&gt;
 </ul>
 
 <h3>⚙️ Workflow 1 · Trial confirmation</h3>
-<p><span class="field-name">HubSpot id 1820575928</span> · Triggers when Contact <code>court16_booking_status</code> = <code>confirmed</code>.</p>
+<p><span class="field-name">HubSpot id 1820575928</span> · Triggers when Contact <code>court16_booking_status</code> = <code>confirmed</code> <strong>AND</strong> <code>court16_location_slug</code> = <code>ridgehill</code> (narrowed May 14 — re-broadens as more sites activate).</p>
 
 <div class="step">
   <div class="step-head"><span class="step-num">1</span><h3 class="step-title">Open the workflow</h3></div>
@@ -307,7 +307,7 @@ The Court 16 team&lt;/p&gt;
 <hr style="margin: 30px 0; border: 0; border-top: 1px dashed var(--border);" />
 
 <h3>⚙️ Workflow 2 · Password setup</h3>
-<p><span class="field-name">HubSpot id 1820551993</span> · Triggers when Deal enters Requested Trial in any of the 6 location pipelines.</p>
+<p><span class="field-name">HubSpot id 1820551993</span> · Triggers when Deal enters Ridge Hill's <strong>Requested Trial</strong> stage (narrowed from 6 pipelines to RH-only on May 14 per your pilot scope; will re-broaden as Package D activates more sites).</p>
 
 <div class="step">
   <div class="step-head"><span class="step-num">1</span><h3 class="step-title">Add a delay action</h3></div>
@@ -327,12 +327,12 @@ The Court 16 team&lt;/p&gt;
 <hr style="margin: 30px 0; border: 0; border-top: 1px dashed var(--border);" />
 
 <h3>⚙️ Workflow 3 · 24h reminder</h3>
-<p><span class="field-name">HubSpot id 1820562947</span> · Triggers when Deal enters Scheduled Trial.</p>
+<p><span class="field-name">HubSpot id 1820562947</span> · Triggers when Deal enters Ridge Hill's Scheduled Trial stage (narrowed to RH-only May 14).</p>
 
 <div class="step">
   <div class="step-head"><span class="step-num">1</span><h3 class="step-title">Add a delay action</h3></div>
   Open the workflow → click <strong>+</strong> after the trigger → <strong>Delay</strong>.
-  <div class="gotcha"><strong>Date-based delay limitation</strong>Ideally this is "Delay until: a date property minus 24 hours" with the property being the class start time. But our Deal records don't currently carry a <code>class_date</code> property (Cedarwind would need to extend the booking app to capture it — Track 2). For v1: pick a static delay that works for typical lead times (e.g. <strong>23 hours</strong> if most bookings happen ~24h before the class). Not perfect — but unlocks the reminder for now.</div>
+  <div class="info"><strong>Date property now live</strong>As of May 14, the booking app populates a <code>class_date</code> datetime property on each Deal (from MindBody's StartDateTime). Use HubSpot's "Delay until a date property" → pick <code>Deal.class_date</code> → offset <strong>-24 hours</strong>. The workflow will fire exactly 24h before each class.</div>
 </div>
 
 <div class="step">
@@ -342,13 +342,13 @@ The Court 16 team&lt;/p&gt;
 
 <div class="step">
   <div class="step-head"><span class="step-num">3</span><h3 class="step-title">Save + turn on (or leave off pending date property)</h3></div>
-  If you want to wait for the Track 2 <code>class_date</code> property to land before going live, leave this workflow Off. Cedarwind can ping you when it's available.
+  Re-enrollment <strong>Off</strong> → "Turn on workflow" once the email body is polished.
 </div>
 
 <hr style="margin: 30px 0; border: 0; border-top: 1px dashed var(--border);" />
 
 <h3>⚙️ Workflow 4 · Trial declined</h3>
-<p><span class="field-name">HubSpot id 1820568681</span> · Triggers when Contact <code>court16_booking_status</code> = <code>failed</code>.</p>
+<p><span class="field-name">HubSpot id 1820568681</span> · Triggers when Contact <code>court16_booking_status</code> = <code>failed</code> <strong>AND</strong> <code>court16_location_slug</code> = <code>ridgehill</code> (narrowed May 14).</p>
 
 <div class="step">
   <div class="step-head"><span class="step-num">1</span><h3 class="step-title">Add the send-email action</h3></div>
@@ -390,7 +390,7 @@ The Court 16 team&lt;/p&gt;
 
 <h2>Known gaps (Track 2 follow-ups)</h2>
 <ul>
-  <li><strong>Class date/time merge tokens</strong>: emails reference "class time" generically since the booking app doesn't yet store a <code>class_date</code> Deal property. Cedarwind extends this in a Track 2 commit.</li>
+  <li><strong>Class day/time/coach merge tokens in email bodies</strong>: <code>class_date</code> is now on the Deal (May 14 ship), but the emails still reference class time generically because day/time/coach are derived from the MindBody class object, not pushed to HubSpot. Two paths: (a) HubSpot personalization token for <code>{{ deal.class_date }}</code> formatted via HUBL, or (b) Cedarwind extends the booking app to also write classDay/classTime/coachName to the Deal — small lift, ping Stuart.</li>
   <li><strong>Per-location password-setup link</strong>: Email 2's CTA points at court16.com/login (generic). Optional polish via Smart Content keyed on <code>court16_location_slug</code>.</li>
   <li><strong>MindBody booking auto-cancellation on deny</strong>: <code>/api/staff/deny</code> flips state correctly but doesn't yet remove the client from the MindBody class (needs visit-id we don't capture from AddClientToClass — Track 2).</li>
   <li><strong>Reason picklist drift</strong>: if you change Cedarwind's deny picklist labels, the HUBL conditionals in Email 4 need a matching update.</li>
