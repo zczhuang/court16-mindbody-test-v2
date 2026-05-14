@@ -18,6 +18,7 @@ export interface AdultRequest {
   className: string;
   classDay: string;
   classTime: string;
+  classStartsAt?: string;
   coachName: string;
   notes?: string;
 }
@@ -75,6 +76,7 @@ export default function AdultRequestForm({
         className: trialClass.name,
         classDay: `${trialClass.dayOfWeek}, ${trialClass.date}`,
         classTime: trialClass.time,
+        classStartsAt: trialClass.startsAt,
         coachName: trialClass.coach,
         notes: notes || undefined,
       });

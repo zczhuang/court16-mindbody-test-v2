@@ -34,6 +34,7 @@ export function parseClass(mb: MindBodyClass): TrialClass {
     spotsAvailable: Math.max(0, mb.MaxCapacity - mb.TotalBooked),
     maxCapacity: mb.MaxCapacity,
     recurrence: "",
+    startsAt: mb.StartDateTime,
   };
 }
 

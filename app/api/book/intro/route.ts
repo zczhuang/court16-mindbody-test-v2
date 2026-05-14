@@ -40,6 +40,8 @@ interface IntroBody {
   className: string;
   classDay: string;
   classTime: string;
+  /** ISO 8601 start datetime (from MindBody StartDateTime). Drives HubSpot Deal `class_date`. */
+  classStartsAt?: string;
   coachName: string;
   notes?: string;
   waiverVersion?: string;
@@ -148,7 +150,8 @@ export async function POST(req: Request) {
           correlationId,
           locationId: location.id,
           contactProperties: contactPropertiesFromFields(fields),
-          dealName: `Adult intro (softwall) · ${offer.displayName} · ${location.fullName}`,
+          classStartsAt: body.classStartsAt,
+          dealName:`Adult intro (softwall) · ${offer.displayName} · ${location.fullName}`,
           amount: 0,
         },
         trace,
@@ -196,7 +199,8 @@ export async function POST(req: Request) {
           correlationId,
           locationId: location.id,
           contactProperties: contactPropertiesFromFields(fields),
-          dealName: `Adult intro (manual review) · ${offer.displayName} · ${location.fullName}`,
+          classStartsAt: body.classStartsAt,
+          dealName:`Adult intro (manual review) · ${offer.displayName} · ${location.fullName}`,
           amount: 0,
         },
         trace,
@@ -237,7 +241,8 @@ export async function POST(req: Request) {
           correlationId,
           locationId: location.id,
           contactProperties: contactPropertiesFromFields(fields),
-          dealName: `Adult intro (staff assist) · ${offer.displayName} · ${location.fullName}`,
+          classStartsAt: body.classStartsAt,
+          dealName:`Adult intro (staff assist) · ${offer.displayName} · ${location.fullName}`,
           amount: 0,
         },
         trace,
@@ -429,6 +434,7 @@ async function createDealSafely(
     contactProperties: Record<string, string | undefined>;
     dealName: string;
     amount: number;
+    classStartsAt?: string;
   },
   trace: Array<{ step: string; status: "ok" | "skipped" | "error"; data?: unknown; error?: unknown }>,
 ): Promise<void> {
@@ -454,6 +460,7 @@ async function createDealSafely(
       stageId: pipeline.stages.requested,
       dealName: args.dealName,
       amount: args.amount,
+      classStartsAt: args.classStartsAt,
     });
     trace.push({
       step: "hubspot.createTrialDeal",

@@ -52,6 +52,12 @@ export interface TrialClass {
   spotsAvailable: number;
   maxCapacity: number;
   recurrence: string;
+  /**
+   * ISO 8601 start datetime, passed through verbatim from MindBody's
+   * `StartDateTime`. Threaded into the request body so the booking app
+   * can set HubSpot Deal `class_date` for workflow 3 (24h reminder).
+   */
+  startsAt: string;
 }
 
 /** A single child in a trial request */
@@ -81,6 +87,8 @@ export interface TrialRequest {
   className: string;
   classDay: string;
   classTime: string;
+  /** ISO 8601 start datetime (e.g. 2026-05-15T19:00:00). Drives HubSpot Deal `class_date`. */
+  classStartsAt?: string;
   coachName: string;
   notes?: string;
 }

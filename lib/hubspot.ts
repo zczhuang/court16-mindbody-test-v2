@@ -332,6 +332,12 @@ interface CreateTrialDealArgs {
   dealName: string;
   /** USD amount — 0 for kid trials, offer.priceUsd for adult intros. */
   amount: number;
+  /**
+   * ISO 8601 datetime when the class starts (from MindBody's StartDateTime).
+   * Drives workflow 3 (24h reminder)'s date-based delay. Optional — Deal
+   * still creates without it, but workflow 3 won't fire on that Deal.
+   */
+  classStartsAt?: string;
 }
 
 /**
@@ -369,20 +375,26 @@ export async function createTrialDeal(
     return { id: existing.results[0].id, cached: true };
   }
 
-  // 2. Create Deal + Contact association in one call
+  // 2. Create Deal + Contact association in one call. HubSpot wants
+  //    `class_date` as a millisecond Unix timestamp (or ISO string —
+  //    it accepts both, ISO is clearer). Set it when we have it.
+  const properties: Record<string, string> = {
+    dealname: args.dealName,
+    amount: String(args.amount),
+    pipeline: args.pipelineId,
+    dealstage: args.stageId,
+    court16_correlation_id: args.correlationId,
+  };
+  if (args.classStartsAt) {
+    properties.class_date = args.classStartsAt;
+  }
   const deal = await hsFetch<{ id: string }>(log, {
     url: `${cfg.apiBaseUrl}/crm/v3/objects/deals`,
     method: "POST",
     headers: { Authorization: `Bearer ${requireAccessToken(cfg)}` },
     label: "POST /crm/v3/objects/deals",
     body: {
-      properties: {
-        dealname: args.dealName,
-        amount: String(args.amount),
-        pipeline: args.pipelineId,
-        dealstage: args.stageId,
-        court16_correlation_id: args.correlationId,
-      },
+      properties,
       associations: [
         {
           to: { id: args.contactId },

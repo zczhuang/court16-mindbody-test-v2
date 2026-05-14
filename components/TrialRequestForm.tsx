@@ -74,6 +74,7 @@ export default function TrialRequestForm({
         className: trialClass.name,
         classDay: `${trialClass.dayOfWeek}, ${trialClass.date}`,
         classTime: trialClass.time,
+        classStartsAt: trialClass.startsAt,
         coachName: trialClass.coach,
         notes: notes || undefined,
       });

@@ -161,6 +161,7 @@ export async function POST(req: Request) {
           correlationId,
           locationId: location.id,
           contactProperties: contactPropertiesFromFields(fields),
+          classStartsAt: body.classStartsAt,
           dealName: `Kids trial (softwall) — ${primaryKid.firstName} · ${location.fullName}`,
           amount: 0,
         },
@@ -226,6 +227,7 @@ export async function POST(req: Request) {
           correlationId,
           locationId: location.id,
           contactProperties: contactPropertiesFromFields(fields),
+          classStartsAt: body.classStartsAt,
           dealName: `Kids trial (manual review) — ${primaryKid.firstName} · ${location.fullName}`,
           amount: 0,
         },
@@ -401,6 +403,7 @@ async function createDealSafely(
     contactProperties: Record<string, string | undefined>;
     dealName: string;
     amount: number;
+    classStartsAt?: string;
   },
   trace: Array<{ step: string; status: "ok" | "skipped" | "error"; data?: unknown; error?: unknown }>,
 ): Promise<void> {
@@ -426,6 +429,7 @@ async function createDealSafely(
       stageId: pipeline.stages.requested,
       dealName: args.dealName,
       amount: args.amount,
+      classStartsAt: args.classStartsAt,
     });
     trace.push({
       step: "hubspot.createTrialDeal",
