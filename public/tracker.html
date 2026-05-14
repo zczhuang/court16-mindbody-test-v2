@@ -924,7 +924,7 @@
 
   <ul class="deliverables">
     <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgC-1"><span class="icon pending">◷</span><label class="todo-label">MindBody Developer Support "Go Live" approval — currently sandbox-only<div class="note">Stuart files submission; Anthony confirms Cedarwind as authorized integration partner. 1–3 week turnaround — can happen during PTO window.</div></label></li>
-    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgC-2"><span class="icon pending">◷</span><label class="todo-label">Authorize Cedarwind's MindBody key on Ridge Hill (site 5748154). Other 5 sites remain softwalled.</label></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgC-2"><span class="icon pending">◷</span><label class="todo-label">Ibtissam activates Cedarwind API Source on Ridge Hill (Source Name: <code>CedarWindSolutionsLLC</code>, Site ID: <code>5748154</code>). Other 5 sites remain softwalled until Package D.</label></li>
     <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgC-3"><span class="icon pending">◷</span><label class="todo-label">5-booking smoke test with Ibtissam's staging account before enabling public traffic</label></li>
     <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgC-4"><span class="icon pending">◷</span><label class="todo-label">Flip MINDBODY_WRITE_MODE=live and MINDBODY_USE_SANDBOX_FALLBACK=false scoped to Ridge Hill requests</label></li>
     <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgC-5"><span class="icon pending">◷</span><label class="todo-label">Point subdomain (e.g. trial.court16.com) at the Vercel deployment, Ridge Hill traffic only</label></li>
@@ -946,7 +946,8 @@
   <div><span class="pill blocked"><span class="dot"></span>Scheduled · Jun 22 – Jul 7</span></div>
 
   <ul class="deliverables">
-    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgD-1"><span class="icon pending">◷</span><label class="todo-label">Authorize Cedarwind's key on Brooklyn, LIC, FiDi, Fishtown, Newton (5 sites × ~2 min admin per site)<div class="note">Anthony action · target Jun 22 (before Stuart OOO)</div></label></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgD-1"><span class="icon pending">◷</span><label class="todo-label">Activate Cedarwind API Source (<code>CedarWindSolutionsLLC</code>) on Brooklyn, LIC, FiDi, Fishtown, Newton (5 sites × ~2 min admin per site)<div class="note">Anthony/Ibtissam action · target Jun 22 (before Stuart OOO)</div></label></li>
+    <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgD-1b"><span class="icon pending">◷</span><label class="todo-label">Per-club POC reply-to for Package A emails — design call: clone each email × 6 (24 total) or use Smart Content keyed on <code>court16_location_slug</code><div class="note">Raised by Ibtissam May 14. RH pilot uses single POC; expand at multi-site time.</div></label></li>
     <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgD-2"><span class="icon pending">◷</span><label class="todo-label">Port per-site service IDs across all locations using Director of Sales data<div class="note">Stuart · Jun 22 – 26 (pre-OOO)</div></label></li>
     <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgD-3"><span class="icon pending">◷</span><label class="todo-label">Remove softwall; point main court16.com/trial traffic at the app<div class="note">Stuart · Jul 7 (post-OOO, multi-site go-live)</div></label></li>
     <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="pkgD-4"><span class="icon pending">◷</span><label class="todo-label">Post-rollout review — bookings-per-site, time-to-confirm, denial reasons<div class="note">Jul 15 final readout</div></label></li>
@@ -986,10 +987,23 @@
     </div>
     <ul>
       <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="ibtissam-1"><label class="todo-label">Grant stuart@cedarwind.io HubSpot admin access + Private App permission <em style="color:var(--green); font-style:normal; font-weight:600; font-size:11px;">· DONE May 12</em></label><span class="when">Day 1 · May 7</span></li>
-      <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="ibtissam-2"><label class="todo-label">Hand over Ridge Hill MindBody API key (still pending — needed before Ridge Hill go-live)</label><span class="when">Day 1 · May 7</span></li>
+      <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="ibtissam-2"><label class="todo-label">Activate Cedarwind API Source on Ridge Hill MindBody site (Source Name: <code>CedarWindSolutionsLLC</code>, Site ID: <code>5748154</code>) — MindBody admin → Settings → API Sources → Add Source. Stuart shares the Api-Key separately via secure channel.</label><span class="when">by Fri May 15</span></li>
       <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="ibtissam-3"><label class="todo-label">Grant Stuart HubSpot Claude Connector access provision</label><span class="when">Day 1 · May 7</span></li>
       <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="ibtissam-4"><label class="todo-label">Review 4 email templates + assemble 4 workflows in HubSpot UI per <a href="/package-a/ibtissam-handoff.html" target="_blank" style="color:var(--amber)">handoff doc</a> (~45 min total)</label><span class="when">by Fri May 15</span></li>
       <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="ibtissam-5"><label class="todo-label">Flip reCAPTCHA off on existing Court 16 Trial form (10-sec toggle in Settings → Forms)</label><span class="when">by Fri May 15</span></li>
+    </ul>
+  </div>
+
+  <div class="grp">
+    <div class="owner">
+      <div class="owner-name">Stuart (Cedarwind)</div>
+      <div class="owner-role">Build + integration</div>
+    </div>
+    <ul>
+      <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="stuart-1"><label class="todo-label">Send Ibtissam the MindBody Source Name (<code>CedarWindSolutionsLLC</code>) + Api-Key via secure channel (1Password/LastPass) so she can activate on Ridge Hill site</label><span class="when">May 14</span></li>
+      <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="stuart-2"><label class="todo-label">Add <code>class_date</code> datetime Deal property + extend <code>/api/book/trial</code> and <code>/api/book/intro</code> to populate it from chosen calendar slot — unblocks WF3 (24h reminder)</label><span class="when">by Fri May 15</span></li>
+      <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="stuart-3"><label class="todo-label">Update Package A handoff doc with HubSpot rich-text Source Code (<code>&lt;/&gt;</code>) button workaround for HTML + token rendering</label><span class="when">by Fri May 15</span></li>
+      <li class="todo-row"><input type="checkbox" class="todo-box" data-todo="stuart-4"><label class="todo-label">Narrow Package A workflow triggers to Ridge Hill pipeline only (currently fires on all 6) — re-broaden per site as Package D goes live</label><span class="when">by Fri May 15</span></li>
     </ul>
   </div>
 
@@ -1100,7 +1114,7 @@
 
 <footer>
   <div>Prepared by Stuart Chuang · Cedarwind Consulting · <a href="mailto:stuart@cedarwind.io">stuart@cedarwind.io</a></div>
-  <div>Last updated <span id="updated">May 13, 2026</span></div>
+  <div>Last updated <span id="updated">May 14, 2026</span></div>
 </footer>
 
 </div>
