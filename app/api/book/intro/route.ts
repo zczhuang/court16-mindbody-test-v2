@@ -335,7 +335,7 @@ interface BuildFieldsArgs {
 }
 function buildFormFields(args: BuildFieldsArgs) {
   const { correlationId, body, offer, location, status, adultMbId, baseUrl } = args;
-  const [yyyy, mm, dd] = body.adult.birthDate.split("-");
+  const adultDob = body.adult.birthDate;
 
   return {
     firstname: body.adult.firstName,
@@ -352,9 +352,8 @@ function buildFormFields(args: BuildFieldsArgs) {
     child_name: body.adult.firstName,
     child_1___last_name: body.adult.lastName,
     childage: "15 and older",
-    child_date_of_birth__YYYY: yyyy,
-    child_date_of_birth__MM: mm,
-    child_date_of_birth__DD: dd,
+    // Single un-suffixed field (HubSpot form rejects the 3-part split).
+    child_date_of_birth: adultDob,
     child_1___playing_level: "New to Tennis",
     school: "—",
     lead_source: "Other",

@@ -322,7 +322,6 @@ interface BuildFieldsArgs {
 }
 function buildFormFields(args: BuildFieldsArgs) {
   const { correlationId, body, primaryKid, childDob, ageBand, location, status, parentMbId, childMbId, baseUrl } = args;
-  const [yyyy, mm, dd] = childDob.split("-");
 
   return {
     firstname: body.parentFirstName,
@@ -336,9 +335,9 @@ function buildFormFields(args: BuildFieldsArgs) {
     child_name: primaryKid.firstName,
     child_1___last_name: "-",
     childage: ageBand,
-    child_date_of_birth__YYYY: yyyy,
-    child_date_of_birth__MM: mm,
-    child_date_of_birth__DD: dd,
+    // Single un-suffixed field; HubSpot form rejects the 3-part split with
+    // "Required field 'child_date_of_birth' is missing" (caught by smoke #2).
+    child_date_of_birth: childDob,
     child_1___playing_level: HUBSPOT_DEFAULTS.child_1___playing_level,
     school: HUBSPOT_DEFAULTS.school,
     lead_source: HUBSPOT_DEFAULTS.lead_source,

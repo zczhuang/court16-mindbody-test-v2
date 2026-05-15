@@ -123,9 +123,10 @@ export interface TrialFormFields {
   child_name: string;
   child_1___last_name: string;
   childage: string;
-  child_date_of_birth__YYYY: string;
-  child_date_of_birth__MM: string;
-  child_date_of_birth__DD: string;
+  /** Single `YYYY-MM-DD` date string. HubSpot form rejects the 3-part split
+   * (`child_date_of_birth__YYYY/MM/DD`) with "Required field is missing"; the
+   * form field's internal name is the un-suffixed `child_date_of_birth`. */
+  child_date_of_birth: string;
   child_1___playing_level: string;
   school: string;
   lead_source: string;
@@ -375,9 +376,10 @@ export async function createTrialDeal(
     return { id: existing.results[0].id, cached: true };
   }
 
-  // 2. Create Deal + Contact association in one call. HubSpot wants
-  //    `class_date` as a millisecond Unix timestamp (or ISO string —
-  //    it accepts both, ISO is clearer). Set it when we have it.
+  // 2. Create Deal + Contact association in one call. HubSpot's `class_date`
+  //    is a `datetime` property type — internally stored as a long (epoch ms
+  //    UTC). ISO string is rejected with INVALID_LONG (caught by smoke #2).
+  //    Convert to ms before sending; skip if the slot didn't parse cleanly.
   const properties: Record<string, string> = {
     dealname: args.dealName,
     amount: String(args.amount),
@@ -386,7 +388,14 @@ export async function createTrialDeal(
     court16_correlation_id: args.correlationId,
   };
   if (args.classStartsAt) {
-    properties.class_date = args.classStartsAt;
+    const ms = Date.parse(args.classStartsAt);
+    if (!Number.isNaN(ms)) {
+      properties.class_date = String(ms);
+    } else {
+      log.warn("hubspot.createTrialDeal.class_date.unparseable", {
+        classStartsAt: args.classStartsAt,
+      });
+    }
   }
   const deal = await hsFetch<{ id: string }>(log, {
     url: `${cfg.apiBaseUrl}/crm/v3/objects/deals`,

@@ -77,9 +77,11 @@
     </tr>
     <tr>
       <td class="layer">MindBody</td>
-      <td class="item">Real Ridge Hill staff-user credentials provided (replaces the <code>Siteowner/apitest1234</code> sandbox creds currently on Vercel) <span style="font-size:11px;color:var(--muted)">(verified May 15 via <code>POST /usertoken/issue</code> → HTTP 200 against site 5748154, real Site Owner token)</span></td>
+      <td class="item">Real Ridge Hill staff-user credentials provided (replaces the Cedarwind dev-portal sandbox user <code>mindbodysandboxsite@gmail.com</code> currently on Vercel — that account auths against -99 but <strong>fails 403 against site 5748154</strong>; we need a real RH-side staff user)
+        <div class="why-gate"><strong>Caught by smoke test #2 (May 15)</strong>Initial assumption was the dev-portal user would work on RH once the Source was authorized — it doesn't. The Source authorization (above row) is consumer-mode only; staff-write calls (<code>getClientsByEmail</code>, <code>AddClient</code>) require a staff identity that exists on site 5748154. Anthony needs to create a staff login at the Ridge Hill MindBody site and share via LastPass.</div>
+      </td>
       <td class="owner">Anthony</td>
-      <td><span class="check done">✓ DONE</span></td>
+      <td><span class="check pending">◷ PENDING</span></td>
     </tr>
     <tr>
       <td class="layer">HubSpot</td>
@@ -113,9 +115,9 @@
     </tr>
     <tr>
       <td class="layer">Vercel</td>
-      <td class="item"><code>MINDBODY_STAFF_USERNAME</code> + <code>MINDBODY_STAFF_PASSWORD</code> updated from sandbox <code>Siteowner</code>/<code>apitest1234</code> → real Ridge Hill staff login (verified May 15 via <code>/usertoken/issue</code> HTTP 200 against site 5748154).</td>
+      <td class="item"><code>MINDBODY_STAFF_USERNAME</code> + <code>MINDBODY_STAFF_PASSWORD</code> updated from Cedarwind dev-portal sandbox user → real Ridge Hill staff login</td>
       <td class="owner">Cedarwind</td>
-      <td><span class="check done">✓ DONE</span></td>
+      <td><span class="check gated">— GATED <span style="font-size:11px;color:var(--muted)">(blocked on Anthony row above)</span></span></td>
     </tr>
     <tr>
       <td class="layer">Vercel</td>
@@ -127,7 +129,7 @@
 </table>
 
 <div class="why-gate" style="margin-top: 24px;">
-  <strong>Status (May 15, post-flip)</strong>All 4 MindBody + Vercel gates are now <strong>DONE</strong>. The 3 HubSpot Ibtissam rows + reCAPTCHA toggle remain — those land on the Friday 1 PM call. <strong>Read-only smoke test #1 PASSED</strong> against the live alias — calendar returns siteId <code>5748154</code> with real Court 16 programs (Little Freshman, Pickleball clinics, etc.) and real coaches (Coach Chris, Donovan, Matt, Nick). Write-mode tests #2–#10 are unblocked but staged behind explicit run approval (each creates real HubSpot + MindBody artifacts).
+  <strong>Status (May 15)</strong>API-Key authorized on RH ✓ · <code>USE_SANDBOX_FALLBACK=false</code> flipped ✓ · Read-only smoke test #1 PASSED (calendar returns siteId 5748154 with real Court 16 programs). <strong>Smoke test #2 caught 3 bugs:</strong> (A) the staff creds in Vercel are the dev-portal sandbox user, not RH — still blocked on Anthony; (B) HubSpot form rejects the 3-part <code>child_date_of_birth</code> split — patched May 15; (C) HubSpot <code>class_date</code> property is "datetime / long" — we sent ISO string, patched to epoch ms May 15. After B + C are deployed, the smoke #2 degraded path returns <code>status=manual_review</code> end-to-end. Tests #3–#10 still gated on Anthony's RH staff creds.
 </div>
 
 <hr class="section" />
