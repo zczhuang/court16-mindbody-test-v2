@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Ridge Hill pilot smoke tests · Court 16 × Cedarwind</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./styles.css" />
+<style>
+  .gate-table { width: 100%; border-collapse: collapse; margin: 14px 0; background: #fff; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .gate-table th { background: var(--bg); text-align: left; padding: 10px 14px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .gate-table td { padding: 12px 14px; border-top: 1px solid var(--border); font-size: 13.5px; vertical-align: top; }
+  .gate-table .layer { font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--muted); }
+  .gate-table .item { font-weight: 500; }
+  .gate-table .owner { font-size: 12px; }
+  .check { font-family: 'Geist Mono', monospace; font-weight: 700; font-size: 13px; }
+  .check.done { color: var(--green); }
+  .check.pending { color: var(--amber); }
+  .check.gated { color: var(--gray); }
+  .test { background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 18px 22px; margin: 14px 0; border-left: 4px solid var(--yellow); }
+  .test.passed { border-left-color: var(--green); background: var(--green-soft); }
+  .test.skipped { border-left-color: var(--gray); opacity: 0.7; }
+  .test-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 8px; }
+  .test-num { background: var(--black); color: #fff; font-family: 'Geist Mono', monospace; font-weight: 700; font-size: 11px; padding: 3px 8px; border-radius: 4px; min-width: 24px; text-align: center; }
+  .test-title { font-size: 16px; font-weight: 600; margin: 0; flex: 1; }
+  .test-runner { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  .expect { background: var(--green-soft); border-left: 3px solid var(--green); padding: 10px 14px; margin-top: 10px; font-size: 13px; border-radius: 0 6px 6px 0; }
+  .expect strong { color: var(--green); text-transform: uppercase; font-size: 11px; letter-spacing: 0.06em; margin-right: 8px; }
+  .verify-list { margin: 6px 0 0 18px; padding: 0; }
+  .verify-list li { padding: 3px 0; }
+  pre.cmd { background: #1A1A1A; color: #F0F0F0; padding: 12px 14px; border-radius: 8px; overflow-x: auto; font-family: 'Geist Mono', monospace; font-size: 12.5px; line-height: 1.5; margin: 8px 0; }
+  .acceptance { background: var(--yellow-soft); border-left: 4px solid var(--yellow); padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 24px 0; }
+  hr.section { border: 0; border-top: 1px solid var(--border); margin: 40px 0 24px; }
+  .why-gate { background: var(--amber-soft); border-left: 3px solid var(--amber); padding: 10px 14px; margin: 12px 0; font-size: 13px; border-radius: 0 6px 6px 0; }
+  .why-gate strong { color: var(--amber); text-transform: uppercase; font-size: 11px; letter-spacing: 0.06em; margin-right: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc-head">
+  <a class="back-link" href="./index.html">← Back to Package A index</a>
+  <div class="brand">Court 16 × Cedarwind · Package A · Ridge Hill pilot</div>
+  <h1>Ridge Hill pilot smoke tests</h1>
+  <p class="subtitle">Pre-launch checklist for the Ridge Hill pilot. Two halves: (1) the gates that must <em>all be true</em> before tests can run, and (2) the 10 scenarios that prove the system works end-to-end. After all 10 pass + acceptance criteria hold, flip <code>MINDBODY_WRITE_MODE=live</code> and soft-launch.</p>
+</header>
+
+<hr class="section" />
+
+<h2>Part 1 · Pre-test gates (everything below must be TRUE)</h2>
+
+<p>Each row is a single binary check. Don't start the smoke run until all 10 read DONE. The current state column reflects what's true right now (May 14).</p>
+
+<table class="gate-table">
+  <thead>
+    <tr>
+      <th style="width: 100px;">Layer</th>
+      <th>What must be true</th>
+      <th style="width: 130px;">Owner</th>
+      <th style="width: 80px;">State</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="layer">MindBody</td>
+      <td class="item">Cedarwind dev account approved for Go-Live by MindBody Support</td>
+      <td class="owner">MindBody Support</td>
+      <td><span class="check done">✓ DONE</span></td>
+    </tr>
+    <tr>
+      <td class="layer">MindBody</td>
+      <td class="item"><code>CedarWindSolutionsLLC</code> Source authorized on site <code>5748154</code> (Ridge Hill) via the MindBody admin "Add API Source" flow</td>
+      <td class="owner">Ibtissam<br/><span style="font-size:11px;color:var(--muted)">(Anthony approval first)</span></td>
+      <td><span class="check pending">◷ PENDING</span></td>
+    </tr>
+    <tr>
+      <td class="layer">MindBody</td>
+      <td class="item">Real Ridge Hill staff-user credentials provided (replaces the <code>Siteowner/apitest1234</code> sandbox creds currently on Vercel)</td>
+      <td class="owner">Anthony</td>
+      <td><span class="check pending">◷ PENDING</span></td>
+    </tr>
+    <tr>
+      <td class="layer">HubSpot</td>
+      <td class="item">13 Contact properties (<code>court16_*</code>) + 4 Deal properties (<code>court16_correlation_id</code>, <code>class_date</code>, <code>denial_reason</code>, <code>denial_note</code>) live in <code>court16_booking</code> group</td>
+      <td class="owner">Cedarwind</td>
+      <td><span class="check done">✓ DONE</span></td>
+    </tr>
+    <tr>
+      <td class="layer">HubSpot</td>
+      <td class="item">All 4 AUTOMATED_EMAIL templates published (state=AUTOMATED, isPublished=true) with copy pasted via <code>&lt;/&gt;</code> Source view</td>
+      <td class="owner">Ibtissam</td>
+      <td><span class="check pending">◷ PENDING</span></td>
+    </tr>
+    <tr>
+      <td class="layer">HubSpot</td>
+      <td class="item">All 4 workflows assembled in HubSpot UI (delay + send-email actions added) with enrollment triggers narrowed to Ridge Hill, and <code>enabled=true</code></td>
+      <td class="owner">Ibtissam</td>
+      <td><span class="check pending">◷ PENDING <span style="font-size:11px;color:var(--muted)">(shells ✓, actions pending)</span></span></td>
+    </tr>
+    <tr>
+      <td class="layer">HubSpot</td>
+      <td class="item">reCAPTCHA disabled on the Court 16 Trial form (spec 9) so the form-submit nurture path can run when MindBody is degraded</td>
+      <td class="owner">Ibtissam</td>
+      <td><span class="check pending">◷ PENDING</span></td>
+    </tr>
+    <tr>
+      <td class="layer">Vercel</td>
+      <td class="item"><code>MINDBODY_USE_SANDBOX_FALLBACK=false</code> — currently <code>true</code> (forces every MindBody call at the <code>-99</code> sandbox regardless of location)
+        <div class="why-gate"><strong>Why gated</strong>Flipping this <em>before</em> the source is authorized on RH breaks production — calendar pulls would 403 instead of returning sandbox data. Flip AFTER the two MindBody rows above clear.</div>
+      </td>
+      <td class="owner">Cedarwind</td>
+      <td><span class="check gated">— GATED</span></td>
+    </tr>
+    <tr>
+      <td class="layer">Vercel</td>
+      <td class="item"><code>MINDBODY_STAFF_USERNAME</code> + <code>MINDBODY_STAFF_PASSWORD</code> updated from sandbox <code>Siteowner</code>/<code>apitest1234</code> → real Ridge Hill staff login</td>
+      <td class="owner">Cedarwind</td>
+      <td><span class="check gated">— GATED <span style="font-size:11px;color:var(--muted)">(needs creds from Anthony)</span></span></td>
+    </tr>
+    <tr>
+      <td class="layer">Vercel</td>
+      <td class="item"><code>MINDBODY_WRITE_MODE=test</code> for the first smoke round (writes are accepted by MindBody but don't persist past a 24h sandbox window). Flips to <code>live</code> only after all 10 scenarios pass.</td>
+      <td class="owner">Cedarwind</td>
+      <td><span class="check done">✓ DONE</span></td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="why-gate" style="margin-top: 24px;">
+  <strong>Order of operations</strong>The two MindBody-layer "PENDING" rows unblock the two Vercel-layer "GATED" rows. The 3 HubSpot Ibtissam rows are independent — she can do those any time the doc + handoff are ready (they are). reCAPTCHA toggle (spec 9) is independent of everything else; flip whenever convenient.
+</div>
+
+<hr class="section" />
+
+<h2>Part 2 · The 10 smoke-test scenarios (in order)</h2>
+
+<p>Every scenario uses a unique correlation ID so artifacts are traceable. After each test passes, capture the correlation ID + Deal/Contact IDs for the post-run cleanup. If any test fails, stop the run — debug before continuing.</p>
+
+<p>All tests run against <a href="https://court16-mindbody-test.vercel.app" target="_blank">court16-mindbody-test.vercel.app</a> with Ridge Hill as the chosen location.</p>
+
+<div class="test">
+  <div class="test-head">
+    <span class="test-num">1</span>
+    <h3 class="test-title">Read-only calendar pull (no writes)</h3>
+    <span class="test-runner">Cedarwind</span>
+  </div>
+  <p><strong>Action:</strong> hit <code>GET /api/mindbody/calendar?locationId=ridgehill&startDate=...&endDate=...</code></p>
+  <pre class="cmd">curl "https://court16-mindbody-test.vercel.app/api/mindbody/calendar?locationId=ridgehill&startDate=2026-05-18&endDate=2026-05-25"</pre>
+  <div class="expect">
+    <strong>Expect</strong>
+    <ul class="verify-list">
+      <li>HTTP 200</li>
+      <li>Response <code>siteId</code> is <code>5748154</code> (NOT <code>-99</code>)</li>
+      <li><code>classes[]</code> contains recognizable Court 16 programs (Little Freshman, Freshman, etc.) — NOT sandbox "Fitville" / "Work out fo the day" data</li>
+    </ul>
+  </div>
+</div>
+
+<div class="test">
+  <div class="test-head">
+    <span class="test-num">2</span>
+    <h3 class="test-title">Kids trial happy path · submission → Deal in HubSpot</h3>
+    <span class="test-runner">Cedarwind</span>
+  </div>
+  <p><strong>Action:</strong> via the UI, submit a kids trial form for a fictional kid (age 6) at Ridge Hill, picking a class ~7 days out.</p>
+  <div class="expect">
+    <strong>Expect</strong>
+    <ul class="verify-list">
+      <li>Confirmation screen shows a correlation ID</li>
+      <li>HubSpot Contact appears with all 13 <code>court16_*</code> properties populated</li>
+      <li>HubSpot Deal appears in <strong>KIDS TRIALS (RIDGE HILL)</strong> pipeline at "Requested Trial" stage</li>
+      <li>Deal's <code>class_date</code> property matches the picked slot's exact start datetime</li>
+      <li>Deal's <code>court16_correlation_id</code> matches the Contact's correlation ID</li>
+      <li>MindBody admin (Ridge Hill site) shows a new client created with the test email</li>
+    </ul>
+  </div>
+</div>
+
+<div class="test">
+  <div class="test-head">
+    <span class="test-num">3</span>
+    <h3 class="test-title">Staff confirm flow · Deal advances to Scheduled Trial</h3>
+    <span class="test-runner">Cedarwind</span>
+  </div>
+  <p><strong>Action:</strong> From the Contact created in test 2, copy the <strong>Court 16 staff confirm URL</strong> property → open it in a browser. Then click the same URL a second time.</p>
+  <div class="expect">
+    <strong>Expect</strong>
+    <ul class="verify-list">
+      <li>First click: "Confirmed" HTML page · Deal stage flips to <strong>Scheduled Trial</strong> · Contact <code>court16_booking_status</code> flips to <code>confirmed</code> · MindBody admin shows the child enrolled in the actual class</li>
+      <li>Second click: HTTP 410 "This booking is already confirmed" (idempotency check)</li>
+    </ul>
+  </div>
+</div>
+
+<div class="test">
+  <div class="test-head">
+    <span class="test-num">4</span>
+    <h3 class="test-title">Adult intro flow · Deal in correct pipeline with amount</h3>
+    <span class="test-runner">Cedarwind</span>
+  </div>
+  <p><strong>Action:</strong> via the UI, submit an adult intro form for <strong>Tennis Intro Special ($75)</strong> at Ridge Hill. After redirect to MindBody cart, close the cart tab (don't actually purchase).</p>
+  <div class="expect">
+    <strong>Expect</strong>
+    <ul class="verify-list">
+      <li>Deal appears in <strong>KIDS TRIALS (BK)</strong> pipeline (Brooklyn is the "default" — verify per-location mapping in <code>config/hubspot-deals.ts</code> — or whichever pipeline is mapped to ridgehill for adult intros)</li>
+      <li>Deal name: "Adult intro · Tennis Intro Special · NY - Ridge Hill, Yonkers"</li>
+      <li>Deal amount: <strong>$75</strong></li>
+      <li>Deal <code>class_date</code> populated</li>
+      <li>Cart URL targets Ridge Hill's MindBody (<code>studioid=5748154</code>)</li>
+    </ul>
+  </div>
+</div>
+
+<div class="test">
+  <div class="test-head">
+    <span class="test-num">5</span>
+    <h3 class="test-title">Deny flow · Deal annotated, Contact failed</h3>
+    <span class="test-runner">Cedarwind</span>
+  </div>
+  <p><strong>Action:</strong> Submit a fresh kids trial. Copy the Contact's <strong>Court 16 staff deny URL</strong>, open it → pick "Wrong age band" radio → submit.</p>
+  <div class="expect">
+    <strong>Expect</strong>
+    <ul class="verify-list">
+      <li>HTML response: "Denied. Parent will be notified ..."</li>
+      <li>Deal: <code>denial_reason</code> = "wrong_age_band" set, <code>denial_note</code> empty</li>
+      <li>Contact: <code>court16_booking_status</code> = <code>failed</code>, <code>court16_failure_reason</code> = "Denied: Wrong age band"</li>
+    </ul>
+  </div>
+</div>
+
+<div class="test">
+  <div class="test-head">
+    <span class="test-num">6</span>
+    <h3 class="test-title">Reassign flow · Contact flips to manual_review</h3>
+    <span class="test-runner">Cedarwind</span>
+  </div>
+  <p><strong>Action:</strong> Submit a fresh kids trial. Open the Contact's <strong>Court 16 staff reassign URL</strong>.</p>
+  <div class="expect">
+    <strong>Expect</strong>
+    <ul class="verify-list">
+      <li>HTML response: "Flagged for manual review. Reassign the class in MindBody, then visit the admin retry URL."</li>
+      <li>Contact: <code>court16_booking_status</code> = <code>manual_review</code></li>
+      <li>Deal stage: <strong>UNCHANGED</strong> (per design — Deal stays at Requested Trial; staff re-confirm of new class advances it)</li>
+    </ul>
+  </div>
+</div>
+
+<div class="test">
+  <div class="test-head">
+    <span class="test-num">7</span>
+    <h3 class="test-title">Duplicate email softwall</h3>
+    <span class="test-runner">Cedarwind</span>
+  </div>
+  <p><strong>Action:</strong> Submit the same kids trial twice in a row with identical parent email.</p>
+  <div class="expect">
+    <strong>Expect</strong>
+    <ul class="verify-list">
+      <li>1st submission: returns <code>{status: "pending_staff"}</code></li>
+      <li>2nd submission: returns <code>{status: "duplicate_email_softwall"}</code> · trace shows <code>getClientsByEmail</code> matched > 0 · no new MindBody client created</li>
+    </ul>
+  </div>
+</div>
+
+<div class="test">
+  <div class="test-head">
+    <span class="test-num">8</span>
+    <h3 class="test-title">Age-validation rejection</h3>
+    <span class="test-runner">Cedarwind</span>
+  </div>
+  <p><strong>Action:</strong> Submit a kids trial with child age = 12 against a class named "Little Freshman ..." (which is age 3–6).</p>
+  <div class="expect">
+    <strong>Expect</strong>
+    <ul class="verify-list">
+      <li>HTTP 400</li>
+      <li>Response body: <code>{"errors": ["child age 12 is outside eligible range 3–6 for Little Freshman classes"]}</code></li>
+      <li>Zero writes — no MindBody client created, no HubSpot Contact/Deal created</li>
+    </ul>
+  </div>
+</div>
+
+<div class="test">
+  <div class="test-head">
+    <span class="test-num">9</span>
+    <h3 class="test-title">Workflow firing (after Ibtissam enables them)</h3>
+    <span class="test-runner">Ibtissam (verify) · Cedarwind (trigger)</span>
+  </div>
+  <p><strong>Action:</strong> Submit a fresh kids trial. Wait 1h (or use HubSpot's workflow Test enrollment to skip the delay). Then run test 3 (staff confirm).</p>
+  <div class="expect">
+    <strong>Expect</strong>
+    <ul class="verify-list">
+      <li>~1h after submission: WF2 (Password setup) fires · password-setup email queues to the test inbox</li>
+      <li>Immediately after staff confirm: WF1 (Trial confirmation) fires · confirmation email queues</li>
+      <li>For WF3 (24h reminder): book a class ~25h out · check workflow "Performance" tab shows enrollment with a scheduled send time at <code>class_date - 24h</code></li>
+      <li>For WF4 (Denial): run test 5 then watch the workflow fire and the denial email queue</li>
+    </ul>
+  </div>
+</div>
+
+<div class="test">
+  <div class="test-head">
+    <span class="test-num">10</span>
+    <h3 class="test-title">Failure trace integrity</h3>
+    <span class="test-runner">Cedarwind</span>
+  </div>
+  <p><strong>Action:</strong> Submit a booking with a deliberately invalid <code>classScheduleId</code> (e.g. <code>999999999</code>).</p>
+  <div class="expect">
+    <strong>Expect</strong>
+    <ul class="verify-list">
+      <li>Response includes a <code>trace[]</code> array where one step is <code>status: "error"</code> with a useful message attached</li>
+      <li>Correlation ID intact across the entire trace</li>
+      <li>If the booking lands as <code>manual_review</code>: a Contact + Deal still appear in HubSpot (graceful degradation working) tagged with the failure reason</li>
+    </ul>
+  </div>
+</div>
+
+<hr class="section" />
+
+<h2>Part 3 · Acceptance criteria before flipping <code>MINDBODY_WRITE_MODE=live</code></h2>
+
+<div class="acceptance">
+  <h3 style="margin-top: 0;">All five must hold</h3>
+  <ol style="margin: 8px 0 0 22px;">
+    <li><strong>≥ 5 successful end-to-end bookings</strong> create real Ridge Hill MindBody enrollments (verifiable in the RH admin queue)</li>
+    <li><strong>0 duplicate Contacts</strong> on email match across the test run</li>
+    <li><strong>0 unexpected 502s</strong> in any trace response</li>
+    <li><strong>Every failure</strong> (intentional or not) is traceable from a correlation ID in the app log → HubSpot Contact → MindBody admin within 60 seconds</li>
+    <li><strong>All 4 workflows fire as expected</strong> — emails land in the test inbox at the right time, content renders without raw <code>{{ }}</code> tokens visible</li>
+  </ol>
+</div>
+
+<h3>Then, in this order:</h3>
+<ol>
+  <li>Flip <code>MINDBODY_WRITE_MODE=live</code> on Vercel</li>
+  <li>Cleanup the test artifacts (use the 2-factor filter: <code>court16_correlation_id HAS_PROPERTY</code> + name pattern contains "test/smoke")</li>
+  <li>Point <code>trial.court16.com</code> DNS at the Vercel deploy</li>
+  <li>Soft-launch — send the trial URL to a small group of real parents (~20) for the first week</li>
+  <li>Monitor for the 10 business days documented in Package C</li>
+</ol>
+
+<hr class="section" />
+
+<h2>Test cleanup playbook</h2>
+<p>After the smoke run, archive each test artifact safely. <strong>Use the 2-factor filter</strong> below — never archive by date + pipeline alone (one of those accidentally caught 2 real customer Deals during build).</p>
+
+<pre class="cmd"># Safe cleanup: only catches Cedarwind-tagged artifacts (court16_correlation_id is set)
+# + name matches test pattern. Never touches real customer Deals.
+
+# Find Deals
+curl -s -X POST "https://api.hubapi.com/crm/v3/objects/deals/search" \
+  -H "Authorization: Bearer $HUBSPOT_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "filterGroups":[{
+      "filters":[
+        {"propertyName":"court16_correlation_id","operator":"HAS_PROPERTY"},
+        {"propertyName":"dealname","operator":"CONTAINS_TOKEN","value":"smoke"}
+      ]
+    }],
+    "limit":50,
+    "properties":["dealname","court16_correlation_id"]
+  }'
+
+# Then for each id: DELETE /crm/v3/objects/deals/{id}
+# HubSpot DELETE is soft-archive — recoverable for 30 days via batch/restore</pre>
+
+<footer>
+  <p style="font-size: 12px; color: var(--muted); margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border);">
+    Court 16 × Cedarwind · RH pilot smoke tests · v1.0 (2026-05-14) ·
+    <a href="./index.html" style="color: var(--amber);">Package A index</a> ·
+    <a href="./test-walkthrough.html" style="color: var(--amber);">Dev test walkthrough</a> ·
+    <a href="./ibtissam-handoff.html" style="color: var(--amber);">Ibtissam handoff</a> ·
+    <a href="https://court16-mindbody-test.vercel.app/tracker.html" style="color: var(--amber);">Phase 2 tracker</a>
+  </p>
+</footer>
+
+</div>
+</body>
+</html>
