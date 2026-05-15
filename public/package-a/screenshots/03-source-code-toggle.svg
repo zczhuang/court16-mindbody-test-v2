@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 420" font-family="Geist, sans-serif">
+  <defs>
+    <filter id="sh3" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+  <rect width="800" height="420" fill="#f7f5ef"/>
+
+  <!-- Rich text toolbar (the bar that pops up when you click into a text module) -->
+  <rect x="40" y="40" width="720" height="48" rx="6" fill="#222" filter="url(#sh3)"/>
+
+  <!-- Toolbar items -->
+  <text x="56" y="70" font-size="13" font-weight="600" fill="#fff">B</text>
+  <text x="76" y="70" font-size="13" font-style="italic" fill="#fff">I</text>
+  <text x="96" y="70" font-size="13" text-decoration="underline" fill="#fff">U</text>
+  <line x1="116" y1="56" x2="116" y2="72" stroke="#555"/>
+  <text x="130" y="70" font-size="11" fill="#fff">Normal ▾</text>
+  <line x1="200" y1="56" x2="200" y2="72" stroke="#555"/>
+  <circle cx="218" cy="64" r="6" fill="#fff" stroke="#fff"/>
+  <text x="218" y="68" font-size="9" text-anchor="middle" fill="#222">A</text>
+  <text x="246" y="70" font-size="13" fill="#fff">≡</text>
+  <text x="270" y="70" font-size="13" fill="#fff">≣</text>
+  <line x1="290" y1="56" x2="290" y2="72" stroke="#555"/>
+  <text x="304" y="70" font-size="13" fill="#fff">🔗</text>
+  <text x="326" y="70" font-size="13" fill="#fff">📷</text>
+  <text x="348" y="70" font-size="13" fill="#fff">∑</text>
+  <line x1="370" y1="56" x2="370" y2="72" stroke="#555"/>
+  <text x="386" y="70" font-size="11" fill="#fff">Personalize ▾</text>
+  <line x1="470" y1="56" x2="470" y2="72" stroke="#555"/>
+
+  <!-- More icons -->
+  <text x="486" y="70" font-size="13" fill="#fff">⋯</text>
+  <text x="510" y="70" font-size="13" fill="#fff">↺</text>
+  <text x="530" y="70" font-size="13" fill="#fff">↻</text>
+
+  <!-- Source Code button — HIGHLIGHTED on the far right -->
+  <rect x="690" y="48" width="58" height="32" rx="4" fill="#f0b400" stroke="#fff" stroke-width="2"/>
+  <text x="719" y="70" font-size="14" font-weight="700" text-anchor="middle" fill="#222">&lt;/&gt;</text>
+
+  <!-- Annotation arrow pointing to the </> button -->
+  <path d="M 719 100 Q 700 130 600 160" fill="none" stroke="#c0392b" stroke-width="2.5" stroke-dasharray="5 3"/>
+  <polygon points="600,160 612,154 608,166" fill="#c0392b"/>
+  <text x="380" y="160" font-size="13" font-weight="700" fill="#c0392b">CLICK this &lt;/&gt; button (tooltip: "Source Code")</text>
+  <text x="380" y="178" font-size="12" fill="#444">Hover to see the tooltip — it's the rightmost icon on the toolbar.</text>
+
+  <!-- After click: source code modal preview -->
+  <text x="56" y="220" font-size="11" font-weight="600" fill="#666" letter-spacing="0.8">AFTER CLICKING ↓</text>
+  <rect x="40" y="232" width="720" height="170" rx="6" fill="#1a1a1a" filter="url(#sh3)"/>
+  <text x="56" y="256" font-size="11" fill="#888">Source Code</text>
+  <rect x="56" y="266" width="688" height="120" rx="3" fill="#0d0d0d"/>
+  <text x="68" y="288" font-family="Geist Mono, monospace" font-size="11" fill="#7ee787">&lt;p&gt;Hi {{ contact.firstname }},&lt;/p&gt;</text>
+  <text x="68" y="306" font-family="Geist Mono, monospace" font-size="11" fill="#e6edf3">&lt;p&gt;We've got {{ contact.child_name }}'s trial request — thanks…&lt;/p&gt;</text>
+  <text x="68" y="324" font-family="Geist Mono, monospace" font-size="11" fill="#e6edf3">&lt;h3&gt;Set your Court 16 / MindBody password&lt;/h3&gt;</text>
+  <text x="68" y="342" font-family="Geist Mono, monospace" font-size="11" fill="#e6edf3">&lt;p&gt;&lt;a href="https://www.court16.com/login" …&gt;Set your password →&lt;/a&gt;&lt;/p&gt;</text>
+  <text x="68" y="368" font-family="Geist Mono, monospace" font-size="11" fill="#aaa">↑ Paste body HTML here, then click [Save] on the dialog.</text>
+</svg>
