@@ -393,7 +393,10 @@ function buildFormFields(args: BuildFieldsArgs) {
     court16_correlation_id: correlationId,
     court16_intent: "kid_trial" as const,
     court16_booking_status: status,
-    court16_class_id: String(body.classScheduleId),
+    // court16_class_id stores the per-occurrence MindBody ClassId — what
+    // /class/addclienttoclass requires. Was ClassScheduleId pre-Bug-E
+    // (caught by smoke #3); confirm route returned 502 InvalidClassId.
+    court16_class_id: String(body.classId),
     court16_location_slug: location.id,
     court16_waiver_version: WAIVER_VERSION,
     court16_mindbody_parent_id: parentMbId,
@@ -528,6 +531,7 @@ function validate(body: TrialRequest | undefined): string[] {
     errors.push("childFirstName or children[] is required");
   if (!body.locationId) errors.push("locationId is required");
   if (typeof body.classScheduleId !== "number") errors.push("classScheduleId must be a number");
+  if (typeof body.classId !== "number") errors.push("classId must be a number");
 
   // Age-range check: reject bookings where a child's age falls outside the
   // class's eligible band. Permissive — skipped when the class level isn't

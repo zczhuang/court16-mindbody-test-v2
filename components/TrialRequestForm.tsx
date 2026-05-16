@@ -71,6 +71,7 @@ export default function TrialRequestForm({
         locationId,
         locationName,
         classScheduleId: trialClass.classScheduleId,
+        classId: trialClass.classId,
         className: trialClass.name,
         classDay: `${trialClass.dayOfWeek}, ${trialClass.date}`,
         classTime: trialClass.time,

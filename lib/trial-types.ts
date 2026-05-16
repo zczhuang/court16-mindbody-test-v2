@@ -84,6 +84,14 @@ export interface TrialRequest {
   locationId: string;
   locationName: string;
   classScheduleId: number;
+  /**
+   * Per-occurrence ClassId (MindBody's `Class.Id`, distinct from
+   * ClassScheduleId which is the recurring schedule template). REQUIRED
+   * by AddClientToClass on confirm — caught by smoke #3 v1 (Bug E:
+   * passing ClassScheduleId returned 502 from MindBody). Forms must
+   * thread `trialClass.classId` here, not classScheduleId.
+   */
+  classId: number;
   className: string;
   classDay: string;
   classTime: string;

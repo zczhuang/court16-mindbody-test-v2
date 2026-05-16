@@ -15,6 +15,7 @@ export interface AdultRequest {
     birthDate: string;
   };
   classScheduleId: number;
+  classId: number;
   className: string;
   classDay: string;
   classTime: string;
@@ -73,6 +74,7 @@ export default function AdultRequestForm({
         offerKey: offer.key,
         adult: { firstName, lastName, email, phone, birthDate },
         classScheduleId: trialClass.classScheduleId,
+        classId: trialClass.classId,
         className: trialClass.name,
         classDay: `${trialClass.dayOfWeek}, ${trialClass.date}`,
         classTime: trialClass.time,

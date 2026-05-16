@@ -38,6 +38,8 @@ interface IntroBody {
     birthDate: string; // required for adults
   };
   classScheduleId: number;
+  /** Per-occurrence MindBody ClassId (Bug E fix — see trial route). */
+  classId: number;
   className: string;
   classDay: string;
   classTime: string;
@@ -391,7 +393,8 @@ function buildFormFields(args: BuildFieldsArgs) {
     court16_correlation_id: correlationId,
     court16_intent: "adult_intro" as const,
     court16_booking_status: status,
-    court16_class_id: String(body.classScheduleId),
+    // Per-occurrence MindBody ClassId (Bug E fix — see trial route).
+    court16_class_id: String(body.classId),
     court16_location_slug: location.id,
     court16_offer_key: offer.key,
     court16_waiver_version: body.waiverVersion ?? WAIVER_VERSION,
@@ -518,6 +521,7 @@ function validate(body: IntroBody | undefined): string[] {
   }
   if (typeof body.classScheduleId !== "number")
     errors.push("classScheduleId must be a number");
+  if (typeof body.classId !== "number") errors.push("classId must be a number");
   return errors;
 }
 
