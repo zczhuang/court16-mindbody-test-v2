@@ -103,7 +103,21 @@ export function parseClass(mb: MindBodyClass): TrialClass {
     dayOfWeek: start.toLocaleDateString("en-US", { weekday: "long" }),
     coach: mb.Staff?.DisplayName || "TBD",
     court: mb.Resource?.Name || "",
-    spotsAvailable: Math.max(0, mb.MaxCapacity - mb.TotalBooked),
+    // Web-bookable capacity is what AddClientToClass actually accepts.
+    // MaxCapacity - TotalBooked includes admin/walk-in bookings; using
+    // WebCapacity - WebBooked correctly hides classes that have spots
+    // but no online bookings allowed (caught by smoke #3: class 4765
+    // showed 2 MaxCapacity spots but WebCapacity=0, MindBody rejected
+    // with "Online booking capacity met its threshold").
+    // Fall back to MaxCapacity for sites that don't use WebCapacity.
+    spotsAvailable:
+      typeof (mb as unknown as { WebCapacity?: number }).WebCapacity === "number"
+        ? Math.max(
+            0,
+            ((mb as unknown as { WebCapacity?: number }).WebCapacity ?? 0) -
+              ((mb as unknown as { WebBooked?: number }).WebBooked ?? 0),
+          )
+        : Math.max(0, mb.MaxCapacity - mb.TotalBooked),
     maxCapacity: mb.MaxCapacity,
     recurrence: "",
     startsAt: mb.StartDateTime,
