@@ -46,21 +46,27 @@ export const ADULT_OFFERS: AdultOffer[] = [
     displayName: "Tennis Intro Special",
     priceUsd: 75,
     subtitle: "One 60-minute tennis class with a Court 16 coach.",
-    serviceIdByLocation: { ...EMPTY_SERVICE_MAP },
+    // MindBody RH service: "Tennis Intro Special: 1 Class + 1 Free" $68
+    // (discovered via /sale/services May 15 — note RH lists this at $68
+    // not $75; pricing mismatch flagged for Anthony in issue tracker).
+    serviceIdByLocation: { ...EMPTY_SERVICE_MAP, ridgehill: 100236 },
   },
   {
     key: "pickleball-intro-58",
     displayName: "Pickleball Clinic Intro",
     priceUsd: 58,
     subtitle: "One 45-minute pickleball clinic — all levels welcome.",
-    serviceIdByLocation: { ...EMPTY_SERVICE_MAP },
+    // MindBody RH service: "Pickleball Clinic Intro Special: 1 Clinic + 1 Free" $48
+    serviceIdByLocation: { ...EMPTY_SERVICE_MAP, ridgehill: 100107 },
   },
   {
     key: "tennis-private-ball-machine",
     displayName: "Tennis Private Ball Machine",
     priceUsd: 45,
     subtitle: "Solo court time with Court 16's ball machine — drill at your own pace.",
-    serviceIdByLocation: { ...EMPTY_SERVICE_MAP },
+    // MindBody RH service: "Ball Machine Private Intro Session | 45min" $94
+    // — significantly higher than our $45 listing. Anthony to reconcile.
+    serviceIdByLocation: { ...EMPTY_SERVICE_MAP, ridgehill: 100061 },
   },
   {
     key: "pickleball-bogo",
@@ -68,6 +74,7 @@ export const ADULT_OFFERS: AdultOffer[] = [
     priceUsd: 0,
     subtitle: "Bring a friend free. Staff coordinates the slot directly with you.",
     flow: "staff_assist",
+    // No service needed — staff_assist flow skips the cart.
     serviceIdByLocation: { ...EMPTY_SERVICE_MAP },
   },
 ];
