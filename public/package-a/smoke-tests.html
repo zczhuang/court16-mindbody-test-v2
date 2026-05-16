@@ -77,11 +77,11 @@
     </tr>
     <tr>
       <td class="layer">MindBody</td>
-      <td class="item">Real Ridge Hill staff-user credentials provided (replaces the Cedarwind dev-portal sandbox user <code>mindbodysandboxsite@gmail.com</code> currently on Vercel — that account auths against -99 but <strong>fails 403 against site 5748154</strong>; we need a real RH-side staff user)
-        <div class="why-gate"><strong>Caught by smoke test #2 (May 15)</strong>Initial assumption was the dev-portal user would work on RH once the Source was authorized — it doesn't. The Source authorization (above row) is consumer-mode only; staff-write calls (<code>getClientsByEmail</code>, <code>AddClient</code>) require a staff identity that exists on site 5748154. Anthony needs to create a staff login at the Ridge Hill MindBody site and share via LastPass.</div>
+      <td class="item">Real Ridge Hill staff-user credentials <s>required</s> — <strong>bypassed May 15</strong> via consumer-mode AddClient. SplitPass-docs probe revealed that omitting the staff token simply switches AddClient to "Consumer Mode required fields" enforcement (vs. "Business Mode"); satisfying RH's required-field config (<code>AddressLine1, City, State, PostalCode, ReferredBy, BirthDate, MobilePhone, Email, Gender, EmergencyContactInfo*</code> × 4) is enough. Smoke #2 v4 (May 15 22:00 ET) created real RH Clients <code>100002047</code> (parent) + <code>100002048</code> (child) end-to-end with no staff token. Staff invite is still nice-to-have for cleanup (UpdateClient soft-deletes); not blocking.
+        <div class="why-gate"><strong>The breakthrough</strong><code>Site Permissions</code> in the MindBody dev portal grants the API-Key access to a site; that access alone is sufficient for AddClient + ClientRelationships (inline) + AddClientToClass in Consumer Mode. The historical 403 on <code>/usertoken/issue</code> was a red herring — we never actually needed the token. See <code>lib/mindbody.ts</code> <code>consumerMode: true</code> path.</div>
       </td>
       <td class="owner">Anthony</td>
-      <td><span class="check pending">◷ PENDING</span></td>
+      <td><span class="check done">✓ DONE (bypassed)</span></td>
     </tr>
     <tr>
       <td class="layer">HubSpot</td>
@@ -115,9 +115,9 @@
     </tr>
     <tr>
       <td class="layer">Vercel</td>
-      <td class="item"><code>MINDBODY_STAFF_USERNAME</code> + <code>MINDBODY_STAFF_PASSWORD</code> updated from Cedarwind dev-portal sandbox user → real Ridge Hill staff login</td>
+      <td class="item"><code>MINDBODY_STAFF_USERNAME</code> + <code>MINDBODY_STAFF_PASSWORD</code> — <s>required</s> <strong>no longer used by the booking app</strong> after the consumer-mode refactor. Env vars stay on Vercel as a fallback for future endpoints that genuinely need staff (e.g. UpdateClient for soft-delete cleanup) but are no longer on the critical path.</td>
       <td class="owner">Cedarwind</td>
-      <td><span class="check gated">— GATED <span style="font-size:11px;color:var(--muted)">(blocked on Anthony row above)</span></span></td>
+      <td><span class="check done">✓ DONE (deprecated)</span></td>
     </tr>
     <tr>
       <td class="layer">Vercel</td>
@@ -129,7 +129,25 @@
 </table>
 
 <div class="why-gate" style="margin-top: 24px;">
-  <strong>Status (May 15 evening, post-Friday-call)</strong>9 of 10 gates DONE. API-Key authorized on RH ✓ · <code>USE_SANDBOX_FALLBACK=false</code> flipped ✓ · 4 HubSpot props groups live ✓ · 4 emails polished + 4 workflows assembled + reCAPTCHA off ✓ · Smoke #1 (read-only calendar) PASSED ✓. <strong>Smoke #2 (degraded path) PASSED twice</strong> — caught + fixed 3 code bugs along the way: <em>(B)</em> child_date_of_birth shape, <em>(C)</em> class_date type, <em>(D)</em> class_date timezone (was off by 4h EDT, would have fired the 24h-reminder ~28h before class). All three patched + redeployed May 15 evening; verified via two write-mode smoke runs producing correct HubSpot Contact + Deal with `class_date: 2026-05-22T20:15:00Z` (4:15 PM EDT, exact match). <strong>Only remaining gate:</strong> Stuart accepts the RH MindBody staff invite Anthony reprovisioned to <code>stuart@cedarwind.io</code> at 12:14 PM ET and sets a password. Tests #3–#10 (write-mode end-to-end including MindBody client creation) are gated on that one row.
+  <strong>Status (May 15 night, post-consumer-mode-breakthrough)</strong>All 10 gates DONE. Smoke #1 (read-only calendar) PASSED ✓ · Smoke #2 (degraded path) PASSED twice in the evening — caught + fixed 3 code bugs (B/C/D). <strong>Smoke #2 v4 PASSED FULL HAPPY PATH</strong> at 22:30 ET — real MindBody Clients created at Ridge Hill (parent <code>100002047</code> + child <code>100002048</code> with inline "Pays For" relationship) plus HubSpot Contact <code>221912286244</code> + Deal <code>60280304923</code> at Requested Trial with correct EDT class_date. <strong>The Anthony staff-invite blocker was bypassed</strong> by switching AddClient + related endpoints to MindBody's Consumer Mode (Api-Key only, no staff token). Tests #3–#10 are unblocked and ready to run on demand. After all 10 pass, flip <code>MINDBODY_WRITE_MODE=live</code> and soft-launch.
+</div>
+
+<div style="margin-top: 24px; padding: 14px 18px; background: #fff5e6; border-left: 4px solid #f59e0b; border-radius: 0 8px 8px 0;">
+  <strong style="display: block; margin-bottom: 8px;">🧹 RH MindBody cleanup list (for Ibtissam — deactivate via MindBody admin UI)</strong>
+  <p style="margin: 0 0 6px; font-size: 13px;">Probe + smoke runs on May 15 created 5 real test Clients at site 5748154. MindBody Public API v6 doesn't expose a hard-delete; standard cleanup is to flip each to <code>Active: false</code> via the MindBody admin UI (Clients → search by email → Edit → Inactive).</p>
+  <table style="width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px;">
+    <tr style="background: #fff;">
+      <th style="text-align:left; padding: 6px 10px; border-bottom: 1px solid #eee;">Client Id</th>
+      <th style="text-align:left; padding: 6px 10px; border-bottom: 1px solid #eee;">Name</th>
+      <th style="text-align:left; padding: 6px 10px; border-bottom: 1px solid #eee;">Notes</th>
+    </tr>
+    <tr><td style="padding:6px 10px; font-family:'Geist Mono',monospace;">100002044</td><td>PROBE DELETE-ME</td><td>field-discovery probe (parent)</td></tr>
+    <tr><td style="padding:6px 10px; font-family:'Geist Mono',monospace;">100002045</td><td>PROBE-CHILD DELETE</td><td>relationship-shape probe (no link)</td></tr>
+    <tr><td style="padding:6px 10px; font-family:'Geist Mono',monospace;">100002046</td><td>PROBE-CHILD-2 DELETE</td><td>Pays For → 100002044 (relationship probe)</td></tr>
+    <tr><td style="padding:6px 10px; font-family:'Geist Mono',monospace;">100002047</td><td>SMOKETEST-RH-S2V4 Cedarwind-May15</td><td>smoke #2 v4 parent</td></tr>
+    <tr><td style="padding:6px 10px; font-family:'Geist Mono',monospace;">100002048</td><td>SmokeKid-S2V4 -</td><td>smoke #2 v4 child, Pays For → 100002047</td></tr>
+  </table>
+  <p style="margin: 10px 0 0; font-size: 12px; color: var(--muted);">All emails contain <code>cedarwind-probe-</code> or <code>court16-smoke-rh-</code> prefix — 2-factor filter for batch cleanup. Run via MindBody admin Clients → Search → uncheck Active.</p>
 </div>
 
 <hr class="section" />
