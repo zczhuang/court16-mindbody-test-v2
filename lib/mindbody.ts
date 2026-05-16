@@ -161,9 +161,25 @@ async function authedFetch<T>(
     query?: Record<string, string | number | boolean | undefined>;
     body?: unknown;
     includeTestFlag?: boolean; // only applies when method === POST
+    /**
+     * When true, skip the staff-user-token dance and authenticate with
+     * Api-Key + SiteId only ("Consumer Mode"). Many v6 endpoints accept
+     * this on real production sites (verified May 15 against Court 16
+     * Ridge Hill site 5748154 for AddClient, AddClientToClass, and the
+     * /client/clients search). Only UpdateClient and similar
+     * staff-admin endpoints REJECT consumer mode with
+     * `InvalidPermissionConfiguration`.
+     *
+     * Consumer-mode AddClient on real sites must satisfy the SITE's
+     * `RequiredClientFields` config (probe via GET /client/requiredclientfields).
+     * For RH that means: AddressLine1, City, State, PostalCode, ReferredBy,
+     * BirthDate, MobilePhone, Email, Gender, plus all 4
+     * EmergencyContactInfo* subfields.
+     */
+    consumerMode?: boolean;
   },
 ): Promise<T> {
-  const token = await issueStaffUserToken(cfg, log);
+  const token = opts.consumerMode ? null : await issueStaffUserToken(cfg, log);
   const url = new URL(cfg.baseUrl + opts.path);
   if (opts.query) {
     for (const [k, v] of Object.entries(opts.query)) {
@@ -171,22 +187,27 @@ async function authedFetch<T>(
     }
   }
 
-  // Inject Test=true on writes unless writeMode === "live".
+  // Inject Test=true on writes unless writeMode === "live". Note: AddClient
+  // on real (non-sandbox) sites rejects the Test parameter outright with
+  // `Test mode is not allowed for this endpoint` — callers that hit
+  // real-site write endpoints should pass includeTestFlag: false.
   let finalBody: unknown = opts.body;
   if (opts.method === "POST" && opts.includeTestFlag) {
     const shouldTest = cfg.writeMode !== "live";
     finalBody = { ...(opts.body as object), Test: shouldTest };
   }
 
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "Api-Key": cfg.apiKey,
+    SiteId: cfg.siteId,
+  };
+  if (token) headers.Authorization = `Bearer ${token}`;
+
   const started = Date.now();
   const res = await fetch(url.toString(), {
     method: opts.method,
-    headers: {
-      "Content-Type": "application/json",
-      "Api-Key": cfg.apiKey,
-      SiteId: cfg.siteId,
-      Authorization: `Bearer ${token}`,
-    },
+    headers,
     body: opts.method === "POST" ? JSON.stringify(finalBody) : undefined,
   });
   const ms = Date.now() - started;
@@ -235,28 +256,59 @@ export async function getClientsByEmail(
   log: Logger,
   email: string,
 ): Promise<MindbodyClient[]> {
+  // Consumer mode: /client/clients search works with Api-Key + SiteId alone
+  // on real sites (verified against site 5748154 May 15). No staff token
+  // needed — saves the token issuance round-trip on every booking.
   const res = await authedFetch<GetClientsResponse>(cfg, log, {
     method: "GET",
     path: "/client/clients",
     query: { SearchText: email, Limit: 5 },
+    consumerMode: true,
   });
   return res.Clients ?? [];
 }
 
 export interface AddClientInput {
+  // Always required by AddClient endpoint itself
   FirstName: string;
   LastName: string;
+
+  // Required by site 5748154 (RH) consumer-mode config — probe via
+  // GET /client/requiredclientfields. Other sites may differ; callers
+  // should provide all of these so the helper works site-agnostic.
   Email: string;
   BirthDate?: string; // ISO "YYYY-MM-DD"
   MobilePhone?: string;
+  AddressLine1?: string;
+  City?: string;
+  State?: string;
+  PostalCode?: string;
   ReferredBy?: string;
+  /**
+   * One of MindBody's standard genders. Site 5748154 only accepts the
+   * built-ins ("Male", "Female", etc.) without a staff token — custom
+   * genders return `InvalidPermissionConfiguration` in consumer mode.
+   */
+  Gender?: string;
+  EmergencyContactInfoName?: string;
+  EmergencyContactInfoPhone?: string;
+  EmergencyContactInfoEmail?: string;
+  EmergencyContactInfoRelationship?: string;
+
   /**
    * Inline client relationships (v6 has no dedicated AddClientRelationship
    * endpoint — relationships ride on AddClient / UpdateClient). Each entry
    * needs BOTH `RelationshipName` AND the nested `Relationship` object;
    * MindBody validates both layers and rejects if either is missing.
-   * For Guardian: RelationshipName = "Guardian", Relationship.Id = 20,
-   * RelationshipName1 = "Guardian", RelationshipName2 = "Dependent".
+   *
+   * Site 5748154's relationship catalog (via GET /site/relationships) uses
+   * NEGATIVE IDs for built-ins: -4 "Pays For", -6 "Parent/Guardian", etc.
+   * Our pre-Bug-A code used `Id: 20` which doesn't exist on this site
+   * (returned "Relationship validation failed" on AddClient).
+   *
+   * Inline form is required for consumer-mode usage — the standalone
+   * `addClientRelationship` helper (UpdateClient-based) returns
+   * `InvalidPermissionConfiguration` without a staff token.
    */
   ClientRelationships?: Array<{
     RelatedClientId: string | number;
@@ -269,7 +321,28 @@ export interface AddClientInput {
   }>;
 }
 
-/** Canonical Guardian relationship descriptor. Pass as `Relationship` inside a ClientRelationships entry. */
+/**
+ * Canonical "Pays For" relationship descriptor for site 5748154 (RH).
+ * Per MindBody's Family Account docs this is the right semantic for a
+ * parent paying for a child's bookings — the parent receives comms,
+ * billing routes through them, and the MindBody consumer-app Family
+ * Account dashboard surfaces the child under the parent's account.
+ *
+ * Other sites may use different RelationshipId values. Probe via
+ * `GET /site/relationships` per-site before assuming.
+ */
+export const PAYS_FOR_RELATIONSHIP = {
+  Id: -4,
+  RelationshipName1: "Is Paid For By",
+  RelationshipName2: "Pays For",
+} as const;
+
+/**
+ * @deprecated Use PAYS_FOR_RELATIONSHIP. The old `Id: 20` Guardian value
+ * does NOT exist in site 5748154's relationship catalog and triggers
+ * "Relationship validation failed" on AddClient. Kept as an export
+ * temporarily because two routes import it; remove after Stage G ships.
+ */
 export const GUARDIAN_RELATIONSHIP = {
   Id: 20,
   RelationshipName1: "Guardian",
@@ -280,7 +353,16 @@ export interface AddClientResponse {
   Client: MindbodyClient;
 }
 
-/** Create a new client record. ALWAYS call getClientsByEmail first. */
+/**
+ * Create a new client record. ALWAYS call getClientsByEmail first.
+ *
+ * Uses Consumer Mode (Api-Key only — no staff user token) which works on
+ * real MindBody sites including production Court 16 (verified May 15).
+ * AddClient on real sites also rejects the Test parameter outright, so
+ * we omit it — every consumer-mode AddClient on a non-sandbox site is
+ * a real write. Caller must use clearly-marked test fixtures and have
+ * a cleanup plan (Ibtissam deactivates via MindBody UI; no API delete).
+ */
 export async function addClient(
   cfg: MindbodyConfig,
   log: Logger,
@@ -290,7 +372,10 @@ export async function addClient(
     method: "POST",
     path: "/client/addclient",
     body: input,
-    includeTestFlag: true,
+    // Consumer-mode AddClient on real sites does NOT accept Test=true.
+    // (Throws `Test mode is not allowed for this endpoint.`)
+    includeTestFlag: false,
+    consumerMode: true,
   });
   return res.Client ?? (res as MindbodyClient);
 }
@@ -385,7 +470,15 @@ export interface AddClientToClassInput {
   CrossRegionalBookingClientId?: string | number;
 }
 
-/** Book a client into a class. Respects Test=true gate. */
+/**
+ * Book a client into a class.
+ *
+ * Uses Consumer Mode (Api-Key only) — verified working against site 5748154
+ * May 15. No staff token round-trip needed.
+ *
+ * Note: like AddClient, the Test parameter is rejected on real sites.
+ * Caller is responsible for using test-tagged ClientIds during smoke runs.
+ */
 export async function addClientToClass(
   cfg: MindbodyConfig,
   log: Logger,
@@ -395,7 +488,8 @@ export async function addClientToClass(
     method: "POST",
     path: "/class/addclienttoclass",
     body: input,
-    includeTestFlag: true,
+    includeTestFlag: false,
+    consumerMode: true,
   });
 }
 

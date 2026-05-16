@@ -12,6 +12,14 @@ export interface Location {
   city: string;
   state: string;
   /**
+   * 5-digit ZIP. Used as the default `PostalCode` on MindBody AddClient
+   * when the booking form doesn't collect the parent's home address —
+   * MindBody's required-fields config on real sites mandates one
+   * (site 5748154 returns MissingRequiredFields without it). Studio
+   * address is a safe placeholder; staff updates at first visit.
+   */
+  postalCode: string;
+  /**
    * IANA timezone name for the site (e.g. "America/New_York"). MindBody
    * returns `StartDateTime` as wall-clock time WITHOUT a TZ suffix — it's
    * implicitly the site's local time. We use this to convert to absolute
@@ -77,6 +85,7 @@ export const LOCATIONS: Location[] = [
     address: "526 Atlantic Ave",
     city: "Brooklyn",
     state: "NY",
+    postalCode: "11217",
     timezone: "America/New_York",
     loginUrl: LOGIN_URLS.brooklyn,
   },
@@ -88,6 +97,7 @@ export const LOCATIONS: Location[] = [
     address: "4-33 Vernon Blvd",
     city: "Long Island City",
     state: "NY",
+    postalCode: "11101",
     timezone: "America/New_York",
     loginUrl: LOGIN_URLS.lic,
   },
@@ -99,6 +109,7 @@ export const LOCATIONS: Location[] = [
     address: "30 Broad St",
     city: "New York",
     state: "NY",
+    postalCode: "10004",
     timezone: "America/New_York",
     loginUrl: LOGIN_URLS.fidi,
   },
@@ -110,6 +121,7 @@ export const LOCATIONS: Location[] = [
     address: "32 Market Street",
     city: "Yonkers",
     state: "NY",
+    postalCode: "10710",
     timezone: "America/New_York",
     loginUrl: LOGIN_URLS.ridgehill,
   },
@@ -121,6 +133,7 @@ export const LOCATIONS: Location[] = [
     address: "1241 N Front St",
     city: "Philadelphia",
     state: "PA",
+    postalCode: "19122",
     timezone: "America/New_York",
     loginUrl: LOGIN_URLS.fishtown,
   },
@@ -132,6 +145,7 @@ export const LOCATIONS: Location[] = [
     address: "300 Needham St",
     city: "Newton",
     state: "MA",
+    postalCode: "02464",
     timezone: "America/New_York",
     loginUrl: LOGIN_URLS.newton,
   },

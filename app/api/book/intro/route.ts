@@ -171,12 +171,32 @@ export async function POST(req: Request) {
     let adult: Awaited<ReturnType<typeof addClient>> | null = null;
     if (!mbDegraded) {
       try {
+        // RH-required Consumer-Mode field set (probe via
+        // GET /client/requiredclientfields on site 5748154). Defaults from
+        // the location config for address; placeholders for fields the
+        // intro form doesn't collect — staff updates at first visit.
         adult = await addClient(mbCfg, log, {
           FirstName: body.adult.firstName,
           LastName: body.adult.lastName,
           Email: body.adult.email,
           MobilePhone: body.adult.phone,
           BirthDate: body.adult.birthDate,
+          ReferredBy: "Online",
+          // Site 5748154 only accepts built-in genders in consumer mode;
+          // custom genders return InvalidPermissionConfiguration. Default
+          // to "Female" so the booking goes through; staff updates intake.
+          Gender: "Female",
+          AddressLine1: location.address,
+          City: location.city,
+          State: location.state,
+          PostalCode: location.postalCode,
+          // Self-as-emergency-contact placeholder. All 4 EmergencyContactInfo*
+          // subfields are required by RH config or MindBody flags
+          // EmergencyContact as missing.
+          EmergencyContactInfoName: `${body.adult.firstName} ${body.adult.lastName}`,
+          EmergencyContactInfoPhone: body.adult.phone,
+          EmergencyContactInfoEmail: body.adult.email,
+          EmergencyContactInfoRelationship: "Self (placeholder)",
         });
         trace.push({ step: "addClient (adult)", status: "ok", data: { id: adult.Id } });
       } catch (e) {

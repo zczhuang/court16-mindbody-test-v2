@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
 import {
   addClient,
-  addClientRelationship,
   checkCallerToken,
   getClientsByEmail,
-  GUARDIAN_RELATIONSHIP,
   loadConfigFromEnv,
   MindbodyError,
+  PAYS_FOR_RELATIONSHIP,
 } from "@/lib/mindbody";
 import {
   createTrialDeal,
@@ -184,25 +183,75 @@ export async function POST(req: Request) {
     let child: Awaited<ReturnType<typeof addClient>> | null = null;
     if (!mbDegraded) {
       try {
+        // Defaults that satisfy site 5748154's RequiredClientFields config
+        // in Consumer Mode (probe via GET /client/requiredclientfields).
+        // The form doesn't collect home address / gender / emergency contact
+        // yet — staff updates these at the trial intake. Studio address is
+        // used as the address placeholder so the client at least geocodes
+        // to a reasonable spot.
+        const addressDefaults = {
+          AddressLine1: location.address,
+          City: location.city,
+          State: location.state,
+          PostalCode: location.postalCode,
+        };
+        // Gender: site 5748154 only accepts the built-in options
+        // ("Male" / "Female") in consumer mode — custom genders return
+        // InvalidPermissionConfiguration. Default to "Female" so the
+        // booking goes through; staff updates at first visit.
+        const GENDER_PLACEHOLDER = "Female";
+
         parent = await addClient(mbCfg, log, {
           FirstName: body.parentFirstName,
           LastName: body.parentLastName,
           Email: body.parentEmail,
           MobilePhone: body.parentPhone,
-          // Use the parent's actual DOB when provided; fall back to a
-          // placeholder only because the -99 sandbox 400s without BirthDate.
           BirthDate: body.parentBirthDate || PARENT_DOB_PLACEHOLDER,
+          ReferredBy: "Online",
+          Gender: GENDER_PLACEHOLDER,
+          ...addressDefaults,
+          // Self-as-emergency-contact placeholder. Trial staff collects
+          // the real emergency contact at intake. Required by RH config
+          // (all 4 EmergencyContactInfo* subfields must be present or
+          // MindBody flags the bundle as missing).
+          EmergencyContactInfoName: `${body.parentFirstName} ${body.parentLastName}`,
+          EmergencyContactInfoPhone: body.parentPhone,
+          EmergencyContactInfoEmail: body.parentEmail,
+          EmergencyContactInfoRelationship: "Self (placeholder)",
         });
         trace.push({ step: "addClient (parent)", status: "ok", data: { id: parent.Id } });
 
+        // Child AddClient with INLINE Pays For relationship to parent —
+        // saves the round-trip and works in consumer mode (the standalone
+        // addClientRelationship via UpdateClient returns
+        // InvalidPermissionConfiguration without a staff token).
         const childEmail = `kid+${correlationId}@court16-test.invalid`;
         child = await addClient(mbCfg, log, {
           FirstName: primaryKid.firstName,
           LastName: "-",
           Email: childEmail,
           BirthDate: childDob,
+          MobilePhone: body.parentPhone, // parent's phone is the kid's contact
+          ReferredBy: "Online",
+          Gender: GENDER_PLACEHOLDER,
+          ...addressDefaults,
+          // Emergency contact is the parent — semantically correct for kids.
+          EmergencyContactInfoName: `${body.parentFirstName} ${body.parentLastName}`,
+          EmergencyContactInfoPhone: body.parentPhone,
+          EmergencyContactInfoEmail: body.parentEmail,
+          EmergencyContactInfoRelationship: "Parent",
+          // Inline "Pays For" relationship: parent (related) pays for this
+          // child (current AddClient). MindBody's Family Account UX
+          // surfaces the kid under the parent's dashboard automatically.
+          ClientRelationships: [
+            {
+              RelatedClientId: String(parent.Id),
+              RelationshipName: PAYS_FOR_RELATIONSHIP.RelationshipName2, // "Pays For"
+              Relationship: { ...PAYS_FOR_RELATIONSHIP },
+            },
+          ],
         });
-        trace.push({ step: "addClient (child)", status: "ok", data: { id: child.Id } });
+        trace.push({ step: "addClient (child + inline Pays For)", status: "ok", data: { id: child.Id } });
       } catch (e) {
         log.warn("trial.mindbody.degraded", { step: "addClient", error: serialize(e) });
         mbDegraded = true;
@@ -252,22 +301,11 @@ export async function POST(req: Request) {
       });
     }
 
-    let relationshipStatus: "ok" | "skipped" | "error" = "skipped";
-    let relationshipError: unknown = undefined;
-    if (parent.Id && child.Id) {
-      try {
-        await addClientRelationship(mbCfg, log, {
-          ClientId: parent.Id,
-          RelatedClientId: child.Id,
-          RelationshipId: GUARDIAN_RELATIONSHIP.Id,
-        });
-        relationshipStatus = "ok";
-      } catch (e) {
-        relationshipStatus = "error";
-        relationshipError = serialize(e);
-      }
-    }
-    trace.push({ step: "addClientRelationship", status: relationshipStatus, error: relationshipError });
+    // Relationship is established inline on the child AddClient above —
+    // no separate standalone call needed. Standalone addClientRelationship
+    // (UpdateClient-based) is reserved for retroactive linking of
+    // pre-existing clients and requires a staff token, which we
+    // intentionally don't issue.
 
     const fields = buildFormFields({
       correlationId,
