@@ -91,21 +91,21 @@
     </tr>
     <tr>
       <td class="layer">HubSpot</td>
-      <td class="item">All 4 AUTOMATED_EMAIL templates published (state=AUTOMATED, isPublished=true) with copy pasted via <code>&lt;/&gt;</code> Source view</td>
+      <td class="item">All 4 AUTOMATED_EMAIL templates published (state=AUTOMATED, isPublished=true) with copy pasted via <code>&lt;/&gt;</code> Source view <span style="font-size:11px;color:var(--muted)">(Ibtissam · 1 PM Friday call)</span></td>
       <td class="owner">Ibtissam</td>
-      <td><span class="check pending">◷ PENDING</span></td>
+      <td><span class="check done">✓ DONE</span></td>
     </tr>
     <tr>
       <td class="layer">HubSpot</td>
-      <td class="item">All 4 workflows assembled in HubSpot UI (delay + send-email actions added) with enrollment triggers narrowed to Ridge Hill, and <code>enabled=true</code></td>
+      <td class="item">All 4 workflows assembled in HubSpot UI (delay + send-email actions added) with enrollment triggers narrowed to Ridge Hill, and <code>enabled=true</code> <span style="font-size:11px;color:var(--muted)">(Ibtissam · 1 PM Friday call)</span></td>
       <td class="owner">Ibtissam</td>
-      <td><span class="check pending">◷ PENDING <span style="font-size:11px;color:var(--muted)">(shells ✓, actions pending)</span></span></td>
+      <td><span class="check done">✓ DONE</span></td>
     </tr>
     <tr>
       <td class="layer">HubSpot</td>
-      <td class="item">reCAPTCHA disabled on the Court 16 Trial form (spec 9) so the form-submit nurture path can run when MindBody is degraded</td>
+      <td class="item">reCAPTCHA disabled on the Court 16 Trial form (spec 9) so the form-submit nurture path can run when MindBody is degraded <span style="font-size:11px;color:var(--muted)">(Ibtissam · confirmed off May 15)</span></td>
       <td class="owner">Ibtissam</td>
-      <td><span class="check pending">◷ PENDING</span></td>
+      <td><span class="check done">✓ DONE</span></td>
     </tr>
     <tr>
       <td class="layer">Vercel</td>
@@ -129,7 +129,7 @@
 </table>
 
 <div class="why-gate" style="margin-top: 24px;">
-  <strong>Status (May 15)</strong>API-Key authorized on RH ✓ · <code>USE_SANDBOX_FALLBACK=false</code> flipped ✓ · Read-only smoke test #1 PASSED (calendar returns siteId 5748154 with real Court 16 programs). <strong>Smoke test #2 caught 3 bugs:</strong> (A) the staff creds in Vercel are the dev-portal sandbox user, not RH — still blocked on Anthony; (B) HubSpot form rejects the 3-part <code>child_date_of_birth</code> split — patched May 15; (C) HubSpot <code>class_date</code> property is "datetime / long" — we sent ISO string, patched to epoch ms May 15. After B + C are deployed, the smoke #2 degraded path returns <code>status=manual_review</code> end-to-end. Tests #3–#10 still gated on Anthony's RH staff creds.
+  <strong>Status (May 15 evening, post-Friday-call)</strong>9 of 10 gates DONE. API-Key authorized on RH ✓ · <code>USE_SANDBOX_FALLBACK=false</code> flipped ✓ · 4 HubSpot props groups live ✓ · 4 emails polished + 4 workflows assembled + reCAPTCHA off ✓ · Smoke #1 (read-only calendar) PASSED ✓. <strong>Smoke #2 (degraded path) PASSED twice</strong> — caught + fixed 3 code bugs along the way: <em>(B)</em> child_date_of_birth shape, <em>(C)</em> class_date type, <em>(D)</em> class_date timezone (was off by 4h EDT, would have fired the 24h-reminder ~28h before class). All three patched + redeployed May 15 evening; verified via two write-mode smoke runs producing correct HubSpot Contact + Deal with `class_date: 2026-05-22T20:15:00Z` (4:15 PM EDT, exact match). <strong>Only remaining gate:</strong> Stuart accepts the RH MindBody staff invite Anthony reprovisioned to <code>stuart@cedarwind.io</code> at 12:14 PM ET and sets a password. Tests #3–#10 (write-mode end-to-end including MindBody client creation) are gated on that one row.
 </div>
 
 <hr class="section" />
