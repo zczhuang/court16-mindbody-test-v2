@@ -18,7 +18,7 @@ import {
 import { buildStaffUrl } from "@/lib/staff-tokens";
 import { classifyIntent } from "@/lib/intent";
 import { createLogger, makeCorrelationId } from "@/lib/logger";
-import { extractLevelName } from "@/lib/class-utils";
+import { extractLevelName, siteLocalToUtcIso } from "@/lib/class-utils";
 import { getLocationById } from "@/config/locations";
 import { getDealPipeline, getHubspotPreferredLocation } from "@/config/hubspot-deals";
 import { CLASS_AGE_METADATA } from "@/config/trial-config";
@@ -108,6 +108,14 @@ export async function POST(req: Request) {
   const childDob = dobFromAge(primaryKid.age);
   const ageBand = ageToBand(primaryKid.age);
 
+  // MindBody returns `StartDateTime` as site-local wall-clock without a TZ
+  // suffix. Convert to absolute UTC ISO here so HubSpot Deal `class_date`
+  // (and downstream the 24h-reminder workflow) fire at the right instant.
+  // Caught by smoke #2 v2 (Bug D).
+  const classStartsAtUtc = body.classStartsAt
+    ? siteLocalToUtcIso(body.classStartsAt, location.timezone)
+    : undefined;
+
   log.info("trial.start", {
     writeMode: mbCfg.writeMode,
     parentEmail: body.parentEmail,
@@ -161,7 +169,7 @@ export async function POST(req: Request) {
           correlationId,
           locationId: location.id,
           contactProperties: contactPropertiesFromFields(fields),
-          classStartsAt: body.classStartsAt,
+          classStartsAt: classStartsAtUtc,
           dealName: `Kids trial (softwall) — ${primaryKid.firstName} · ${location.fullName}`,
           amount: 0,
         },
@@ -227,7 +235,7 @@ export async function POST(req: Request) {
           correlationId,
           locationId: location.id,
           contactProperties: contactPropertiesFromFields(fields),
-          classStartsAt: body.classStartsAt,
+          classStartsAt: classStartsAtUtc,
           dealName: `Kids trial (manual review) — ${primaryKid.firstName} · ${location.fullName}`,
           amount: 0,
         },
@@ -282,6 +290,7 @@ export async function POST(req: Request) {
         correlationId,
         locationId: location.id,
         contactProperties: contactPropertiesFromFields(fields),
+        classStartsAt: classStartsAtUtc,
         dealName: `Kids trial — ${primaryKid.firstName} · ${location.fullName}`,
         amount: 0,
       },

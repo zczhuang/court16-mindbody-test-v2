@@ -17,6 +17,7 @@ import {
 import { buildStaffUrl } from "@/lib/staff-tokens";
 import { classifyIntent } from "@/lib/intent";
 import { createLogger, makeCorrelationId } from "@/lib/logger";
+import { siteLocalToUtcIso } from "@/lib/class-utils";
 import { getLocationById } from "@/config/locations";
 import { getOffer } from "@/config/adult-config";
 import { getDealPipeline, getHubspotPreferredLocation } from "@/config/hubspot-deals";
@@ -84,6 +85,14 @@ export async function POST(req: Request) {
     );
   }
 
+  // MindBody returns `StartDateTime` as site-local wall-clock without a TZ
+  // suffix. Convert to absolute UTC ISO so HubSpot Deal `class_date` (and
+  // downstream the 24h-reminder workflow) fire at the right instant.
+  // Caught by smoke #2 v2 (Bug D).
+  const classStartsAtUtc = body.classStartsAt
+    ? siteLocalToUtcIso(body.classStartsAt, location.timezone)
+    : undefined;
+
   let mbCfg;
   try {
     const base = loadConfigFromEnv();
@@ -150,7 +159,7 @@ export async function POST(req: Request) {
           correlationId,
           locationId: location.id,
           contactProperties: contactPropertiesFromFields(fields),
-          classStartsAt: body.classStartsAt,
+          classStartsAt: classStartsAtUtc,
           dealName:`Adult intro (softwall) · ${offer.displayName} · ${location.fullName}`,
           amount: 0,
         },
@@ -199,7 +208,7 @@ export async function POST(req: Request) {
           correlationId,
           locationId: location.id,
           contactProperties: contactPropertiesFromFields(fields),
-          classStartsAt: body.classStartsAt,
+          classStartsAt: classStartsAtUtc,
           dealName:`Adult intro (manual review) · ${offer.displayName} · ${location.fullName}`,
           amount: 0,
         },
@@ -241,7 +250,7 @@ export async function POST(req: Request) {
           correlationId,
           locationId: location.id,
           contactProperties: contactPropertiesFromFields(fields),
-          classStartsAt: body.classStartsAt,
+          classStartsAt: classStartsAtUtc,
           dealName:`Adult intro (staff assist) · ${offer.displayName} · ${location.fullName}`,
           amount: 0,
         },

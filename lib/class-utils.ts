@@ -7,6 +7,78 @@ import {
 } from "@/config/trial-config";
 
 /**
+ * Convert a MindBody-style wall-clock ISO ("YYYY-MM-DDTHH:MM:SS", no TZ
+ * suffix) to a UTC-Z ISO string ("YYYY-MM-DDTHH:MM:SS.000Z"), treating
+ * the input as local time in the supplied IANA timezone.
+ *
+ * Why: MindBody's `/class/classes` returns `StartDateTime` as the SITE's
+ * wall-clock time, no offset. `Date.parse(...)` on a Vercel UTC server
+ * silently treats those numbers as UTC — which makes the class look 4h
+ * earlier than it actually is in EDT (caught by smoke #2 v2; would have
+ * fired the 24h-reminder workflow ~28h before the class instead of 24h).
+ *
+ * Algorithm:
+ *  1. Build `asIfUtc` = Date.UTC(...wallTime parts) — pretend the wall
+ *     numbers are UTC.
+ *  2. Format `asIfUtc` AS-IF it were a real UTC instant in the target
+ *     timezone — get back wall-clock numbers in that TZ.
+ *  3. The delta between (1) and (2) is the TZ offset at that instant
+ *     (DST-aware via Intl.DateTimeFormat).
+ *  4. Shift `asIfUtc` by that offset to get the real UTC instant
+ *     corresponding to the original wall time.
+ *  5. Re-check the offset at the new instant — if DST changed between
+ *     (1) and (4), apply the corrected offset. Usually converges in 1
+ *     iteration; matters only for times within ~1h of a DST boundary
+ *     (no Court 16 class falls in those windows, but it's free safety).
+ *
+ * Pure: no I/O, no library dependency. Uses Intl, which Node 16+ ships.
+ */
+export function siteLocalToUtcIso(localIso: string, timezone: string): string {
+  const [datePart, timePartRaw] = localIso.split("T");
+  const [yyyy, mm, dd] = datePart.split("-").map(Number);
+  const [hh, min, ss] = (timePartRaw ?? "00:00:00").split(":").map(Number);
+
+  const asIfUtc = Date.UTC(yyyy, mm - 1, dd, hh, min, ss);
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  });
+
+  const offsetMsAt = (instant: number): number => {
+    const parts = fmt.formatToParts(new Date(instant));
+    const tzed: Record<string, string> = {};
+    for (const p of parts) if (p.type !== "literal") tzed[p.type] = p.value;
+    const tzedHour = tzed.hour === "24" ? 0 : Number(tzed.hour);
+    const tzedAsIfUtc = Date.UTC(
+      Number(tzed.year),
+      Number(tzed.month) - 1,
+      Number(tzed.day),
+      tzedHour,
+      Number(tzed.minute),
+      Number(tzed.second),
+    );
+    return instant - tzedAsIfUtc;
+  };
+
+  // First pass: use the offset at `asIfUtc` (wall time treated as UTC).
+  let result = asIfUtc + offsetMsAt(asIfUtc);
+  // Refine: re-check the offset at the corrected instant; if DST flipped
+  // between `asIfUtc` and `result` we'll get a different offset and
+  // re-shift. One iteration is sufficient for all real-world cases.
+  const refinedOffset = offsetMsAt(result);
+  if (refinedOffset !== offsetMsAt(asIfUtc)) {
+    result = asIfUtc + refinedOffset;
+  }
+  return new Date(result).toISOString();
+}
+
+/**
  * Parse a MindBody class object into our simplified TrialClass format.
  * Class name lives at `ClassDescription.Name` in MindBody v6; some older
  * proxies surface it as a top-level `ClassName` — accept both.

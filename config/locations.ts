@@ -12,6 +12,14 @@ export interface Location {
   city: string;
   state: string;
   /**
+   * IANA timezone name for the site (e.g. "America/New_York"). MindBody
+   * returns `StartDateTime` as wall-clock time WITHOUT a TZ suffix — it's
+   * implicitly the site's local time. We use this to convert to absolute
+   * UTC ms before writing HubSpot Deal `class_date` so the 24h-reminder
+   * workflow fires at the correct absolute instant (caught by smoke #2 v2).
+   */
+  timezone: string;
+  /**
    * Per-location Sign in destination. Falls back to the generic
    * court16.com/login when undefined. Replace with per-location URLs
    * once Squarespace has them (e.g. /login/brooklyn or a MindBody
@@ -69,6 +77,7 @@ export const LOCATIONS: Location[] = [
     address: "526 Atlantic Ave",
     city: "Brooklyn",
     state: "NY",
+    timezone: "America/New_York",
     loginUrl: LOGIN_URLS.brooklyn,
   },
   {
@@ -79,6 +88,7 @@ export const LOCATIONS: Location[] = [
     address: "4-33 Vernon Blvd",
     city: "Long Island City",
     state: "NY",
+    timezone: "America/New_York",
     loginUrl: LOGIN_URLS.lic,
   },
   {
@@ -89,6 +99,7 @@ export const LOCATIONS: Location[] = [
     address: "30 Broad St",
     city: "New York",
     state: "NY",
+    timezone: "America/New_York",
     loginUrl: LOGIN_URLS.fidi,
   },
   {
@@ -99,6 +110,7 @@ export const LOCATIONS: Location[] = [
     address: "32 Market Street",
     city: "Yonkers",
     state: "NY",
+    timezone: "America/New_York",
     loginUrl: LOGIN_URLS.ridgehill,
   },
   {
@@ -109,6 +121,7 @@ export const LOCATIONS: Location[] = [
     address: "1241 N Front St",
     city: "Philadelphia",
     state: "PA",
+    timezone: "America/New_York",
     loginUrl: LOGIN_URLS.fishtown,
   },
   {
@@ -119,6 +132,7 @@ export const LOCATIONS: Location[] = [
     address: "300 Needham St",
     city: "Newton",
     state: "MA",
+    timezone: "America/New_York",
     loginUrl: LOGIN_URLS.newton,
   },
 ];
