@@ -9,7 +9,6 @@ import {
 } from "@/lib/hubspot";
 import { InvalidTokenError, verifyToken } from "@/lib/staff-tokens";
 import { createLogger } from "@/lib/logger";
-import { renderDenialMessage } from "@/config/denial-messages";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -118,27 +117,17 @@ export async function POST(req: Request) {
     log.warn("staff.deny.deal.fail", { error: e instanceof Error ? e.message : String(e) });
   }
 
-  // 3. Flip the Contact
-  //    - `court16_failure_reason`: human-readable label + optional note,
-  //      used by staff dashboards and as a quick reference.
-  //    - `court16_denial_message`: pre-rendered HTML body block for the
-  //      denial email. We render it server-side here so the email asset
-  //      stays free of HUBL `{% if %}` conditionals (which HubSpot's DnD
-  //      editor strips during Source Code ↔ WYSIWYG round-trips — caught
-  //      by Ibtissam on May 19). The denial email template then uses a
-  //      single `{{ contact.court16_denial_message }}` token instead of
-  //      5 conditional branches.
+  // 3. Flip the Contact. `court16_failure_reason` is the human-readable
+  //    label + optional note — also the value the denial workflow
+  //    (1820568681) branches on to pick the right per-reason email
+  //    asset (Stage K Option B, May 20). One asset per reason lives
+  //    in TRIAL_DENIAL_EMAILS_BY_REASON in config/hubspot-emails.ts;
+  //    Ibtissam owns each body in HubSpot UI.
   const failureReason =
     REASONS.find((r) => r.value === reason)!.label + (note ? ` — ${note}` : "");
-  const denialMessage = renderDenialMessage({
-    reason,
-    child: contact.properties.child_name,
-    note: reason === "other" ? note : undefined,
-  });
   await updateContact(hsCfg, log, contact.id, {
     court16_booking_status: "failed",
     court16_failure_reason: `Denied: ${failureReason}`.slice(0, 4000),
-    court16_denial_message: denialMessage.slice(0, 65000),
   });
 
   // 4. MindBody cancellation — TODO: requires the visit-id from the

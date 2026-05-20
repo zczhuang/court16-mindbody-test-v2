@@ -292,28 +292,28 @@ The Court 16 team&lt;/p&gt;
 
 <hr style="margin: 36px 0; border: 0; border-top: 1px dashed var(--border);" />
 
-<h3>📧 Email 4 · Trial declined (with reason-specific copy)</h3>
-<p><span class="field-name">HubSpot asset id 212773969562</span> · <span class="field-name">Name: [Cedarwind] Trial declined — DRAFT, edit copy + activate</span></p>
-
-<div class="copy-label">Subject line (use <strong>Path A · Personalize button</strong> to insert <code>{{ contact.child_name }}</code> — see top of Part 1)</div>
-<div class="copy-block">About {{ contact.child_name }}'s Court 16 trial request</div>
-
-<div class="copy-label">Preheader</div>
-<div class="copy-block">We need to make a small adjustment before we can confirm.</div>
+<h3>📧 Email 4 · Trial declined — now 5 per-reason assets (one per picklist value)</h3>
 
 <div class="gotcha" style="margin: 16px 0 20px;">
-  <strong style="display:block; margin-bottom: 6px; font-size: 12px;">🔄 Updated May 20 — body simplified to fix the HUBL conditional issue</strong>
-  <p style="margin: 0; font-size: 13px;">Per Ibtissam's May 19 note ("conditional variables like <code>{% if "Wrong age band" in contact.court16_failure_reason %}</code> don't seem to work once the HTML is removed"): HubSpot's DnD editor strips HUBL <code>{% if %}</code> blocks on Source Code ↔ WYSIWYG round-trips. <strong>Fixed by rendering the per-reason copy server-side</strong> in <code>app/api/staff/deny/route.ts</code> and writing it to a new Contact property <code>court16_denial_message</code>. The email body now uses a single merge token — no HUBL conditionals, no stripping. Paste the simplified body below (no Source Code toggle needed, plain Personalize-token works).</p>
+  <strong style="display:block; margin-bottom: 6px; font-size: 12px;">🔄 Updated May 20 — moved from 1 conditional email → 5 per-reason assets</strong>
+  <p style="margin: 0 0 8px; font-size: 13px;">Per Ibtissam's May 19 note: HubSpot's DnD editor strips HUBL <code>{% if %}</code> blocks on Source Code ↔ WYSIWYG round-trips, so the old single-asset approach (212773969562) didn't survive editing. <strong>Fixed by cloning to 5 separate email assets</strong> — one per denial reason — each with its own static body. No conditionals to strip. Each asset is independently editable in HubSpot UI; you (Ibtissam) own all 5 copies.</p>
+  <p style="margin: 0; font-size: 13px;">The denial workflow (<code>1820568681</code>) branches on <code>court16_failure_reason</code> and sends the matching asset. The original asset <code>212773969562</code> is now legacy — leave it as-is (it's no longer wired to the workflow); the 5 new assets below replace it.</p>
 </div>
 
-<div class="copy-label">Body (use <strong>Path B · drag HTML module</strong> — same flow as the other 3 emails; no HUBL conditionals needed anymore)</div>
+<div class="copy-label">Shared subject line (use same for all 5 assets — <strong>Path A · Personalize button</strong>)</div>
+<div class="copy-block">About {{ contact.child_name }}'s Court 16 trial request</div>
+
+<div class="copy-label">Shared preheader (use same for all 5)</div>
+<div class="copy-block">We need to make a small adjustment before we can confirm.</div>
+
+<div class="copy-label">Shared body shell (the per-reason paragraph differs per asset — see 5 sections below)</div>
 <div class="copy-block">&lt;p&gt;Hi {{ contact.firstname }},&lt;/p&gt;
 
 &lt;p&gt;Thanks for your interest in a Court 16 trial for {{ contact.child_name }}. We weren't able to confirm this specific booking — here's what happened:&lt;/p&gt;
 
-{{ contact.court16_denial_message }}
+[PER-REASON PARAGRAPH — see below]
 
-&lt;h3&gt;What now?&lt;/h3&gt;
+&lt;p&gt;&lt;strong&gt;What now?&lt;/strong&gt;&lt;/p&gt;
 &lt;p&gt;The best next step is a quick reply to this email. We read every message and can usually re-book within the same day.&lt;/p&gt;
 
 &lt;p&gt;Sorry for the back-and-forth — we want to make sure {{ contact.child_name }}'s first time at Court 16 goes well.&lt;/p&gt;
@@ -322,7 +322,45 @@ The Court 16 team&lt;/p&gt;
 
 &lt;p&gt;&lt;small&gt;Reference: {{ contact.court16_correlation_id }}&lt;/small&gt;&lt;/p&gt;</div>
 
-<div class="info"><strong>How <code>court16_denial_message</code> gets populated</strong>The <code>/api/staff/deny</code> route picks the reason-matching HTML snippet from <code>config/denial-messages.ts</code>, substitutes <code>{{child}}</code> with the kid's name (and <code>{{note}}</code> for the "Other" reason), and writes the pre-rendered HTML to the Contact property at deny-time. The email asset reads it as a single token — same way <code>{{ contact.child_name }}</code> works. To tweak the per-reason wording, edit <code>config/denial-messages.ts</code> in the repo (Cedarwind owns this) — the 5 reasons (Wrong age band / No availability / Parent cancelled / Duplicate booking / Other) are operationally stable so this trade-off is acceptable. If Court 16 wants HubSpot-UI control of the per-reason text, escalate to "5 separate email assets + workflow branching".</div>
+<div class="info" style="margin: 16px 0;"><strong>Status of the 5 new assets</strong>Cedarwind cloned the 5 assets via API on May 20 with the bodies below pre-loaded. Each is <code>AUTOMATED_DRAFT</code> + <code>isPublished: false</code>. Open each in HubSpot UI, verify the body renders correctly, then publish.</div>
+
+<details open style="margin: 14px 0; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px;">
+  <summary style="font-weight: 700; font-size: 14px;">📧 4a · Wrong age band</summary>
+  <p style="margin: 8px 0 4px;"><span class="field-name">HubSpot asset id 213263710007</span> · <span class="field-name">Name: [Cedarwind] Trial declined · Wrong age band</span></p>
+  <div class="copy-label">Per-reason paragraph (already loaded — verify in editor)</div>
+  <div class="copy-block">&lt;p&gt;The class you picked is for a different age range. Each Court 16 program is tightly age-gated so kids learn alongside peers of similar size and motor skill. The good news: we have a class that's a perfect fit for {{ contact.child_name }}. Reply to this email and we'll send over the options.&lt;/p&gt;</div>
+</details>
+
+<details open style="margin: 14px 0; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px;">
+  <summary style="font-weight: 700; font-size: 14px;">📧 4b · No availability</summary>
+  <p style="margin: 8px 0 4px;"><span class="field-name">HubSpot asset id 213269367704</span> · <span class="field-name">Name: [Cedarwind] Trial declined · No availability</span></p>
+  <div class="copy-label">Per-reason paragraph</div>
+  <div class="copy-block">&lt;p&gt;That specific class filled up before we could lock in {{ contact.child_name }}'s spot. We have other openings this week and next at {{ contact.preferred_location }} — happy to suggest alternatives. Just reply and we'll send a few times that work.&lt;/p&gt;</div>
+</details>
+
+<details open style="margin: 14px 0; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px;">
+  <summary style="font-weight: 700; font-size: 14px;">📧 4c · Parent cancelled</summary>
+  <p style="margin: 8px 0 4px;"><span class="field-name">HubSpot asset id 213269367707</span> · <span class="field-name">Name: [Cedarwind] Trial declined · Parent cancelled</span></p>
+  <div class="copy-label">Per-reason paragraph</div>
+  <div class="copy-block">&lt;p&gt;Per your request, we've cancelled the trial. If anything changes and you'd like to re-book later, just reply to this email — your details are saved on our end and we can pick up where we left off.&lt;/p&gt;</div>
+</details>
+
+<details open style="margin: 14px 0; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px;">
+  <summary style="font-weight: 700; font-size: 14px;">📧 4d · Duplicate booking</summary>
+  <p style="margin: 8px 0 4px;"><span class="field-name">HubSpot asset id 213263710012</span> · <span class="field-name">Name: [Cedarwind] Trial declined · Duplicate booking</span></p>
+  <div class="copy-label">Per-reason paragraph</div>
+  <div class="copy-block">&lt;p&gt;We already had a booking for {{ contact.child_name }} on file. To avoid sending duplicate confirmations or charging twice, we cancelled this newer request. If you meant to book a different child or a different time, just reply and we'll sort it out.&lt;/p&gt;</div>
+</details>
+
+<details open style="margin: 14px 0; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px;">
+  <summary style="font-weight: 700; font-size: 14px;">📧 4e · Other (catch-all / fallback)</summary>
+  <p style="margin: 8px 0 4px;"><span class="field-name">HubSpot asset id 213263710015</span> · <span class="field-name">Name: [Cedarwind] Trial declined · Other</span></p>
+  <div class="copy-label">Per-reason paragraph</div>
+  <div class="copy-block">&lt;p&gt;Detail from our team: {{ contact.court16_failure_reason }}&lt;/p&gt;</div>
+  <p style="margin: 8px 0 0; font-size: 12px; color: var(--muted);">When staff picks "Other" + types a note, that note appears in <code>court16_failure_reason</code> after the "Denied:" prefix. This catch-all asset surfaces it directly.</p>
+</details>
+
+<div class="info" style="margin-top: 18px;"><strong>Workflow wiring (one-time, in HubSpot UI)</strong>Edit workflow <a href="https://app.hubspot.com/workflows/4832170/view/1820568681" target="_blank">1820568681 (Denial · trial declined)</a> → replace the existing "Send email" action with an "if/then" branch on <code>Contact: court16_failure_reason</code> using <code>CONTAINS</code> on each label: "Wrong age band" → 4a · "No availability" → 4b · "Parent cancelled" → 4c · "Duplicate booking" → 4d · default (else) → 4e. ~5 min in the workflow builder. Once all 5 emails are published + the branch is set, the denial flow is live.</div>
 
 <hr class="section" />
 
@@ -447,7 +485,7 @@ The Court 16 team&lt;/p&gt;
   <li><strong>Class day/time/coach merge tokens in email bodies</strong>: <code>class_date</code> is now on the Deal (May 14 ship), but the emails still reference class time generically because day/time/coach are derived from the MindBody class object, not pushed to HubSpot. Two paths: (a) HubSpot personalization token for <code>{{ deal.class_date }}</code> formatted via HUBL, or (b) Cedarwind extends the booking app to also write classDay/classTime/coachName to the Deal — small lift, ping Stuart.</li>
   <li><strong>Per-location password-setup link</strong>: Email 2's CTA points at court16.com/login (generic). Optional polish via Smart Content keyed on <code>court16_location_slug</code>.</li>
   <li><strong>MindBody booking auto-cancellation on deny</strong>: <code>/api/staff/deny</code> flips state correctly but doesn't yet remove the client from the MindBody class (needs visit-id we don't capture from AddClientToClass — Track 2).</li>
-  <li><strong>Reason picklist drift</strong>: if you change Cedarwind's deny picklist values (the snake_case ones — <code>wrong_age_band</code>, <code>no_availability</code>, etc.), the key strings in <code>config/denial-messages.ts</code> need a matching update. The email body itself stays untouched (single token, no conditionals).</li>
+  <li><strong>Reason picklist drift</strong>: if you change Cedarwind's deny picklist labels (the human-readable ones — "Wrong age band", "No availability", etc.), the workflow branch CONTAINS strings in workflow 1820568681 need a matching update. Worth keeping labels stable.</li>
 </ul>
 
 <footer>

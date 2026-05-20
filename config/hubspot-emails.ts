@@ -32,9 +32,46 @@ export const TRIAL_EMAIL_TEMPLATE_IDS = {
   passwordSetup: "212772629316",
   /** Sent 24h before the scheduled class. */
   reminder24h: "212773969554",
-  /** Sent when staff clicks Deny (spec 5). Uses Smart Content keyed on denial_reason. */
+  /**
+   * Legacy single-asset denial email — the one with HUBL `{% if %}` blocks
+   * that get stripped by HubSpot's DnD editor. Replaced by the per-reason
+   * fan-out below (Stage K / Option B, May 20 decision). Kept here as a
+   * historical reference; no longer wired into the denial workflow.
+   */
   denial: "212773969562",
 } as const;
+
+/**
+ * Stage K (Option B): per-reason denial email assets — one HubSpot asset
+ * per picklist value from `app/api/staff/deny/route.ts` REASONS. The
+ * denial workflow (1820568681) branches on `court16_failure_reason` and
+ * sends the matching asset. This replaces the legacy single-asset
+ * denial flow with HUBL conditionals (which HubSpot's DnD editor strips
+ * during Source Code ↔ WYSIWYG round-trips — caught by Ibtissam on
+ * May 19).
+ *
+ * Each asset was cloned from 212773969562 on May 20 via the
+ * `POST /marketing/v3/emails/clone` endpoint and customized with a
+ * per-reason paragraph body. State: AUTOMATED_DRAFT, isPublished: false
+ * until Ibtissam publishes from the HubSpot UI.
+ *
+ * Owner: Ibtissam (HubSpot UI). She can edit each per-reason body
+ * independently in the HubSpot email editor.
+ */
+export const TRIAL_DENIAL_EMAILS_BY_REASON = {
+  /** Reason `wrong_age_band` from REASONS in app/api/staff/deny/route.ts */
+  wrong_age_band: "213263710007",
+  /** Reason `no_availability` */
+  no_availability: "213269367704",
+  /** Reason `parent_cancelled` */
+  parent_cancelled: "213269367707",
+  /** Reason `duplicate_booking` */
+  duplicate_booking: "213263710012",
+  /** Reason `other` — catch-all + default for any unrecognized picklist value */
+  other: "213263710015",
+} as const;
+
+export type TrialDenialReasonKey = keyof typeof TRIAL_DENIAL_EMAILS_BY_REASON;
 
 export type TrialEmailTemplateKey = keyof typeof TRIAL_EMAIL_TEMPLATE_IDS;
 
@@ -64,9 +101,18 @@ export const PACKAGE_A_WORKFLOW_SHELLS = {
   confirmation: "1820575928",
   /**
    * Denial workflow — fires when Contact court16_booking_status flips
-   * to 'failed' (after staff/deny). Email uses HUBL conditionals on
-   * court16_failure_reason to render reason-specific copy. Ibtissam
-   * adds: Send email = denial asset (no delay).
+   * to 'failed' (after staff/deny). Per Stage K Option B (May 20):
+   * Ibtissam wires a 5-way branch on `court16_failure_reason` value
+   * (CONTAINS each label) → Send the matching email from
+   * `TRIAL_DENIAL_EMAILS_BY_REASON`. The default branch sends the
+   * `other` email (catch-all). No delay between trigger and send.
+   *
+   * Branch logic (Ibtissam configures in HubSpot UI):
+   *   IF court16_failure_reason CONTAINS "Wrong age band"     → send 213263710007
+   *   ELSE IF CONTAINS "No availability"                       → send 213269367704
+   *   ELSE IF CONTAINS "Parent cancelled"                      → send 213269367707
+   *   ELSE IF CONTAINS "Duplicate booking"                     → send 213263710012
+   *   ELSE                                                     → send 213263710015 (Other)
    */
   denial: "1820568681",
 } as const;
