@@ -301,26 +301,17 @@ The Court 16 team&lt;/p&gt;
 <div class="copy-label">Preheader</div>
 <div class="copy-block">We need to make a small adjustment before we can confirm.</div>
 
-<div class="copy-label">Body (use <strong>Path B · drag HTML module</strong> — recommended for the HUBL <code>{% if %}</code> conditionals; or Path C · Source Code <code>&lt;/&gt;</code> — see top of Part 1)</div>
+<div class="gotcha" style="margin: 16px 0 20px;">
+  <strong style="display:block; margin-bottom: 6px; font-size: 12px;">🔄 Updated May 20 — body simplified to fix the HUBL conditional issue</strong>
+  <p style="margin: 0; font-size: 13px;">Per Ibtissam's May 19 note ("conditional variables like <code>{% if "Wrong age band" in contact.court16_failure_reason %}</code> don't seem to work once the HTML is removed"): HubSpot's DnD editor strips HUBL <code>{% if %}</code> blocks on Source Code ↔ WYSIWYG round-trips. <strong>Fixed by rendering the per-reason copy server-side</strong> in <code>app/api/staff/deny/route.ts</code> and writing it to a new Contact property <code>court16_denial_message</code>. The email body now uses a single merge token — no HUBL conditionals, no stripping. Paste the simplified body below (no Source Code toggle needed, plain Personalize-token works).</p>
+</div>
+
+<div class="copy-label">Body (use <strong>Path B · drag HTML module</strong> — same flow as the other 3 emails; no HUBL conditionals needed anymore)</div>
 <div class="copy-block">&lt;p&gt;Hi {{ contact.firstname }},&lt;/p&gt;
 
 &lt;p&gt;Thanks for your interest in a Court 16 trial for {{ contact.child_name }}. We weren't able to confirm this specific booking — here's what happened:&lt;/p&gt;
 
-{% if "Wrong age band" in contact.court16_failure_reason %}
-&lt;p&gt;&lt;strong&gt;The class you picked is for a different age range.&lt;/strong&gt; Each Court 16 program is tightly age-gated so kids learn alongside peers of similar size and motor skill. The good news: we have a class that's a perfect fit for {{ contact.child_name }}. Reply to this email and we'll send over the options.&lt;/p&gt;
-
-{% elif "No availability" in contact.court16_failure_reason %}
-&lt;p&gt;&lt;strong&gt;That specific class filled up before we could lock in {{ contact.child_name }}'s spot.&lt;/strong&gt; We have other openings this week and next at {{ contact.preferred_location }} — happy to suggest alternatives. Just reply and we'll send a few times that work.&lt;/p&gt;
-
-{% elif "Parent cancelled" in contact.court16_failure_reason %}
-&lt;p&gt;&lt;strong&gt;Per your request, we've cancelled the trial.&lt;/strong&gt; If anything changes and you'd like to re-book later, just reply to this email — your details are saved on our end and we can pick up where we left off.&lt;/p&gt;
-
-{% elif "Duplicate booking" in contact.court16_failure_reason %}
-&lt;p&gt;&lt;strong&gt;We already had a booking for {{ contact.child_name }} on file.&lt;/strong&gt; To avoid sending duplicate confirmations or charging twice, we cancelled this newer request. If you meant to book a different child or a different time, just reply and we'll sort it out.&lt;/p&gt;
-
-{% else %}
-&lt;p&gt;&lt;strong&gt;Detail from our team:&lt;/strong&gt; {{ contact.court16_failure_reason }}&lt;/p&gt;
-{% endif %}
+{{ contact.court16_denial_message }}
 
 &lt;h3&gt;What now?&lt;/h3&gt;
 &lt;p&gt;The best next step is a quick reply to this email. We read every message and can usually re-book within the same day.&lt;/p&gt;
@@ -331,9 +322,7 @@ The Court 16 team&lt;/p&gt;
 
 &lt;p&gt;&lt;small&gt;Reference: {{ contact.court16_correlation_id }}&lt;/small&gt;&lt;/p&gt;</div>
 
-<div class="info"><strong>How the variants work</strong>Cedarwind's <code>/api/staff/deny</code> route writes the picklist label + optional note into the Contact's <code>court16_failure_reason</code> property (e.g. <em>"Denied: Wrong age band"</em>). The HUBL <code>{% if "..." in contact.court16_failure_reason %}</code> blocks above match on that text. If you change the picklist labels in the deny form, also update the matched strings here.</div>
-
-<div class="gotcha"><strong>HUBL preview gotcha</strong>HubSpot's email editor's "Preview" tab doesn't always render HUBL conditionals against a sample contact — you may see all 5 variants stacked. That's a preview-only quirk; the real send only renders the matching block. To verify, go to the workflow's <strong>Test</strong> tab and enroll a real test contact with each failure reason value.</div>
+<div class="info"><strong>How <code>court16_denial_message</code> gets populated</strong>The <code>/api/staff/deny</code> route picks the reason-matching HTML snippet from <code>config/denial-messages.ts</code>, substitutes <code>{{child}}</code> with the kid's name (and <code>{{note}}</code> for the "Other" reason), and writes the pre-rendered HTML to the Contact property at deny-time. The email asset reads it as a single token — same way <code>{{ contact.child_name }}</code> works. To tweak the per-reason wording, edit <code>config/denial-messages.ts</code> in the repo (Cedarwind owns this) — the 5 reasons (Wrong age band / No availability / Parent cancelled / Duplicate booking / Other) are operationally stable so this trade-off is acceptable. If Court 16 wants HubSpot-UI control of the per-reason text, escalate to "5 separate email assets + workflow branching".</div>
 
 <hr class="section" />
 
@@ -458,7 +447,7 @@ The Court 16 team&lt;/p&gt;
   <li><strong>Class day/time/coach merge tokens in email bodies</strong>: <code>class_date</code> is now on the Deal (May 14 ship), but the emails still reference class time generically because day/time/coach are derived from the MindBody class object, not pushed to HubSpot. Two paths: (a) HubSpot personalization token for <code>{{ deal.class_date }}</code> formatted via HUBL, or (b) Cedarwind extends the booking app to also write classDay/classTime/coachName to the Deal — small lift, ping Stuart.</li>
   <li><strong>Per-location password-setup link</strong>: Email 2's CTA points at court16.com/login (generic). Optional polish via Smart Content keyed on <code>court16_location_slug</code>.</li>
   <li><strong>MindBody booking auto-cancellation on deny</strong>: <code>/api/staff/deny</code> flips state correctly but doesn't yet remove the client from the MindBody class (needs visit-id we don't capture from AddClientToClass — Track 2).</li>
-  <li><strong>Reason picklist drift</strong>: if you change Cedarwind's deny picklist labels, the HUBL conditionals in Email 4 need a matching update.</li>
+  <li><strong>Reason picklist drift</strong>: if you change Cedarwind's deny picklist values (the snake_case ones — <code>wrong_age_band</code>, <code>no_availability</code>, etc.), the key strings in <code>config/denial-messages.ts</code> need a matching update. The email body itself stays untouched (single token, no conditionals).</li>
 </ul>
 
 <footer>
