@@ -69,14 +69,27 @@ function TrialInner() {
         const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
         const lastDay = new Date(year, month, 0).getDate();
         const endDate = `${year}-${String(month).padStart(2, "0")}-${lastDay}`;
+        // intent=kid_trial → server-side narrows to Program 61 (Kid's Trials)
+        // at sites with kidTrialProgramId set in config/locations.ts. Falls
+        // back to legacy unfiltered + filterChildrenOnly behavior for sites
+        // that haven't created a Kid's Trials program yet (Ibtissam May 21
+        // — RH is the only one wired today).
         const resp = await fetch(
-          `/api/mindbody/calendar?locationId=${loc.id}&startDate=${startDate}&endDate=${endDate}`,
+          `/api/mindbody/calendar?locationId=${loc.id}&startDate=${startDate}&endDate=${endDate}&intent=kid_trial`,
         );
         if (!resp.ok) throw new Error("Failed to load classes");
         const data = await resp.json();
         const mbClasses: MindBodyClass[] = data.classes || [];
 
-        const childrenClasses = filterChildrenOnly(mbClasses);
+        // If the server narrowed to a kid-trial Program, the response is
+        // already restricted to trial-eligible occurrences — skip the
+        // legacy filterChildrenOnly post-filter (which only matches the
+        // generic "Children's Classes" program label and would wrongly
+        // exclude Program 61's "Kid's Trials"). For sites without a
+        // configured trial program, fall back to the legacy filter.
+        const childrenClasses = data.filteredByProgramId
+          ? mbClasses
+          : filterChildrenOnly(mbClasses);
         const parsed = childrenClasses.map(parseClass);
         const eligibleFiltered = filterByTrialEligibility(parsed, loc.id);
         const available = filterAvailable(eligibleFiltered);

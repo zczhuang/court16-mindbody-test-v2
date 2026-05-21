@@ -34,6 +34,28 @@ export interface Location {
    * classic URL with studioid={siteId}).
    */
   loginUrl?: string;
+  /**
+   * MindBody Program ID for the site's "Kid's Trials" container — the
+   * `/api/mindbody/calendar` route filters on this when called with
+   * `intent=kid_trial` so the trial form only surfaces trial-eligible
+   * class occurrences (not all the regular kid recurring classes).
+   *
+   * Setup model (Ibtissam, per May 21 email):
+   *   1. Create a new MindBody Program called "Kid's Trials"
+   *   2. Add ClassDescriptions for each age band
+   *      (Little Freshman / Freshman+Sophomore / Junior+Senior / Teenager)
+   *   3. Create a $0 service SKU tied to that Program
+   *   4. Schedule recurring class occurrences ONLY at the curated
+   *      trial-eligible times (e.g. Mon 3:45 PM, Sat 9 AM, etc.)
+   *   5. Share the Program ID with Cedarwind → set here per location
+   *
+   * If undefined, the calendar route falls back to the legacy
+   * `filterChildrenOnly` post-filter (which surfaces ALL recurring kid
+   * classes — risk: parents pick a non-trial class and the AddClientToClass
+   * call fails because the Kid's Trial SKU only grants access to Program
+   * 61 sessions). Set per-site as each location ships its own Kid's Trials.
+   */
+  kidTrialProgramId?: number;
 }
 
 /** Default login URL used when a location's `loginUrl` is undefined. */
@@ -124,6 +146,11 @@ export const LOCATIONS: Location[] = [
     postalCode: "10710",
     timezone: "America/New_York",
     loginUrl: LOGIN_URLS.ridgehill,
+    // Ibtissam created Program 61 + 4 ClassDescriptions on May 20-21:
+    // Little Freshman Trial (115), Freshman/Sophomore Trial (116),
+    // Junior/Senior Trial (117), Teenager Trial (118).
+    // The $0 SKU is service 100328 ("Kid's Trial").
+    kidTrialProgramId: 61,
   },
   {
     id: "fishtown",
