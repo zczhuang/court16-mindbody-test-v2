@@ -692,6 +692,116 @@ export async function addClientToClass(
   });
 }
 
+export interface PurchaseTrialServiceInput {
+  ClientId: string | number;
+  ServiceId: number;
+  Notes?: string;
+}
+
+export interface PurchaseTrialServiceResult {
+  saleId: number;
+  serviceName: string;
+}
+
+/**
+ * "Purchase" a $0 trial service for a client via the shopping-cart endpoint.
+ *
+ * Why this exists: AddClientToClass for a class tagged with a Program that
+ * requires payment (e.g. RH Program 61 "Kid's Trials") returns
+ * `ClassRequiresPayment` ("ClientID X has no available payments for ClassID Y")
+ * UNLESS the client owns the matching service. AddClient creates the client
+ * record but doesn't grant any services — they have to be checkout'd
+ * separately. This helper runs the cart checkout with a `Comp` payment of $0,
+ * which atomically grants the service to the client. The subsequent
+ * AddClientToClass call then succeeds with that ServiceId as ClientServiceId.
+ *
+ * Verified May 22 against site 5748154: kid Client 100002142, service 100328
+ * (RH Kid's Trial, $0), SaleId 2772 returned → AddClientToClass succeeded
+ * with Visit Id 5824.
+ *
+ * Requires a staff-mode Bearer token — uses `staffFetch`-equivalent auth
+ * via the `useStaffBearer` flag below. (Source Credentials → staff JWT.)
+ * Consumer mode is rejected by /sale/checkoutshoppingcart with
+ * `InvalidPermissionConfiguration`.
+ */
+export async function purchaseTrialService(
+  cfg: MindbodyConfig,
+  log: Logger,
+  input: PurchaseTrialServiceInput,
+): Promise<PurchaseTrialServiceResult> {
+  const bearer = await issueSourceStaffToken(cfg, log);
+  const body = {
+    ClientId: String(input.ClientId),
+    Test: false,
+    InStore: true,
+    Items: [
+      {
+        Item: { Type: "Service", Metadata: { Id: input.ServiceId } },
+        DiscountAmount: 0,
+        Quantity: 1,
+      },
+    ],
+    Payments: [
+      {
+        Type: "Comp",
+        Metadata: { Amount: 0, Notes: input.Notes ?? "Court 16 trial — Cedarwind staff confirm" },
+      },
+    ],
+  };
+  const started = Date.now();
+  const res = await fetch(`${cfg.baseUrl}/sale/checkoutshoppingcart`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Api-Key": cfg.apiKey,
+      SiteId: cfg.siteId,
+      Authorization: `Bearer ${bearer}`,
+    },
+    body: JSON.stringify(body),
+  });
+  const ms = Date.now() - started;
+  const text = await res.text();
+  let parsed: unknown = text;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    /* leave as text */
+  }
+  if (!res.ok) {
+    log.error("mindbody.purchase-trial.fail", {
+      clientId: input.ClientId,
+      serviceId: input.ServiceId,
+      status: res.status,
+      ms,
+      body: parsed,
+    });
+    throw new MindbodyError(`purchase trial service → ${res.status}`, res.status, parsed);
+  }
+  const cart = (parsed as { ShoppingCart?: { SaleId?: number; CartItems?: Array<{ Item?: { Name?: string } }> } })
+    .ShoppingCart;
+  const saleId = cart?.SaleId ?? 0;
+  const serviceName = cart?.CartItems?.[0]?.Item?.Name ?? "trial service";
+  log.info("mindbody.purchase-trial.ok", {
+    clientId: input.ClientId,
+    serviceId: input.ServiceId,
+    saleId,
+    serviceName,
+    ms,
+  });
+  return { saleId, serviceName };
+}
+
+/**
+ * Predicate: did MindbodyError originate from a duplicate AddClientToClass
+ * call (client is already enrolled in that class)? Used by the staff confirm
+ * route to treat the second-click case as soft-success rather than retrying.
+ */
+export function isAlreadyBookedError(err: unknown): boolean {
+  if (!(err instanceof MindbodyError)) return false;
+  const body = (err as unknown as { body?: { Error?: { Code?: string } } }).body;
+  return body?.Error?.Code === "ClientIsAlreadyBooked";
+}
+
 export interface ClientService {
   Id?: number;
   Count?: number;

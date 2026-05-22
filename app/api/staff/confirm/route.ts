@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
 import {
   addClientToClass,
+  isAlreadyBookedError,
   loadConfigFromEnv,
   MindbodyError,
+  purchaseTrialService,
 } from "@/lib/mindbody";
 import {
   findContactByCorrelationId,
@@ -110,6 +112,35 @@ async function handle(req: Request) {
   // first applicable pricing (existing behavior).
   const trialServiceId = locationSlug ? TRIAL_CONFIG[locationSlug]?.trialServiceId : undefined;
 
+  // Bug H fix (May 22): Programs marked as paid (e.g. RH Program 61
+  // "Kid's Trials") reject AddClientToClass with `ClassRequiresPayment`
+  // unless the client owns the matching service first. AddClient creates
+  // the client record but doesn't grant services. So when a per-location
+  // trial service ID is configured, "purchase" it for $0 via the shopping
+  // cart endpoint before booking. Soft-fail with structured logging so we
+  // can debug if the service is misconfigured (wrong service ID, no Comp
+  // payment type configured at the site, etc.) without blocking staff.
+  if (trialServiceId) {
+    try {
+      await purchaseTrialService(mbCfg, log, {
+        ClientId: clientId,
+        ServiceId: trialServiceId,
+        Notes: `Court 16 trial · ${payload.correlationId}`,
+      });
+    } catch (e) {
+      const serialized =
+        e instanceof MindbodyError ? JSON.stringify(e.toJSON()) : e instanceof Error ? e.message : String(e);
+      log.warn("staff.confirm.purchase-trial.fail", {
+        clientId,
+        trialServiceId,
+        error: serialized.slice(0, 500),
+      });
+      // Keep going — maybe the client already owns the service from a prior
+      // attempt, or MindBody falls back to a default pricing. The
+      // AddClientToClass call below is the source of truth.
+    }
+  }
+
   try {
     await addClientToClass(mbCfg, log, {
       ClientId: clientId,
@@ -117,13 +148,20 @@ async function handle(req: Request) {
       ClientServiceId: trialServiceId,
     });
   } catch (e) {
-    const serialized =
-      e instanceof MindbodyError ? JSON.stringify(e.toJSON()) : e instanceof Error ? e.message : String(e);
-    await updateContact(hsCfg, log, contact.id, {
-      court16_booking_status: "failed",
-      court16_failure_reason: `AddClientToClass: ${serialized}`.slice(0, 4000),
-    });
-    return html(`MindBody booking failed. Staff: check admin queue.`, 502);
+    // Idempotent confirm: a second click after a successful first one returns
+    // ClientIsAlreadyBooked. Treat as soft-success and let the rest of the
+    // route (HubSpot status flip + Deal stage move) re-run idempotently.
+    if (isAlreadyBookedError(e)) {
+      log.info("staff.confirm.alreadyBooked", { clientId, classId });
+    } else {
+      const serialized =
+        e instanceof MindbodyError ? JSON.stringify(e.toJSON()) : e instanceof Error ? e.message : String(e);
+      await updateContact(hsCfg, log, contact.id, {
+        court16_booking_status: "failed",
+        court16_failure_reason: `AddClientToClass: ${serialized}`.slice(0, 4000),
+      });
+      return html(`MindBody booking failed. Staff: check admin queue.`, 502);
+    }
   }
 
   await updateContact(hsCfg, log, contact.id, { court16_booking_status: "confirmed" });
