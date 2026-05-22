@@ -23,7 +23,12 @@ export const TRIAL_CONFIG: Record<string, LocationTrialConfig> = {
   brooklyn: { trialEligibleClassScheduleIds: [], maxTrialsPerClass: 2 },
   lic: { trialEligibleClassScheduleIds: [], maxTrialsPerClass: 2 },
   fidi: { trialEligibleClassScheduleIds: [], maxTrialsPerClass: 2 },
-  ridgehill: { trialEligibleClassScheduleIds: [], maxTrialsPerClass: 2 },
+  // RH Kid's Trial $0 service (id 100328) is tied to Program 61. AddClientToClass
+  // for a Program 61 occurrence requires this service to be passed as
+  // ClientServiceId — without it MindBody returns `ClassRequiresPayment` (verified
+  // smoke #M3 v1, May 22). Jane Montoya created the service; surfaced via
+  // /sale/services with staffMode Bearer.
+  ridgehill: { trialEligibleClassScheduleIds: [], maxTrialsPerClass: 2, trialServiceId: 100328 },
   fishtown: { trialEligibleClassScheduleIds: [], maxTrialsPerClass: 2 },
   newton: { trialEligibleClassScheduleIds: [], maxTrialsPerClass: 2 },
 };
