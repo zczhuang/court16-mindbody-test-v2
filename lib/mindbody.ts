@@ -83,6 +83,109 @@ export async function issueStaffUserToken(cfg: MindbodyConfig, log: Logger): Pro
   return body.AccessToken;
 }
 
+// ─── Source-Credentials staff token (v6) ─────────────────────────────────────
+
+/**
+ * Thrown by `issueSourceStaffToken` when MINDBODY_SOURCE_PASSWORD is not set.
+ * Callers (notably the calendar route's `staffMode` fall-through) catch this
+ * specifically and degrade to consumer mode rather than failing the request.
+ */
+export class MindbodySourceCredsMissingError extends Error {
+  constructor() {
+    super("MINDBODY_SOURCE_PASSWORD env var is not set");
+    this.name = "MindbodySourceCredsMissingError";
+  }
+}
+
+/**
+ * Default Source Name on developers.mindbodyonline.com for the Cedarwind
+ * developer account. Override via MINDBODY_SOURCE_NAME if a different
+ * source name is provisioned later.
+ */
+const DEFAULT_SOURCE_NAME = "CedarWindSolutionsLLC";
+
+/** Source-derived tokens are JWTs valid ~24h. Refresh at 23h. */
+const SOURCE_TOKEN_TTL_MS = 23 * 60 * 60 * 1000;
+
+/**
+ * Cache is keyed by SiteId because the issued JWT carries `subscriberId`
+ * in its payload — a token issued against 5748154 won't work against
+ * another site. Map lets us hold multiple in-process if we ever fan out
+ * to multiple Court 16 sites in a single Lambda.
+ */
+const cachedSourceTokens = new Map<string, CachedToken>();
+
+/**
+ * Issue a staff-level v6 Bearer token using MindBody Source Credentials
+ * (developer "Source Name" + Source Password).
+ *
+ * Why this exists: v6 `/class/classes` filters out classes marked "hidden"
+ * in MindBody admin when there's no Authorization header (per MindBody
+ * Public API release notes — "GetClasses V6 will no longer return classes
+ * that are marked as 'hidden' when there is no authentication header
+ * present"). Court 16's Ridge Hill kid-trial Program (id 61) is one such
+ * Program. Without this token, /api/mindbody/calendar?intent=kid_trial
+ * returns 0 classes and the booking form's calendar is blank.
+ *
+ * The trick: prefixing the Source Name with an underscore (`_CedarWindSolutionsLLC`)
+ * and using the Source Password as the password authenticates against
+ * /usertoken/issue and returns a JWT with `access: "Staff"`. This token
+ * reveals all hidden classes — verified against site 5748154 May 22,
+ * 24 Program 61 occurrences surfaced.
+ *
+ * This is INTENTIONALLY read-side only — write endpoints (AddClient,
+ * AddClientToClass, etc.) keep using consumer mode (Api-Key + SiteId)
+ * because (a) consumer mode works for them on real sites and (b) we
+ * don't want a single token leak to grant write privileges to all
+ * Court 16 sites simultaneously.
+ */
+export async function issueSourceStaffToken(
+  cfg: MindbodyConfig,
+  log: Logger,
+): Promise<string> {
+  const sourcePassword = process.env.MINDBODY_SOURCE_PASSWORD;
+  if (!sourcePassword) {
+    throw new MindbodySourceCredsMissingError();
+  }
+  const sourceName = process.env.MINDBODY_SOURCE_NAME ?? DEFAULT_SOURCE_NAME;
+  const username = `_${sourceName}`;
+
+  const cached = cachedSourceTokens.get(cfg.siteId);
+  if (cached && cached.expiresAt > Date.now()) {
+    log.debug("mindbody.source-token.cache-hit", { siteId: cfg.siteId });
+    return cached.token;
+  }
+
+  log.info("mindbody.source-token.issue.start", { siteId: cfg.siteId, username });
+  const res = await fetch(`${cfg.baseUrl}/usertoken/issue`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Api-Key": cfg.apiKey,
+      SiteId: cfg.siteId,
+    },
+    body: JSON.stringify({ Username: username, Password: sourcePassword }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok || !body?.AccessToken) {
+    log.error("mindbody.source-token.issue.fail", {
+      siteId: cfg.siteId,
+      status: res.status,
+      body,
+    });
+    throw new MindbodyError("source-staff usertoken/issue failed", res.status, body);
+  }
+  const expiresAt = Date.now() + SOURCE_TOKEN_TTL_MS;
+  cachedSourceTokens.set(cfg.siteId, { token: body.AccessToken, expiresAt });
+  log.info("mindbody.source-token.issue.ok", {
+    siteId: cfg.siteId,
+    tokenPrefix: body.AccessToken.slice(0, 8),
+    userType: body.User?.Type,
+    expiresAt,
+  });
+  return body.AccessToken;
+}
+
 // ─── Low-level fetch ──────────────────────────────────────────────────────────
 
 /**
@@ -91,12 +194,25 @@ export async function issueStaffUserToken(cfg: MindbodyConfig, log: Logger): Pro
  * dance. Loads config from env, sets the SiteId header for this call, and
  * returns the parsed JSON.
  *
- * Pass `consumerMode: true` to SKIP the staff-user-token issue. MindBody
- * treats most GET endpoints (notably /class/classes, /site/sites,
- * /site/locations) as public under "Consumer Mode" — just Api-Key +
- * SiteId is enough. Use this for read-only routes so we don't fail when
- * MindBody's token endpoint 500s or when the Api-Key lacks Go-Live
- * staff-auth privileges but still has Consumer Mode access.
+ * Three auth modes — pick at most one:
+ *
+ *   • `consumerMode: true` — Api-Key + SiteId only, no Bearer. Fastest path.
+ *     Works for /client/clients search, AddClient, AddClientToClass on real
+ *     sites. Will MISS classes flagged "hidden" in MindBody admin from
+ *     /class/classes.
+ *
+ *   • `staffMode: true` — Api-Key + SiteId + Bearer derived from MindBody
+ *     SOURCE CREDENTIALS (developers.mindbodyonline.com → Source Password,
+ *     stored as MINDBODY_SOURCE_PASSWORD). This Bearer carries `access: Staff`
+ *     and reveals hidden classes — critical for /api/mindbody/calendar so
+ *     Program 61 (Ridge Hill Kid's Trials) occurrences surface in the form's
+ *     calendar. If MINDBODY_SOURCE_PASSWORD is unset, gracefully falls back
+ *     to consumer mode (calendar still loads but hidden classes won't show)
+ *     and emits a `mindbody.staff-mode.degraded` warn log.
+ *
+ *   • default (neither flag) — staff-user token issued from
+ *     MINDBODY_STAFF_USERNAME/PASSWORD. Legacy path, kept for the few
+ *     endpoints that require it.
  */
 export async function authedMindbodyGet<T>(
   log: Logger,
@@ -105,10 +221,14 @@ export async function authedMindbodyGet<T>(
     path: string;
     query?: Record<string, string | number | boolean | undefined>;
     consumerMode?: boolean;
+    staffMode?: boolean;
   },
 ): Promise<T> {
   const cfg = loadConfigFromEnv();
   const cfgWithSite = opts.siteIdOverride ? { ...cfg, siteId: opts.siteIdOverride } : cfg;
+  if (opts.staffMode) {
+    return staffFetch<T>(cfgWithSite, log, { path: opts.path, query: opts.query });
+  }
   if (opts.consumerMode) {
     return consumerFetch<T>(cfgWithSite, log, { path: opts.path, query: opts.query });
   }
@@ -149,6 +269,85 @@ async function consumerFetch<T>(
     throw new MindbodyError(`GET ${opts.path} → ${res.status}`, res.status, parsed);
   }
   log.info("mindbody.consumer.ok", { path: opts.path, ms });
+  return parsed as T;
+}
+
+/**
+ * Source-credentials GET — Api-Key + SiteId + Bearer JWT issued from the
+ * Cedarwind developer Source Name + Source Password. Reveals classes
+ * flagged "hidden" in MindBody admin (per the v6 release notes — see
+ * `issueSourceStaffToken` doc).
+ *
+ * Gracefully degrades to consumer mode when:
+ *   • MINDBODY_SOURCE_PASSWORD is unset (e.g. local dev without the password),
+ *   • or /usertoken/issue rejects the source credentials (e.g. credentials
+ *     rotated, network blip).
+ *
+ * The fall-through never throws — the calendar always loads, it just
+ * loses visibility into hidden classes. Logs `mindbody.staff-mode.degraded`
+ * with the reason so we can spot the regression in monitoring.
+ */
+async function staffFetch<T>(
+  cfg: MindbodyConfig,
+  log: Logger,
+  opts: { path: string; query?: Record<string, string | number | boolean | undefined> },
+): Promise<T> {
+  let bearer: string | null = null;
+  try {
+    bearer = await issueSourceStaffToken(cfg, log);
+  } catch (err) {
+    if (err instanceof MindbodySourceCredsMissingError) {
+      log.warn("mindbody.staff-mode.degraded", {
+        path: opts.path,
+        reason: "source-password-unset",
+      });
+    } else {
+      log.warn("mindbody.staff-mode.degraded", {
+        path: opts.path,
+        reason: "token-issue-failed",
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  const url = new URL(cfg.baseUrl + opts.path);
+  if (opts.query) {
+    for (const [k, v] of Object.entries(opts.query)) {
+      if (v !== undefined) url.searchParams.set(k, String(v));
+    }
+  }
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "Api-Key": cfg.apiKey,
+    SiteId: cfg.siteId,
+  };
+  if (bearer) headers.Authorization = `Bearer ${bearer}`;
+
+  const started = Date.now();
+  const res = await fetch(url.toString(), { method: "GET", headers });
+  const ms = Date.now() - started;
+  const text = await res.text();
+  let parsed: unknown = text;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    // leave as text
+  }
+  if (!res.ok) {
+    log.error("mindbody.staff.fail", {
+      path: opts.path,
+      status: res.status,
+      ms,
+      bearer: bearer ? "present" : "absent",
+      body: parsed,
+    });
+    throw new MindbodyError(`GET ${opts.path} → ${res.status}`, res.status, parsed);
+  }
+  log.info("mindbody.staff.ok", {
+    path: opts.path,
+    ms,
+    bearer: bearer ? "present" : "absent",
+  });
   return parsed as T;
 }
 

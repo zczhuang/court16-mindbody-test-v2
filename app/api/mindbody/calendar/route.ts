@@ -79,10 +79,14 @@ export async function GET(request: NextRequest) {
         ProgramIds: programIds,
         Limit: 200,
       },
-      // /class/classes is fully public under Consumer Mode — skip the
-      // staff-user-token dance so the calendar still loads when token
-      // issue is down or not yet Go-Live approved.
-      consumerMode: true,
+      // staffMode: attach a Source-Credentials-issued Bearer so v6 returns
+      // classes that MindBody admin has flagged "hidden" (consumer mode
+      // silently filters those out — empirically verified May 22 that
+      // Ridge Hill Program 61 has 24 hidden trial occurrences invisible
+      // without this Bearer). Falls back to consumer mode automatically
+      // if MINDBODY_SOURCE_PASSWORD is unset, so the calendar still
+      // renders for sites that haven't flipped on staff-token access.
+      staffMode: true,
     });
     return NextResponse.json({
       classes: result.Classes ?? [],
