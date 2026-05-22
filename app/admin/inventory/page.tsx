@@ -963,6 +963,12 @@ export default async function InventoryPage({
             </a>{" "}
             — the filtered calendar used by /trial
           </li>
+          <li>
+            <a href="/admin/trial-v5?key=<INVENTORY_ACCESS_KEY>" style={{ color: "var(--c16-ink)" }}>
+              /admin/trial-v5
+            </a>{" "}
+            — side-by-side v5 SOAP vs v6 REST diff (paste the access key into the URL)
+          </li>
         </ul>
       </section>
     </main>
