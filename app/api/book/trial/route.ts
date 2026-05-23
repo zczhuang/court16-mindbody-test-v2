@@ -17,7 +17,7 @@ import {
 import { buildStaffUrl } from "@/lib/staff-tokens";
 import { classifyIntent } from "@/lib/intent";
 import { createLogger, makeCorrelationId } from "@/lib/logger";
-import { extractLevelName, siteLocalToUtcIso } from "@/lib/class-utils";
+import { extractLevelName, formatClassDayTime, siteLocalToUtcIso } from "@/lib/class-utils";
 import { getLocationById } from "@/config/locations";
 import { getDealPipeline, getHubspotPreferredLocation } from "@/config/hubspot-deals";
 import { CLASS_AGE_METADATA } from "@/config/trial-config";
@@ -398,6 +398,15 @@ function buildFormFields(args: BuildFieldsArgs) {
     // (caught by smoke #3); confirm route returned 502 InvalidClassId.
     court16_class_id: String(body.classId),
     court16_location_slug: location.id,
+    // Human-readable companions to court16_class_id / court16_location_slug
+    // — let staff read the class slot in HubSpot without bouncing to
+    // MindBody admin. Added May 22 after smoke #M3 surfaced the gap.
+    court16_class_name: body.className,
+    court16_class_day_time: body.classStartsAt
+      ? formatClassDayTime(body.classStartsAt, location.timezone)
+      : `${body.classDay} ${body.classTime}`,
+    court16_coach_name: body.coachName,
+    court16_location_full: location.fullName,
     court16_waiver_version: WAIVER_VERSION,
     court16_mindbody_parent_id: parentMbId,
     court16_mindbody_child_id: childMbId,
@@ -426,6 +435,10 @@ function contactPropertiesFromFields(fields: ReturnType<typeof buildFormFields>)
     court16_booking_status: fields.court16_booking_status,
     court16_class_id: fields.court16_class_id,
     court16_location_slug: fields.court16_location_slug,
+    court16_class_name: fields.court16_class_name,
+    court16_class_day_time: fields.court16_class_day_time,
+    court16_coach_name: fields.court16_coach_name,
+    court16_location_full: fields.court16_location_full,
     court16_waiver_version: fields.court16_waiver_version,
     court16_mindbody_parent_id: fields.court16_mindbody_parent_id,
     court16_mindbody_child_id: fields.court16_mindbody_child_id,

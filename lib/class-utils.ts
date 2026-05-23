@@ -79,6 +79,53 @@ export function siteLocalToUtcIso(localIso: string, timezone: string): string {
 }
 
 /**
+ * Format a MindBody-style wall-clock ISO ("YYYY-MM-DDTHH:MM:SS", no TZ)
+ * into a human-readable "Weekday, Month D at H:MM AM/PM TZ" string in
+ * the supplied IANA timezone (e.g. "America/New_York").
+ *
+ * Example: ("2026-05-27T16:30:00", "America/New_York")
+ *       →  "Wednesday, May 27 at 4:30 PM EDT"
+ *
+ * Used to populate the human-readable `court16_class_day_time` HubSpot
+ * Contact property so staff can read the class slot without doing UTC↔
+ * local conversion in their head (the canonical Deal `class_date` is
+ * stored in UTC ms for workflow correctness; this string is for humans).
+ *
+ * Returns empty string for unparseable input — caller can fall through.
+ */
+export function formatClassDayTime(localIso: string, timezone: string): string {
+  try {
+    // Convert to a real UTC instant first so Intl can format it in TZ.
+    const utcIso = siteLocalToUtcIso(localIso, timezone);
+    const date = new Date(utcIso);
+    if (Number.isNaN(date.getTime())) return "";
+    const fmt = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      timeZoneName: "short",
+    });
+    const parts = fmt.formatToParts(date);
+    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+    const weekday = get("weekday");
+    const month = get("month");
+    const day = get("day");
+    const hour = get("hour");
+    const minute = get("minute");
+    const dayPeriod = get("dayPeriod");
+    const tzName = get("timeZoneName");
+    if (!weekday || !month || !day || !hour) return "";
+    return `${weekday}, ${month} ${day} at ${hour}:${minute} ${dayPeriod} ${tzName}`;
+  } catch {
+    return "";
+  }
+}
+
+/**
  * Parse a MindBody class object into our simplified TrialClass format.
  * Class name lives at `ClassDescription.Name` in MindBody v6; some older
  * proxies surface it as a top-level `ClassName` — accept both.

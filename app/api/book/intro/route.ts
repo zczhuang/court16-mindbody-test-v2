@@ -17,7 +17,7 @@ import {
 import { buildStaffUrl } from "@/lib/staff-tokens";
 import { classifyIntent } from "@/lib/intent";
 import { createLogger, makeCorrelationId } from "@/lib/logger";
-import { siteLocalToUtcIso } from "@/lib/class-utils";
+import { formatClassDayTime, siteLocalToUtcIso } from "@/lib/class-utils";
 import { getLocationById } from "@/config/locations";
 import { getOffer } from "@/config/adult-config";
 import { getDealPipeline, getHubspotPreferredLocation } from "@/config/hubspot-deals";
@@ -396,6 +396,14 @@ function buildFormFields(args: BuildFieldsArgs) {
     // Per-occurrence MindBody ClassId (Bug E fix — see trial route).
     court16_class_id: String(body.classId),
     court16_location_slug: location.id,
+    // Human-readable companions to court16_class_id / court16_location_slug.
+    // Added May 22 — see trial route for the rationale.
+    court16_class_name: body.className,
+    court16_class_day_time: body.classStartsAt
+      ? formatClassDayTime(body.classStartsAt, location.timezone)
+      : `${body.classDay} ${body.classTime}`,
+    court16_coach_name: body.coachName,
+    court16_location_full: location.fullName,
     court16_offer_key: offer.key,
     court16_waiver_version: body.waiverVersion ?? WAIVER_VERSION,
     court16_mindbody_parent_id: adultMbId,
@@ -439,6 +447,10 @@ function contactPropertiesFromFields(fields: ReturnType<typeof buildFormFields>)
     court16_booking_status: fields.court16_booking_status,
     court16_class_id: fields.court16_class_id,
     court16_location_slug: fields.court16_location_slug,
+    court16_class_name: fields.court16_class_name,
+    court16_class_day_time: fields.court16_class_day_time,
+    court16_coach_name: fields.court16_coach_name,
+    court16_location_full: fields.court16_location_full,
     court16_offer_key: fields.court16_offer_key,
     court16_waiver_version: fields.court16_waiver_version,
     court16_mindbody_parent_id: fields.court16_mindbody_parent_id,

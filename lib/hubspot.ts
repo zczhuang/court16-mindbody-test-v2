@@ -160,6 +160,18 @@ export interface TrialFormFields {
     | "manual_review";
   court16_class_id?: string;
   court16_location_slug?: string;
+  /**
+   * Human-readable class metadata mirrored to the Contact record so staff
+   * can read the class slot in HubSpot without cross-referencing
+   * court16_class_id in MindBody. Added May 22 after smoke #M3 surfaced
+   * that staff only saw "court16_class_id: 15673" without name/time/coach.
+   * Companion Contact properties live in the court16_booking group on
+   * portal 4832170 (created via /crm/v3/properties/contacts).
+   */
+  court16_class_name?: string;
+  court16_class_day_time?: string;
+  court16_coach_name?: string;
+  court16_location_full?: string;
   court16_waiver_version?: string;
   court16_offer_key?: string;
   court16_mindbody_parent_id?: string;
@@ -243,6 +255,10 @@ export async function findContactByCorrelationId(
         "court16_booking_status",
         "court16_class_id",
         "court16_location_slug",
+        "court16_class_name",
+        "court16_class_day_time",
+        "court16_coach_name",
+        "court16_location_full",
         "court16_waiver_version",
         "court16_mindbody_parent_id",
         "court16_mindbody_child_id",
