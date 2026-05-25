@@ -518,6 +518,19 @@ export interface AddClientInput {
       RelationshipName2: string;
     };
   }>;
+
+  // ── Communication preferences (May 25 — see v2 commit dde7e46) ──
+  // MindBody has 6 send-* opt-in flags. When AddClient omits them, MindBody
+  // defaults them all to FALSE — which silently suppresses the "Add Court 16
+  // to your Mindbody account" auto-link email + any other transactional sends.
+  // Caught when a v2 smoke against chuangstuart@gmail.com landed clean but
+  // no auto-link email arrived; readback showed SendAccountEmails=False.
+  SendAccountEmails?: boolean;
+  SendScheduleEmails?: boolean;
+  SendPromotionalEmails?: boolean;
+  SendAccountTexts?: boolean;
+  SendScheduleTexts?: boolean;
+  SendPromotionalTexts?: boolean;
 }
 
 /**

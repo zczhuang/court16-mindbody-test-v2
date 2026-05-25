@@ -218,6 +218,12 @@ export async function POST(req: Request) {
           EmergencyContactInfoPhone: body.parentPhone,
           EmergencyContactInfoEmail: body.parentEmail,
           EmergencyContactInfoRelationship: "Self (placeholder)",
+          // Opt new Client into MindBody's transactional emails so the
+          // "Add Court 16 to your Mindbody account" auto-link email actually
+          // fires. MindBody defaults SendAccountEmails to false if omitted,
+          // silently suppressing the canonical Mindbody Account setup CTA.
+          SendAccountEmails: true,
+          SendScheduleEmails: true,
         });
         trace.push({ step: "addClient (parent)", status: "ok", data: { id: parent.Id } });
 
