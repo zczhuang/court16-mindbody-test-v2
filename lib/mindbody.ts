@@ -376,9 +376,26 @@ async function authedFetch<T>(
      * EmergencyContactInfo* subfields.
      */
     consumerMode?: boolean;
+    /**
+     * OAuth access_token from a Mindbody Identity Service sign-in. When
+     * provided alongside consumerMode=true (the dual-auth pattern), attached
+     * as `Authorization: Bearer <token>` so MindBody links the new Client to
+     * the parent's universal Mindbody Account at AddClient time. Suppresses
+     * the "Link your account" auto-email. Stage I / v2 port May 25.
+     */
+    oauthAccessToken?: string;
   },
 ): Promise<T> {
-  const token = opts.consumerMode ? null : await issueStaffUserToken(cfg, log);
+  // Auth precedence:
+  //   1. OAuth access_token (parent's Mindbody Account) — when present
+  //   2. Staff user token (legacy) — when neither OAuth nor consumerMode
+  //   3. No Authorization header (consumer mode, Api-Key only)
+  let bearer: string | null = null;
+  if (opts.oauthAccessToken) {
+    bearer = opts.oauthAccessToken;
+  } else if (!opts.consumerMode) {
+    bearer = await issueStaffUserToken(cfg, log);
+  }
   const url = new URL(cfg.baseUrl + opts.path);
   if (opts.query) {
     for (const [k, v] of Object.entries(opts.query)) {
@@ -401,7 +418,7 @@ async function authedFetch<T>(
     "Api-Key": cfg.apiKey,
     SiteId: cfg.siteId,
   };
-  if (token) headers.Authorization = `Bearer ${token}`;
+  if (bearer) headers.Authorization = `Bearer ${bearer}`;
 
   const started = Date.now();
   const res = await fetch(url.toString(), {
@@ -566,6 +583,7 @@ export async function addClient(
   cfg: MindbodyConfig,
   log: Logger,
   input: AddClientInput,
+  opts?: { oauthAccessToken?: string },
 ): Promise<MindbodyClient> {
   const res = await authedFetch<MindbodyClient & { Client?: MindbodyClient }>(cfg, log, {
     method: "POST",
@@ -575,6 +593,13 @@ export async function addClient(
     // (Throws `Test mode is not allowed for this endpoint.`)
     includeTestFlag: false,
     consumerMode: true,
+    // OAuth Bearer (when parent has signed in via Mindbody Identity Service)
+    // gets attached to the Authorization header alongside Api-Key. The dual
+    // auth context tells MindBody to LINK the new site-scoped Client to the
+    // parent's universal Mindbody Account at create time → suppresses the
+    // "Add Court 16 to your Mindbody account" auto-link email entirely.
+    // Stage I / v2 port May 25.
+    oauthAccessToken: opts?.oauthAccessToken,
   });
   return res.Client ?? (res as MindbodyClient);
 }

@@ -16,6 +16,7 @@ import {
 } from "@/lib/hubspot";
 import { buildStaffUrl } from "@/lib/staff-tokens";
 import { classifyIntent } from "@/lib/intent";
+import { getOAuthSession } from "@/lib/session";
 import { createLogger, makeCorrelationId } from "@/lib/logger";
 import { extractLevelName, formatClassDayTime, siteLocalToUtcIso } from "@/lib/class-utils";
 import { getLocationById } from "@/config/locations";
@@ -130,6 +131,23 @@ export async function POST(req: Request) {
   // parent doesn't see a 502 and staff can follow up by hand.
   let mbDegraded = false;
 
+  // If the parent signed in via Mindbody Identity Service (OAuth), grab
+  // the access_token from the encrypted session cookie and thread it to
+  // AddClient. MindBody links the new Client to their universal Account
+  // at create time → suppresses the "Add Court 16 to your Mindbody
+  // account" auto-link email. When no OAuth session, addClient falls
+  // through to consumer-mode (Api-Key only) which is the legacy path.
+  let oauthAccessToken: string | undefined;
+  try {
+    const session = await getOAuthSession();
+    if (session.accessToken && (!session.expiresAt || session.expiresAt > Date.now())) {
+      oauthAccessToken = session.accessToken;
+      log.info("trial.oauth.session.present", { email: session.email });
+    }
+  } catch (e) {
+    log.warn("trial.oauth.session.read.fail", { error: serialize(e) });
+  }
+
   try {
     let existing: Awaited<ReturnType<typeof getClientsByEmail>> = [];
     try {
@@ -218,7 +236,7 @@ export async function POST(req: Request) {
           EmergencyContactInfoPhone: body.parentPhone,
           EmergencyContactInfoEmail: body.parentEmail,
           EmergencyContactInfoRelationship: "Self (placeholder)",
-        });
+        }, { oauthAccessToken });
         trace.push({ step: "addClient (parent)", status: "ok", data: { id: parent.Id } });
 
         // Child AddClient with INLINE Pays For relationship to parent —
