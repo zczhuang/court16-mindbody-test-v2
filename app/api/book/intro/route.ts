@@ -308,7 +308,6 @@ export async function POST(req: Request) {
     const cartUrl = buildAdultCartUrl({
       siteId: mbCfg.siteId,
       serviceId,
-      clientId: adult.Id ?? undefined,
     });
     trace.push({ step: "buildCartUrl", status: "ok", data: { cartUrl } });
 

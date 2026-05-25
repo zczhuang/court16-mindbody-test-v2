@@ -852,8 +852,7 @@ export async function getClientServices(
 /**
  * Build a MindBody cart URL for an adult intro-offer checkout.
  *
- * IMPORTANT (spike result, 2026-04-18): the classic cart at
- * `clients.mindbodyonline.com/classic/ws` responds with
+ * IMPORTANT (spike result, 2026-04-18): MindBody's hosted cart responds with
  * `X-Frame-Options: SAMEORIGIN` and cannot be iframe-embedded. Tier C's
  * embedded-widget plan needs a MindBody-side choice (Anthony sets up a
  * Healcode / Branded Web Tools widget per location) OR a custom
@@ -861,23 +860,28 @@ export async function getClientServices(
  * this helper returns a REDIRECT URL — the UI opens it in a new window or
  * redirects the parent directly instead of iframing it.
  *
- * URL format is the classic MindBody embed-shopping-cart deep link:
- * https://clients.mindbodyonline.com/classic/ws?studioid={siteId}&stype=-8&sTG=50&sTrn={serviceId}
- * The return URL is handled via MindBody's "Return URL" site setting
- * (configured per site by the owner) — not a URL param.
+ * URL format (2026-05-25 fix — Bug J): the modern Branded Web Tools
+ * hosted-cart endpoint, NOT the legacy `clients.mindbodyonline.com/classic/ws`
+ * deep link. The classic URL silently redirects to `/ASP/main_enroll.asp`
+ * with `tg=50` (Enrollment task group), and since most sites have no
+ * Workshops scheduled it renders "No Scheduled Workshops" instead of
+ * dropping the user into checkout — the comment on the old `sTG=50` line
+ * was wrong, 50 is Enrollment not Add-To-Cart. May 22 smoke #2 missed it
+ * because it only checked the URL was constructed, not that MB accepted
+ * the cart drop. The hosted-cart URL has no magic numbers and is the
+ * pattern MindBody itself documents for branded-web cart links:
+ *   https://cart.mindbodyonline.com/sites/{siteId}/cart/add_service?mbo_item_id={serviceId}
+ * `mbo_item_id` is the Pricing Option / Service `Id` returned by
+ * `/sale/services` — same number we already have in
+ * `AdultOffer.serviceIdByLocation`. The endpoint handles sign-in /
+ * register on its own, so the legacy `clientId` param is dropped.
+ * Return URL is handled via MindBody's per-site "Return URL" setting.
  */
 export function buildAdultCartUrl(opts: {
   siteId: string | number;
   serviceId: number;
-  clientId?: string | number;
 }): string {
-  const params = new URLSearchParams();
-  params.set("studioid", String(opts.siteId));
-  params.set("stype", "-8"); // MindBody's internal code for "buy service"
-  params.set("sTG", "50"); // "add to cart"
-  params.set("sTrn", String(opts.serviceId));
-  if (opts.clientId) params.set("clientId", String(opts.clientId));
-  return `https://clients.mindbodyonline.com/classic/ws?${params.toString()}`;
+  return `https://cart.mindbodyonline.com/sites/${encodeURIComponent(String(opts.siteId))}/cart/add_service?mbo_item_id=${encodeURIComponent(String(opts.serviceId))}`;
 }
 
 /** In-process age-band filter for class lists. MindBody has no server-side age filter. */
