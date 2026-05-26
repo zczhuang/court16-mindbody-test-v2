@@ -1,10 +1,5 @@
 import type { MindBodyClass, TrialClass } from "./trial-types";
-import {
-  AGE_TO_LEVEL_MAP,
-  CLASS_AGE_METADATA,
-  TRIAL_CONFIG,
-  ENFORCE_TRIAL_ELIGIBILITY,
-} from "@/config/trial-config";
+import { TRIAL_CONFIG, ENFORCE_TRIAL_ELIGIBILITY } from "@/config/trial-config";
 
 /**
  * Convert a MindBody-style wall-clock ISO ("YYYY-MM-DDTHH:MM:SS", no TZ
@@ -186,23 +181,48 @@ export function extractLevelName(className: string): string {
   return className.split(" I ")[0] || className;
 }
 
-export function filterByAge(classes: TrialClass[], age: number): TrialClass[] {
-  const ageStr = String(age);
-  const allowedLevels = AGE_TO_LEVEL_MAP[ageStr];
-  if (!allowedLevels) return [];
-  return classes.filter((c) => allowedLevels.some((level) => c.levelName === level));
+/**
+ * Parse the integer age range from a Court 16 class title.
+ *
+ * Court 16's titles encode the true eligible age range explicitly:
+ *   "Little Freshman 2.5 - 3.9yo"  → { ageMin: 3, ageMax: 3 }
+ *   "Freshman/Sophomore 4 - 6.9yo" → { ageMin: 4, ageMax: 6 }
+ *   "Junior/Senior 7 - 12.9yo"     → { ageMin: 7, ageMax: 12 }
+ *   "Teenager 13 +"                → { ageMin: 13, ageMax: 99 }
+ *
+ * Decimal bounds are ceil/floored to integers since the calendar
+ * dropdown collects integer ages 3–17. Returns null when no parseable
+ * range is found — caller treats that as "no age constraint" (permissive).
+ *
+ * Replaces the older level-name → CLASS_AGE_METADATA pipeline, which
+ * mis-classified combo titles ("Freshman/Sophomore", "Junior/Senior")
+ * by only their first level prefix and dropped ages 7–9 entirely.
+ */
+export function parseAgeRangeFromTitle(
+  title: string,
+): { ageMin: number; ageMax: number } | null {
+  // Range form: "X - Y[yo]" where X/Y can be decimals, with hyphen or en-dash.
+  const range = title.match(/(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)\s*yo/i);
+  if (range) {
+    return {
+      ageMin: Math.ceil(Number(range[1])),
+      ageMax: Math.floor(Number(range[2])),
+    };
+  }
+  // Open-ended upper: "N +" or "N+" (e.g. "Teenager 13 +").
+  const open = title.match(/(\d+)\s*\+/);
+  if (open) {
+    return { ageMin: Number(open[1]), ageMax: 99 };
+  }
+  return null;
 }
 
-/**
- * Resolve the eligible age range for a class from its level name.
- * Returns null when the level isn't in CLASS_AGE_METADATA — caller
- * should treat this as "no age constraint" (permissive fallback,
- * mirrors ENFORCE_TRIAL_ELIGIBILITY=false).
- */
-export function getClassAgeRange(
-  cls: Pick<TrialClass, "levelName">,
-): { minAge: number; maxAge: number } | null {
-  return CLASS_AGE_METADATA[cls.levelName] ?? null;
+export function filterByAge(classes: TrialClass[], age: number): TrialClass[] {
+  return classes.filter((c) => {
+    const range = parseAgeRangeFromTitle(c.name);
+    if (!range) return true; // permissive when the title doesn't encode a range
+    return age >= range.ageMin && age <= range.ageMax;
+  });
 }
 
 export function filterByTrialEligibility(

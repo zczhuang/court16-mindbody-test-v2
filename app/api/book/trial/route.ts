@@ -17,10 +17,9 @@ import {
 import { buildStaffUrl } from "@/lib/staff-tokens";
 import { classifyIntent } from "@/lib/intent";
 import { createLogger, makeCorrelationId } from "@/lib/logger";
-import { extractLevelName, formatClassDayTime, siteLocalToUtcIso } from "@/lib/class-utils";
+import { formatClassDayTime, parseAgeRangeFromTitle, siteLocalToUtcIso } from "@/lib/class-utils";
 import { getLocationById } from "@/config/locations";
 import { getDealPipeline, getHubspotPreferredLocation } from "@/config/hubspot-deals";
-import { CLASS_AGE_METADATA } from "@/config/trial-config";
 import type { TrialRequest } from "@/lib/trial-types";
 
 export const runtime = "nodejs";
@@ -553,17 +552,17 @@ function validate(body: TrialRequest | undefined): string[] {
   if (typeof body.classId !== "number") errors.push("classId must be a number");
 
   // Age-range check: reject bookings where a child's age falls outside the
-  // class's eligible band. Permissive — skipped when the class level isn't
-  // in CLASS_AGE_METADATA (unknown/adult programs, sandbox data).
-  const level = body.className ? extractLevelName(body.className) : "";
-  const range = CLASS_AGE_METADATA[level];
+  // class's eligible band. Range is parsed from the class title itself
+  // (Court 16 titles encode the true range explicitly, e.g. "7 - 12.9yo").
+  // Permissive — skipped when the title doesn't include a parseable range.
+  const range = body.className ? parseAgeRangeFromTitle(body.className) : null;
   if (range) {
     const ages = (body.children ?? []).map((c) => c.age);
     if (body.childAge && !ages.includes(body.childAge)) ages.push(body.childAge);
     for (const age of ages) {
-      if (age < range.minAge || age > range.maxAge) {
+      if (age < range.ageMin || age > range.ageMax) {
         errors.push(
-          `child age ${age} is outside eligible range ${range.minAge}–${range.maxAge} for ${level} classes`,
+          `child age ${age} is outside eligible range ${range.ageMin}–${range.ageMax} for "${body.className}"`,
         );
       }
     }
