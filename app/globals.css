@@ -107,27 +107,14 @@ a { color: inherit; text-decoration: none; }
 }
 @media (max-width: 720px) { .c16-header-inner { padding: 0 16px; height: 64px; } }
 
-.c16-logo { display: flex; align-items: center; gap: 10px; }
-.c16-logo .ball { display: inline-flex; }
-.c16-logo .wordmark {
-  font-family: var(--f-sans);
-  font-weight: 800;
-  font-size: 17px;
-  letter-spacing: 0.18em;
-  white-space: nowrap;
+.c16-logo { display: flex; align-items: center; }
+.c16-logo img {
+  display: block;
+  height: 44px;
+  width: auto;
+  /* Transparent PNG/WebP — header bg (translucent --c16-paper) shows through */
 }
-.c16-logo .tag {
-  font-family: var(--f-sans);
-  font-weight: 500;
-  font-size: 13px;
-  letter-spacing: 0.02em;
-  color: var(--c16-ink-3);
-  padding-left: 10px;
-  border-left: 1px solid var(--c16-line);
-  margin-left: 2px;
-  white-space: nowrap;
-}
-@media (max-width: 720px) { .c16-logo .tag { display: none; } }
+@media (max-width: 720px) { .c16-logo img { height: 36px; } }
 
 .c16-nav {
   display: flex; align-items: center; gap: 6px;

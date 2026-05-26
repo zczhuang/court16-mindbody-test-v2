@@ -44,16 +44,14 @@ export default function Header() {
   return (
     <header className="c16-header">
       <div className="c16-header-inner">
-        <Link href="/" className="c16-logo">
-          <span className="ball" aria-hidden="true">
-            <svg viewBox="0 0 40 40" width="36" height="36">
-              <circle cx="20" cy="20" r="19" fill="#FFE033" stroke="#1a1a1a" strokeWidth="2" />
-              <path d="M3 20 Q20 6 37 20" fill="none" stroke="#1a1a1a" strokeWidth="1.5" opacity=".55" />
-              <path d="M3 20 Q20 34 37 20" fill="none" stroke="#1a1a1a" strokeWidth="1.5" opacity=".55" />
-            </svg>
-          </span>
-          <span className="wordmark">COURT 16</span>
-          <span className="tag">Tennis Remixed</span>
+        <Link href="/" className="c16-logo" aria-label="Court 16 Tennis Remixed home">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/court16-tennis-remixed-logo.webp"
+            alt="Court 16 Tennis Remixed"
+            width={94}
+            height={44}
+          />
         </Link>
 
         <nav className="c16-nav">
