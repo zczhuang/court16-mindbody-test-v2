@@ -362,7 +362,17 @@ document.getElementById('c16-launcher').addEventListener('click', () => {
   widget.classList.add('open');
   if (!body.dataset.started) { body.dataset.started = '1'; startFlow(); }
 });
+// Close button: if the user has engaged at all (audience picked, etc.)
+// but hasn't given us a way to reach them, surface the abandoned-cart
+// capture form once before letting them out. State.askedForContact
+// short-circuits any re-prompt loop.
 document.getElementById('c16-close').addEventListener('click', () => {
+  const engaged = !!(state.audience || state.experience || state.location || state.format);
+  if (engaged && !state.leadCaptured && !state.askedForContact) {
+    state.askedForContact = true;
+    askForContact('abandoned');
+    return; // hold the widget open
+  }
   widget.classList.remove('open');
   try {
     if (window.parent && window.parent !== window) {
@@ -1012,14 +1022,165 @@ async function showMembership() {
 }
 
 async function closeOut() {
+  // If the user has provided meaningful context but no contact info yet,
+  // offer to take a quick email/phone for staff follow-up. Skips for
+  // people who just opened the widget and bounced.
+  const engaged = !!(state.audience || state.experience || state.location);
+  if (engaged && !state.leadCaptured && !state.askedForContact) {
+    state.askedForContact = true;
+    askForContact('completed');
+    return;
+  }
   await addBot("Awesome — see you on court 🎾 If anything changes, tap the button anytime and I'll re-match you.");
   setQuickReplies([{ label: "Start over", secondary: true, onSelect: restart }]);
 }
 
+/* ====================== Contact / lead capture ======================
+ * Asks for email or phone so staff can follow up. Posts to
+ * /api/chatbot/lead which upserts a HubSpot Contact with the
+ * conversation state attached. `reason` is one of:
+ *   - 'abandoned' (user clicked X mid-flow)
+ *   - 'completed' (finished the flow but didn't book in chat)
+ *   - 'questions' (opted out of the match flow)
+ */
+async function askForContact(reason) {
+  state.leadReason = reason;
+  const headline = reason === 'abandoned'
+    ? "Before you go — want us to follow up?"
+    : "Want our team to reach out with options?";
+  const sub = reason === 'abandoned'
+    ? "Drop your email or phone and a coach will send class times that fit. No spam."
+    : "We'll put together a short email with the right classes for your level + location.";
+  await addBot(headline);
+  await addBot(sub);
+
+  // Inline form rendered as a custom message card
+  const card = document.createElement('div');
+  card.className = 'c16-row bot';
+  card.innerHTML = `
+    <div class="c16-bubble" style="max-width:96%;padding:14px;background:#fff;border:1px solid var(--c16-line);">
+      <div style="display:grid;gap:8px">
+        <input type="text" id="c16-lead-name" placeholder="First name (optional)" autocomplete="given-name"
+          style="padding:10px 12px;border:1px solid var(--c16-line);border-radius:10px;font-size:14px;outline:0">
+        <input type="email" id="c16-lead-email" placeholder="Email" autocomplete="email"
+          style="padding:10px 12px;border:1px solid var(--c16-line);border-radius:10px;font-size:14px;outline:0">
+        <input type="tel" id="c16-lead-phone" placeholder="Phone (optional)" autocomplete="tel"
+          style="padding:10px 12px;border:1px solid var(--c16-line);border-radius:10px;font-size:14px;outline:0">
+        <div id="c16-lead-error" style="display:none;color:#c62828;font-size:12px"></div>
+        <button id="c16-lead-submit" type="button"
+          style="background:var(--c16-ink);color:var(--c16-yellow);border:0;padding:10px 14px;border-radius:10px;font-weight:700;font-size:14px;cursor:pointer;margin-top:4px">
+          Send it
+        </button>
+        <button id="c16-lead-skip" type="button"
+          style="background:transparent;color:var(--c16-muted);border:0;padding:6px;font-size:12px;cursor:pointer">
+          Skip
+        </button>
+      </div>
+    </div>
+  `;
+  body.appendChild(card);
+  body.scrollTop = body.scrollHeight;
+  setQuickReplies([]); // hide quick replies while form is up
+
+  const emailEl = card.querySelector('#c16-lead-email');
+  const phoneEl = card.querySelector('#c16-lead-phone');
+  const nameEl  = card.querySelector('#c16-lead-name');
+  const errEl   = card.querySelector('#c16-lead-error');
+  emailEl.focus();
+
+  card.querySelector('#c16-lead-submit').addEventListener('click', () => {
+    const email = emailEl.value.trim();
+    const phone = phoneEl.value.trim();
+    if (!email && !phone) {
+      errEl.textContent = 'Add an email or phone so we can reach you.';
+      errEl.style.display = 'block';
+      return;
+    }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      errEl.textContent = 'That email doesn’t look right.';
+      errEl.style.display = 'block';
+      return;
+    }
+    errEl.style.display = 'none';
+    submitLead({ email, phone, firstName: nameEl.value.trim(), reason });
+    // disable form
+    [emailEl, phoneEl, nameEl, card.querySelector('#c16-lead-submit'), card.querySelector('#c16-lead-skip')]
+      .forEach(el => el.setAttribute('disabled', 'true'));
+    card.querySelector('#c16-lead-submit').textContent = 'Sending…';
+  });
+
+  card.querySelector('#c16-lead-skip').addEventListener('click', () => {
+    finishCloseFlow(false);
+  });
+}
+
+async function submitLead({ email, phone, firstName, reason }) {
+  // Build a short transcript of the last few messages
+  const transcript = Array.from(body.querySelectorAll('.c16-row'))
+    .slice(-8)
+    .map(r => {
+      const who = r.classList.contains('user') ? 'User' : 'Bot';
+      const text = r.querySelector('.c16-bubble')?.textContent?.trim() || '';
+      return `${who}: ${text}`;
+    })
+    .join('\n');
+
+  let ok = false;
+  try {
+    const resp = await fetch('/api/chatbot/lead', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email, phone, firstName,
+        state: {
+          audience: state.audience,
+          experience: state.experience,
+          years: state.years,
+          goal: state.goal,
+          location: state.location,
+          format: state.format,
+        },
+        transcript,
+        reason,
+      }),
+    });
+    const data = await resp.json().catch(() => ({}));
+    ok = !!(data && data.ok);
+  } catch (e) {
+    ok = false;
+  }
+
+  state.leadCaptured = ok;
+  if (ok) {
+    await addBot("Got it — a coach will reach out within one business day 🎾");
+  } else {
+    await addBot("Saved your info — we'll be in touch shortly. (If you don't hear back, the team is at 718-875-5550.)");
+  }
+  finishCloseFlow(true);
+}
+
+function finishCloseFlow(captured) {
+  // Either let the widget close (if user invoked from the X) or just
+  // show start-over option (if invoked from the end-of-flow path).
+  setQuickReplies([
+    { label: "Done — close", onSelect: () => {
+        widget.classList.remove('open');
+        try {
+          if (window.parent && window.parent !== window) {
+            window.parent.postMessage({ type: 'c16-chatbot-close' }, '*');
+          }
+        } catch (e) { /* noop */ }
+      }
+    },
+    { label: "Start over", secondary: true, onSelect: restart }
+  ]);
+}
+
 function restart() {
   Object.assign(state, {
-    step: 'greet', experience: null, years: null, goal: null, location: null, format: null,
+    step: 'greet', audience: null, experience: null, years: null, goal: null, location: null, format: null,
     slots: [], selectedSlot: null, awaitingField: null,
+    leadCaptured: false, askedForContact: false, leadReason: null,
     adult: { firstName: '', lastName: '', email: '', phone: '', birthDate: '' }
   });
   body.innerHTML = '';
