@@ -52,7 +52,7 @@ function summarizeState(state: ChatbotLeadBody["state"]): string {
 
 export async function POST(req: NextRequest) {
   const correlationId = makeCorrelationId();
-  const log = createLogger({ correlationId, route: "chatbot/lead" });
+  const log = createLogger(correlationId);
 
   let body: ChatbotLeadBody;
   try {
