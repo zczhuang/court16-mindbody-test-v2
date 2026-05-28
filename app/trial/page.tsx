@@ -280,9 +280,70 @@ function TrialInner() {
             )}
 
             {error && (
-              <div className="empty-state" style={{ borderColor: "#c62828", color: "#c62828" }}>
-                <div className="es-title">Something went wrong</div>
-                <div className="es-sub">{error}</div>
+              <div
+                className="empty-state"
+                style={{
+                  borderColor: "#FFE033",
+                  background: "#FFF7CC",
+                  color: "#1a1a1a",
+                  borderStyle: "solid",
+                  padding: 28,
+                }}
+              >
+                <div className="es-title" style={{ marginBottom: 6 }}>
+                  Live booking is briefly offline at {location?.name || "this club"}
+                </div>
+                <div className="es-sub" style={{ marginBottom: 18 }}>
+                  Our team can hand-match you to a trial slot in under a few business hours — fastest path right now is a quick call or email.
+                </div>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <a
+                    href="tel:+17188755550"
+                    style={{
+                      background: "#1a1a1a",
+                      color: "#fff",
+                      padding: "12px 20px",
+                      borderRadius: 999,
+                      fontWeight: 600,
+                      fontSize: 14,
+                      textDecoration: "none",
+                    }}
+                  >
+                    Call 718-875-5550
+                  </a>
+                  <a
+                    href={`mailto:hello@court16.com?subject=Trial%20at%20${encodeURIComponent(location?.name || "Court 16")}&body=Hi%20—%20I'd%20like%20to%20book%20a%20trial%20class%20at%20${encodeURIComponent(location?.name || "")}.%20Please%20get%20back%20to%20me%20with%20available%20times.`}
+                    style={{
+                      background: "transparent",
+                      color: "#1a1a1a",
+                      padding: "12px 20px",
+                      borderRadius: 999,
+                      fontWeight: 600,
+                      fontSize: 14,
+                      boxShadow: "inset 0 0 0 1.5px #1a1a1a",
+                      textDecoration: "none",
+                    }}
+                  >
+                    Email hello@court16.com
+                  </a>
+                  <a
+                    href="/redesign/locations.html"
+                    style={{
+                      background: "transparent",
+                      color: "#5a5a5a",
+                      padding: "12px 20px",
+                      borderRadius: 999,
+                      fontWeight: 500,
+                      fontSize: 13,
+                      textDecoration: "none",
+                    }}
+                  >
+                    ← Try another club
+                  </a>
+                </div>
+                <div style={{ marginTop: 16, fontSize: 12, color: "#5a5a5a" }}>
+                  Tech detail: {error}
+                </div>
               </div>
             )}
 
