@@ -337,8 +337,17 @@ h4 { font-size: 18px; letter-spacing: -0.01em; line-height: 1.2; }
 .hamburger span::after { top: 6px; }
 
 @media (max-width: 980px) {
-  .nav-links { display: none !important; }
-  .mega { display: none !important; }
+  /* Belt-and-suspenders: any cached/stale CSS that left nav-links
+     visible was causing nav-trigger text to overlap the logo on mobile.
+     Lock it down with multiple kill switches. */
+  .nav-links,
+  .nav-links .nav-item,
+  .nav-links .nav-trigger,
+  .mega {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
   .hamburger { display: inline-flex; }
   .nav-cta .btn:not(.btn-ball) { display: none; }
 }
