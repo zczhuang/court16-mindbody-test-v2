@@ -367,9 +367,10 @@ document.getElementById('c16-close').addEventListener('click', () => {
     if (params.get('embed') === '1') {
       const css = document.createElement('style');
       css.textContent = `
+        html, body { height: 100%; }
         .demo-stage { display: none !important; }
         .c16-launcher { display: none !important; }
-        .c16-widget { position: static !important; width: 100% !important; height: 100vh !important; max-height: none !important; border-radius: 0 !important; box-shadow: none !important; }
+        .c16-widget { position: static !important; width: 100% !important; height: 100% !important; max-height: none !important; border-radius: 0 !important; box-shadow: none !important; border: 0 !important; }
         body { background: transparent !important; }
       `;
       document.head.appendChild(css);
