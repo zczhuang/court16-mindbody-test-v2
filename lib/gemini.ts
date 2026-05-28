@@ -27,8 +27,21 @@ function getAuth(): GoogleAuth {
  * present — that's the local-dev path on a machine running `gcloud auth
  * application-default login`.
  */
+async function getVercelOidcOrNull(): Promise<string | null> {
+  // Modern Vercel: token comes from @vercel/functions/oidc, not an env var.
+  if (process.env.VERCEL) {
+    try {
+      const mod = (await import("@vercel/functions/oidc")) as { getVercelOidcToken?: () => Promise<string> };
+      if (mod.getVercelOidcToken) return await mod.getVercelOidcToken();
+    } catch {
+      // fall through
+    }
+  }
+  return process.env.VERCEL_OIDC_TOKEN || null;
+}
+
 async function getAccessToken(): Promise<string> {
-  const oidc = process.env.VERCEL_OIDC_TOKEN;
+  const oidc = await getVercelOidcOrNull();
   const wip = process.env.GCP_WORKLOAD_IDENTITY_PROVIDER;
   const saEmail = process.env.GCP_SERVICE_ACCOUNT_EMAIL;
 
