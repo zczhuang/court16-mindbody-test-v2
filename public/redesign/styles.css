@@ -253,6 +253,15 @@ h4 { font-size: 18px; letter-spacing: -0.01em; line-height: 1.2; }
   visibility: visible;
   transform: translateY(0);
 }
+/* Single-mega invariant: when any nav item is hovered, hide the megas
+   of the OTHER items immediately — kills the brief overlap window
+   that was visible mid-cursor-transition (Clubs panel still fading out
+   while Adults panel was opening, both at left:0). */
+.nav-links:has(.has-mega:hover) .has-mega:not(:hover) .mega {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  transition: none !important;
+}
 .has-mega:hover .nav-trigger .caret { transform: rotate(180deg); }
 .mega-narrow { min-width: 320px; }
 /* Clubs panel is wide and used to translate-X by -50% from the
