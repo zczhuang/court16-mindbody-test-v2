@@ -18,6 +18,16 @@ function getLocation() {
 function setLocation(id) {
   localStorage.setItem(STORE_KEY, id);
   applyLocation();
+  // When the user changes location from the redesign pill while on the
+  // /trial booking route, push the new id into the URL so the React
+  // calendar refetches with the right club. Hard reload (rather than
+  // history.replaceState) so /trial's useSearchParams + useEffect
+  // properly rebuild from scratch — softer routing wasn't picking it up.
+  if (/^\/trial(\/|$|\?)/.test(window.location.pathname + window.location.search)) {
+    const params = new URLSearchParams(window.location.search);
+    params.set('location', id);
+    window.location.assign('/trial?' + params.toString());
+  }
 }
 
 function applyLocation() {
