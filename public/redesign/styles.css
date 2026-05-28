@@ -3,21 +3,28 @@
    Design system: premium athletic, warm community-club energy
    ============================================================ */
 
-/* ---------- Tokens ---------- */
+/* ---------- Tokens (harmonized with parent app /globals.css) ---------- */
 :root {
-  /* Color */
-  --ink: #0d1410;
-  --ink-2: #1f2a24;
-  --court: #0a3d2c;          /* deep court green — primary */
-  --court-dark: #062418;
-  --court-soft: #14513c;
-  --ball: #d4f15f;           /* tennis ball — accent */
-  --ball-soft: #e8f7a6;
-  --cream: #f5f1e8;          /* warm background */
-  --cream-2: #ebe5d4;
+  /* Color — yellow-primary Court 16 brand, matches parent app */
+  --ink: #1a1a1a;
+  --ink-2: #2d2d2d;
+  --ink-3: #5a5a5a;
+  --court: #FFE033;          /* C16 yellow — primary brand */
+  --court-dark: #FFD000;
+  --court-soft: #FFF7CC;
+  --ball: #FFE033;           /* same as primary — consolidated */
+  --ball-soft: #FFF7CC;
+  --accent-green: #2e7d32;   /* semantic success / deep green accent */
+  --accent-green-soft: #e5f2e6;
+  --accent-amber: #b46b00;
+  --accent-red: #c62828;
+  --cream: #fffdf4;          /* paper bg (matches parent --c16-paper) */
+  --cream-2: #fbf7e8;
+  --cream-3: #f3ecd2;
   --paper: #ffffff;
-  --muted: #6b7270;
-  --line: #e5e1d6;
+  --muted: #5a5a5a;
+  --line: #ebebe5;
+  --line-2: #f2f0e8;
   --line-dark: rgba(255,255,255,0.12);
 
   /* Type */
@@ -49,6 +56,8 @@ body {
   line-height: 1.55;
   color: var(--ink);
   background: var(--cream);
+  background-image: radial-gradient(rgba(26,26,26,0.035) 1px, transparent 1px);
+  background-size: 22px 22px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -63,9 +72,9 @@ button { font: inherit; cursor: pointer; border: none; background: none; color: 
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--court);
+  color: var(--ink-3);
 }
-.eyebrow.on-dark { color: var(--ball); }
+.eyebrow.on-dark { color: var(--court); }
 
 h1, h2, h3, h4 {
   font-family: var(--font-display);
@@ -112,10 +121,10 @@ h4 { font-size: 18px; letter-spacing: -0.01em; line-height: 1.2; }
 }
 .btn:hover { transform: translateY(-1px); }
 .btn:active { transform: translateY(0); }
-.btn-primary { background: var(--court); color: var(--paper); }
-.btn-primary:hover { background: var(--court-dark); box-shadow: var(--shadow-md); }
-.btn-ball { background: var(--ball); color: var(--ink); }
-.btn-ball:hover { background: var(--ball-soft); box-shadow: var(--shadow-md); }
+.btn-primary { background: var(--ink); color: var(--paper); }
+.btn-primary:hover { background: var(--ink-2); box-shadow: var(--shadow-md); }
+.btn-ball { background: var(--court); color: var(--ink); }
+.btn-ball:hover { background: var(--court-dark); box-shadow: var(--shadow-md); }
 .btn-outline {
   background: transparent;
   color: var(--ink);
@@ -198,13 +207,13 @@ h4 { font-size: 18px; letter-spacing: -0.01em; line-height: 1.2; }
 }
 .nav-trigger .caret { font-size: 10px; opacity: 0.6; transition: transform .2s; }
 .nav-trigger:hover { background: rgba(13,20,16,0.05); color: var(--ink); }
-.nav-item.active .nav-trigger { color: var(--court); }
+.nav-item.active .nav-trigger { color: var(--ink); }
 .nav-item.active .nav-trigger::after {
   content: '';
   position: absolute;
   left: 14px; right: 14px;
   bottom: 4px;
-  height: 2px;
+  height: 3px;
   background: var(--court);
   border-radius: 1px;
 }
@@ -256,7 +265,7 @@ h4 { font-size: 18px; letter-spacing: -0.01em; line-height: 1.2; }
   font-size: 10px;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: var(--court);
+  color: var(--accent-green);
   font-weight: 700;
 }
 .mega-club strong { font-family: var(--font-display); font-size: 16px; font-weight: 700; letter-spacing: -0.01em; }
@@ -292,7 +301,7 @@ h4 { font-size: 18px; letter-spacing: -0.01em; line-height: 1.2; }
   cursor: pointer;
 }
 .location-pill:hover { border-color: var(--ink); }
-.location-pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ball); box-shadow: 0 0 0 3px rgba(212,241,95,0.3); }
+.location-pill .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent-green); box-shadow: 0 0 0 3px rgba(46,125,50,0.2); }
 
 .nav-cta {
   display: flex; gap: 10px; align-items: center;
@@ -348,7 +357,7 @@ h4 { font-size: 18px; letter-spacing: -0.01em; line-height: 1.2; }
 }
 .hero h1 em {
   font-style: normal;
-  color: var(--court);
+  color: var(--ink);
   position: relative;
   white-space: nowrap;
 }
@@ -357,7 +366,7 @@ h4 { font-size: 18px; letter-spacing: -0.01em; line-height: 1.2; }
   position: absolute;
   left: 0; right: 0; bottom: 0.06em;
   height: 0.28em;
-  background: var(--ball);
+  background: var(--court);
   z-index: -1;
   border-radius: 4px;
 }
@@ -383,7 +392,7 @@ h4 { font-size: 18px; letter-spacing: -0.01em; line-height: 1.2; }
   position: absolute;
   width: 56px; height: 56px;
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 35%, #e8ff7a 0%, var(--ball) 50%, #b8d63a 100%);
+  background: radial-gradient(circle at 35% 35%, #fff594 0%, var(--court) 55%, #b58a00 100%);
   box-shadow: 0 20px 40px rgba(0,0,0,0.4);
   top: 28%; right: 18%;
   animation: bounce 3.4s ease-in-out infinite;
@@ -452,7 +461,7 @@ h4 { font-size: 18px; letter-spacing: -0.01em; line-height: 1.2; }
   font-weight: 700;
   font-size: clamp(32px, 4vw, 48px);
   letter-spacing: -0.03em;
-  color: var(--court);
+  color: var(--ink);
   line-height: 1;
 }
 .stat .l { font-size: 13px; color: var(--muted); margin-top: 8px; }
@@ -535,7 +544,7 @@ h4 { font-size: 18px; letter-spacing: -0.01em; line-height: 1.2; }
   font-weight: 700;
   letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: var(--court);
+  color: var(--accent-green);
 }
 .program-card .level.lvl-2 { color: #15803d; }
 .program-card .level.lvl-3 { color: #ca8a04; }
@@ -626,7 +635,7 @@ h4 { font-size: 18px; letter-spacing: -0.01em; line-height: 1.2; }
 }
 .location-card .footer .price { font-family: var(--font-display); font-size: 18px; }
 .location-card .footer .arrow-link {
-  color: var(--court); font-weight: 600; font-size: 14px;
+  color: var(--ink); font-weight: 600; font-size: 14px;
   display: inline-flex; align-items: center; gap: 6px;
 }
 
@@ -701,7 +710,8 @@ h4 { font-size: 18px; letter-spacing: -0.01em; line-height: 1.2; }
 }
 .field input:focus, .field select:focus, .field textarea:focus {
   outline: none;
-  border-color: var(--court);
+  border-color: var(--ink);
+  box-shadow: 0 0 0 4px var(--court-soft);
 }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 @media (max-width: 600px) { .field-row { grid-template-columns: 1fr; } }
@@ -724,9 +734,9 @@ h4 { font-size: 18px; letter-spacing: -0.01em; line-height: 1.2; }
   font-weight: 500;
 }
 .choice:hover { border-color: var(--ink); }
-.choice.selected { border-color: var(--court); background: var(--cream); color: var(--court); font-weight: 600; }
-.choice .age { font-family: var(--font-display); font-size: 24px; font-weight: 700; display: block; color: var(--court); }
-.choice.selected .age { color: var(--court-dark); }
+.choice.selected { border-color: var(--ink); background: var(--court-soft); color: var(--ink); font-weight: 600; }
+.choice .age { font-family: var(--font-display); font-size: 24px; font-weight: 700; display: block; color: var(--ink); }
+.choice.selected .age { color: var(--ink); }
 
 /* ---------- Testimonial ---------- */
 .testimonial {
@@ -738,7 +748,7 @@ h4 { font-size: 18px; letter-spacing: -0.01em; line-height: 1.2; }
   display: flex; flex-direction: column;
 }
 .testimonial .stars {
-  color: var(--court);
+  color: var(--accent-amber);
   font-size: 14px;
   letter-spacing: 2px;
   margin-bottom: 16px;
@@ -796,7 +806,7 @@ h4 { font-size: 18px; letter-spacing: -0.01em; line-height: 1.2; }
 .coach-card .photo.v4 { background: linear-gradient(135deg, #ca8a04, #713f12); }
 .coach-card .info { padding: 20px; }
 .coach-card h4 { font-size: 20px; margin-bottom: 4px; }
-.coach-card .role { font-size: 13px; color: var(--court); font-weight: 600; }
+.coach-card .role { font-size: 13px; color: var(--accent-green); font-weight: 600; }
 .coach-card .bio { font-size: 14px; color: var(--muted); margin-top: 12px; line-height: 1.5; }
 
 /* ---------- Pricing strip ---------- */

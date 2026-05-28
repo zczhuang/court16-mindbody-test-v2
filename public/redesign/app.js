@@ -33,7 +33,7 @@ function applyLocation() {
   });
   document.querySelectorAll('[data-base-price]').forEach(el => {
     const base = parseFloat(el.dataset.basePrice);
-    el.textContent = '$' + Math.round(base * priceMod);
+    el.textContent = Math.round(base * priceMod);
   });
 }
 
@@ -392,10 +392,10 @@ css.textContent = `
 .loc-modal-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; }
 .loc-option { text-align: left; padding: 16px; border: 1.5px solid var(--line); border-radius: var(--r-md); background: var(--paper); transition: all .15s; }
 .loc-option:hover { border-color: var(--ink); }
-.loc-option.selected { border-color: var(--court); background: var(--cream); }
-.loc-option-city { display: block; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--court); font-weight: 700; }
+.loc-option.selected { border-color: var(--ink); background: var(--court-soft); }
+.loc-option-city { display: block; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--accent-green); font-weight: 700; }
 .loc-option-name { display: block; font-family: var(--font-display); font-size: 18px; font-weight: 700; margin-top: 4px; letter-spacing: -0.02em; }
 .step-dot { width: 32px; height: 4px; border-radius: 2px; background: var(--line); transition: background .2s; }
-.step-dot.active { background: var(--court); }
+.step-dot.active { background: var(--ink); }
 `;
 document.head.appendChild(css);
