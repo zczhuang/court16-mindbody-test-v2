@@ -108,51 +108,37 @@ const NAV_HTML = `
         </div>
       </div>
 
-      <div class="nav-item has-mega" data-nav="adults">
-        <button class="nav-trigger">Adults <span class="caret">▾</span></button>
-        <div class="mega mega-narrow">
-          <ul class="mega-list">
-            <li><a href="/redesign/adult-classes.html"><strong>Adult Classes</strong><span>Group classes by USTA skill level</span></a></li>
-            <li><a href="/redesign/adult-classes.html#private"><strong>Private &amp; Semi-Private</strong><span>1-on-1 or pairs with a pro</span></a></li>
-            <li><a href="/redesign/adult-classes.html#ball-machine"><strong>Ball Machine Training</strong><span>Solo reps, member rates</span></a></li>
-            <li><a href="/redesign/memberships.html#adult"><strong>Adult Membership</strong><span>Unlimited group classes</span></a></li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="nav-item has-mega" data-nav="kids">
-        <button class="nav-trigger">Kids <span class="caret">▾</span></button>
-        <div class="mega mega-narrow">
-          <ul class="mega-list">
-            <li><a href="/redesign/kids-trial.html"><strong>Free Trial Class</strong><span>Complimentary first lesson</span></a></li>
-            <li><a href="/redesign/kids-trial.html#academy"><strong>Kids Tennis Academy</strong><span>Red → Orange → Green → Yellow</span></a></li>
-            <li><a href="/redesign/summer-camp.html"><strong>Summer Camp</strong><span>NY · PA · 10 themed weeks</span></a></li>
-            <li><a href="/redesign/summer-camp.html#holiday"><strong>Holiday Camps</strong><span>School-break programs</span></a></li>
-            <li><a href="/redesign/memberships.html#kids"><strong>Kids Membership</strong><span>Sibling discounts</span></a></li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="nav-item has-mega" data-nav="pickleball">
-        <button class="nav-trigger">Pickleball <span class="caret">▾</span></button>
-        <div class="mega mega-narrow">
-          <ul class="mega-list">
-            <li><a href="/redesign/pickleball.html"><strong>Clinics &amp; Rentals</strong><span>Beginner to open play</span></a></li>
-            <li><a href="/redesign/pickleball.html#league"><strong>League Play</strong><span>Seasonal competitive league</span></a></li>
-            <li><a href="/redesign/pickleball.html#open"><strong>Open Play</strong><span>Drop-in rotation games</span></a></li>
-            <li><a href="/redesign/memberships.html#pickleball"><strong>Pickleball Membership</strong><span>Court priority + clinics</span></a></li>
-          </ul>
-        </div>
-      </div>
-
-      <div class="nav-item has-mega" data-nav="events">
-        <button class="nav-trigger">Events <span class="caret">▾</span></button>
-        <div class="mega mega-narrow">
-          <ul class="mega-list">
-            <li><a href="https://www.court16.com/private-corporate-events" target="_blank" rel="noopener"><strong>Corporate Events</strong><span>Team builders &amp; offsites</span></a></li>
-            <li><a href="https://www.court16.com/birthday-parties" target="_blank" rel="noopener"><strong>Birthday Parties</strong><span>Kids &amp; teens</span></a></li>
-            <li><a href="https://www.court16.com/private-corporate-events" target="_blank" rel="noopener"><strong>Private Court Rental</strong><span>Hourly bookings</span></a></li>
-          </ul>
+      <div class="nav-item has-mega" data-nav="classes">
+        <button class="nav-trigger">Classes <span class="caret">▾</span></button>
+        <div class="mega mega-wide-cols">
+          <div class="mega-inner mega-3col">
+            <div class="mega-col">
+              <span class="eyebrow">For adults</span>
+              <ul class="mega-list">
+                <li><a href="/redesign/adult-classes.html"><strong>Adult Classes</strong><span>By USTA skill level</span></a></li>
+                <li><a href="/redesign/adult-classes.html#private"><strong>Private &amp; Semi-Private</strong><span>1-on-1 or pairs</span></a></li>
+                <li><a href="/redesign/memberships.html#adult"><strong>Adult Membership</strong><span>Unlimited at all clubs</span></a></li>
+              </ul>
+            </div>
+            <div class="mega-col">
+              <span class="eyebrow">For kids</span>
+              <ul class="mega-list">
+                <li><a href="/redesign/kids-trial.html"><strong>Free Trial Class</strong><span>Ages 4–17, on us</span></a></li>
+                <li><a href="/redesign/kids-trial.html#academy"><strong>Kids Tennis Academy</strong><span>Red → Yellow pathway</span></a></li>
+                <li><a href="/redesign/summer-camp.html"><strong>Summer &amp; Holiday Camp</strong><span>10 themed weeks</span></a></li>
+                <li><a href="/redesign/memberships.html#kids"><strong>Kids Membership</strong><span>Sibling discounts</span></a></li>
+              </ul>
+            </div>
+            <div class="mega-col">
+              <span class="eyebrow">Pickleball &amp; private</span>
+              <ul class="mega-list">
+                <li><a href="/redesign/pickleball.html"><strong>Pickleball Clinics</strong><span>All DUPR levels + open play</span></a></li>
+                <li><a href="/redesign/pickleball.html#league"><strong>League Play</strong><span>Seasonal competitive</span></a></li>
+                <li><a href="https://www.court16.com/birthday-parties" target="_blank" rel="noopener"><strong>Birthday Parties</strong><span>Kids &amp; teens</span></a></li>
+                <li><a href="https://www.court16.com/private-corporate-events" target="_blank" rel="noopener"><strong>Corporate &amp; Private Events</strong><span>Team builders, court rentals</span></a></li>
+              </ul>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -170,11 +156,9 @@ const NAV_HTML = `
     </button>
 
     <div class="nav-cta">
-      <a href="tel:+17188755550" class="btn btn-ghost nav-phone" aria-label="Call Court 16 at 718-875-5550">
+      <a href="tel:+17188755550" class="btn btn-ghost nav-phone" aria-label="Call Court 16 at 718-875-5550" title="718-875-5550">
         <span class="nav-phone-icon" aria-hidden="true">☎</span>
-        <span class="nav-phone-num">718-875-5550</span>
       </a>
-      <a href="https://shop.court16.com" target="_blank" rel="noopener" class="btn btn-ghost">Pro Shop</a>
       <div class="mb-auth" data-mb-auth></div>
       <a href="/trial" data-trial-cta class="btn btn-ball">Book free trial</a>
     </div>
@@ -336,12 +320,12 @@ function injectChrome() {
   const page = (location.pathname.split('/').pop() || 'index.html').replace('.html', '');
   const map = {
     'index': null,
-    'adult-classes': 'adults',
-    'kids-trial': 'kids',
-    'summer-camp': 'kids',
+    'adult-classes': 'classes',
+    'kids-trial': 'classes',
+    'summer-camp': 'classes',
+    'pickleball': 'classes',
+    'memberships': 'classes',
     'locations': 'clubs',
-    'memberships': 'memberships',
-    'pickleball': 'pickleball',
     'about': 'about',
     'faq': null, 'contact': null,
   };

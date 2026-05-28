@@ -271,6 +271,23 @@ h4 { font-size: 18px; letter-spacing: -0.01em; line-height: 1.2; }
 }
 .mega-inner { display: grid; grid-template-columns: 220px 1fr; gap: 32px; }
 .mega-col .eyebrow { display: block; margin-bottom: 12px; }
+/* Wide 3-column Classes mega (Adults · Kids · Pickleball+Private) */
+.mega-wide-cols {
+  left: 0;
+  width: min(820px, calc(100vw - 48px));
+  min-width: 0;
+}
+.mega-3col {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
+}
+.mega-3col .mega-col .eyebrow { display: block; margin-bottom: 10px; }
+@media (max-width: 1100px) {
+  .mega-wide-cols { width: min(620px, calc(100vw - 48px)); }
+  .mega-3col { grid-template-columns: repeat(2, 1fr); }
+}
+
 .mega-col-wide .mega-clubs-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
