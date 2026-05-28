@@ -15,6 +15,7 @@ interface AskBody {
   messages: { role: "user" | "model"; text: string }[];
   /** Snapshot of widget state — what the user has already chosen. */
   state?: {
+    audience?: string | null;
     experience?: string | null;
     years?: string | null;
     goal?: string | null;
@@ -112,6 +113,7 @@ CURRENT USER STATE (what they've already chosen in the deterministic flow):
 - experience: ${state.experience || "(unset)"}
 - years played: ${state.years || "(unset)"}
 - goal: ${state.goal || "(unset)"}
+- audience: ${state.audience || "(unset — bot must infer kid vs adult from message)"}
 - location: ${state.location || "(unset)"}
 - format: ${state.format || "(unset)"}
 `.trim();

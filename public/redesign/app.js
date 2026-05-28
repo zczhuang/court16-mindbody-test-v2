@@ -48,8 +48,22 @@ function applyLocation() {
   // is the most visible silent fail.
   const TRIAL_BOOKABLE = new Set(['ridgehill']); // expand as sites come online
   const trialId = TRIAL_BOOKABLE.has(id) ? id : 'ridgehill';
+  const redirected = trialId !== id;
   document.querySelectorAll('[data-trial-cta]').forEach(a => {
     a.setAttribute('href', `/trial?location=${trialId}`);
+    // Avoid bait-and-switch: if the user's selected club isn't bookable
+    // yet, surface that in the button's accessible name + a tooltip so
+    // it's not a silent location swap. The button text itself stays as
+    // "Book free trial" so layout doesn't reflow.
+    if (redirected) {
+      a.setAttribute('title', `Live booking is only at Ridge Hill today — ${loc.name} coming soon. We'll route you to Ridge Hill availability; switch the location pill or call us to book at ${loc.name}.`);
+      a.setAttribute('aria-label', `Book free trial — currently routed to Ridge Hill (${loc.name} not yet bookable online)`);
+      a.dataset.trialRedirected = '1';
+    } else {
+      a.removeAttribute('title');
+      a.removeAttribute('aria-label');
+      delete a.dataset.trialRedirected;
+    }
   });
   document.querySelectorAll('[data-base-price]').forEach(el => {
     const base = parseFloat(el.dataset.basePrice);
@@ -349,10 +363,15 @@ function renderAuthLoggedOut(mount) {
 }
 
 function renderAuthLoggedIn(mount, user) {
-  const first = user.firstName || '';
-  const last = user.lastName || '';
-  const name = (first + ' ' + last).trim() || user.email || 'Member';
-  const initial = (first || user.email || '?').charAt(0).toUpperCase();
+  // Defensive: backend bug or partial response could leave any of these
+  // null/undefined. String() coerces null → 'null' which is worse than
+  // empty string; coerce to '' explicitly.
+  user = user || {};
+  const first = typeof user.firstName === 'string' ? user.firstName : '';
+  const last = typeof user.lastName === 'string' ? user.lastName : '';
+  const email = typeof user.email === 'string' ? user.email : '';
+  const name = (first + ' ' + last).trim() || email || 'Member';
+  const initial = ((first || email || '?').charAt(0) || '?').toUpperCase();
   mount.innerHTML = `
     <div class="mb-user" data-mb-user>
       <button type="button" class="mb-user-trigger" aria-haspopup="menu" aria-expanded="false">
@@ -361,7 +380,7 @@ function renderAuthLoggedIn(mount, user) {
         <span class="caret">▾</span>
       </button>
       <div class="mb-user-menu" role="menu" hidden>
-        <div class="mb-user-email">${escapeHtml(user.email || '')}</div>
+        <div class="mb-user-email">${escapeHtml(email)}</div>
         <a class="mb-user-item" href="/auth/mindbody/logout" role="menuitem">Log out</a>
       </div>
     </div>
@@ -374,9 +393,26 @@ function renderAuthLoggedIn(mount, user) {
     if (open) { menu.removeAttribute('hidden'); trig.setAttribute('aria-expanded', 'true'); }
     else { menu.setAttribute('hidden', ''); trig.setAttribute('aria-expanded', 'false'); }
   });
-  document.addEventListener('mousedown', e => {
-    if (!wrap.contains(e.target)) { menu.setAttribute('hidden', ''); trig.setAttribute('aria-expanded', 'false'); }
-  });
+  // Tear down any prior outside-click listener bound to a now-stale
+  // wrap. Each renderAuthLoggedIn used to leak a fresh `mousedown`
+  // listener referencing a detached node; over a Next SPA session
+  // that becomes a memory leak and stacks no-op handlers on every click.
+  if (window._c16OutsideClick) {
+    document.removeEventListener('mousedown', window._c16OutsideClick);
+  }
+  window._c16OutsideClick = (e) => {
+    // wrap may be detached after a re-render — bail out cleanly.
+    if (!document.contains(wrap)) {
+      document.removeEventListener('mousedown', window._c16OutsideClick);
+      window._c16OutsideClick = null;
+      return;
+    }
+    if (!wrap.contains(e.target)) {
+      menu.setAttribute('hidden', '');
+      trig.setAttribute('aria-expanded', 'false');
+    }
+  };
+  document.addEventListener('mousedown', window._c16OutsideClick);
 }
 
 function applyAuth() {
@@ -494,15 +530,21 @@ window.applyLocation = applyLocation;
 // DOMContentLoaded has already fired (via <RedesignChrome />), so a
 // DCL-bound listener never attaches and the location-pill click is dead.
 // Body always exists by the time inline scripts run.
-(function bindGlobalDelegates() {
-  if (document.body && !document.body.dataset.c16Bound) {
-    document.body.dataset.c16Bound = '1';
-    document.body.addEventListener('click', e => {
-      if (e.target.closest('[data-loc-picker]')) { openLocationPicker(); return; }
-      if (e.target.closest('[data-mobile-toggle]')) { toggleMobileMenu(); return; }
-    });
-  }
-})();
+function bindGlobalDelegates() {
+  if (!document.body || document.body.dataset.c16Bound) return;
+  document.body.dataset.c16Bound = '1';
+  document.body.addEventListener('click', e => {
+    if (e.target.closest('[data-loc-picker]')) { openLocationPicker(); return; }
+    if (e.target.closest('[data-mobile-toggle]')) { toggleMobileMenu(); return; }
+  });
+}
+// Attempt now (works if script is at end-of-body or loaded after body parse),
+// and again on DOMContentLoaded as a defensive fallback for any HTML
+// page that ever moves the <script> into <head> without defer.
+bindGlobalDelegates();
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bindGlobalDelegates);
+}
 
 document.addEventListener('DOMContentLoaded', () => {
   injectChrome();
