@@ -44,6 +44,10 @@ const NAV_HTML = `
   <div class="wrap nav">
     <a href="index.html" class="brand" aria-label="Court 16 — Tennis Remixed">
       <img src="assets/court16-logo.png" alt="Court 16 — Tennis Remixed" class="brand-logo">
+      <span class="brand-text" aria-hidden="true">
+        <span class="brand-mark-mini">16</span>
+        Court 16
+      </span>
     </a>
     <nav class="nav-links" aria-label="Primary">
       <div class="nav-item has-mega" data-nav="clubs">
