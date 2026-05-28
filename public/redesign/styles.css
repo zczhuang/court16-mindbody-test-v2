@@ -170,50 +170,29 @@ h4 { font-size: 18px; letter-spacing: -0.01em; line-height: 1.2; }
   flex-shrink: 0;
 }
 .brand {
-  height: 44px;
   display: flex;
   align-items: center;
+  flex-shrink: 0;
 }
 .brand-logo {
   height: 44px;
   width: auto;
   max-width: none;
   display: block;
-  object-fit: contain;
-  object-position: left center;
 }
-.brand-text { display: none; }
-.brand-mark-mini {
-  display: inline-grid;
-  place-items: center;
-  width: 26px; height: 26px;
-  border-radius: 50%;
-  background: var(--court);
-  color: var(--ink);
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-size: 13px;
-  margin-right: 8px;
-  letter-spacing: -0.02em;
-}
-.brand-footer { display: flex; align-items: flex-start; height: auto; overflow: visible; }
+.brand-footer { display: flex; align-items: flex-start; }
 .brand-logo-light {
   height: 56px;
   filter: invert(1) brightness(1.1);
 }
 @media (max-width: 760px) {
-  /* Swap to clean text brand on mobile — the combined wordmark logo
-     squishes its two text blocks together at small sizes. */
-  .brand-logo { display: none; }
-  .brand-text {
-    display: inline-flex;
-    align-items: center;
-    font-family: var(--font-display);
-    font-weight: 800;
-    font-size: 18px;
-    letter-spacing: -0.02em;
-    color: var(--ink);
-  }
+  /* Scale the full branded logo small enough that both the Court 16
+     mark and the Tennis Remixed wordmark render cleanly side-by-side
+     without clipping or overlap. */
+  .brand-logo { height: 28px; }
+}
+@media (max-width: 420px) {
+  .brand-logo { height: 24px; }
 }
 
 .nav-links {
