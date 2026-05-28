@@ -27,8 +27,16 @@ function TrialInner() {
   const params = useSearchParams();
   const { location: globalLoc, setLocation: setGlobalLoc } = useSelectedLocation();
   const urlLocation = params.get("location");
+  // Default to Ridge Hill when no URL hint and no remembered location:
+  // it's the only club with a working MindBody trial pipeline today
+  // (Brooklyn/LIC/FiDi/Fishtown/Newton return upstream errors on Vercel).
+  // Once the other sites are wired, drop the explicit fallback.
+  const DEFAULT_LOCATION_ID = "ridgehill";
   const preResolved =
-    (urlLocation ? getLocationById(urlLocation) : null) ?? globalLoc ?? null;
+    (urlLocation ? getLocationById(urlLocation) : null) ??
+    globalLoc ??
+    getLocationById(DEFAULT_LOCATION_ID) ??
+    null;
 
   const [step, setStep] = useState<Step>(preResolved ? "calendar" : "location");
   const [location, setLocation] = useState<Location | null>(preResolved);

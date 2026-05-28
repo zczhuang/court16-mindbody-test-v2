@@ -12,7 +12,10 @@ const LOCATIONS = [
 const STORE_KEY = 'c16_location';
 
 function getLocation() {
-  return localStorage.getItem(STORE_KEY) || 'brooklyn';
+  // Default to Ridge Hill: only club with a working MindBody trial
+  // pipeline on Vercel today. Brooklyn/LIC/FiDi/Fishtown/Newton return
+  // upstream auth errors until the per-site creds are configured.
+  return localStorage.getItem(STORE_KEY) || 'ridgehill';
 }
 
 function setLocation(id) {
@@ -146,8 +149,12 @@ const NAV_HTML = `
     </button>
 
     <div class="nav-cta">
+      <a href="tel:+17188755550" class="btn btn-ghost nav-phone" aria-label="Call Court 16 at 718-875-5550">
+        <span class="nav-phone-icon" aria-hidden="true">☎</span>
+        <span class="nav-phone-num">718-875-5550</span>
+      </a>
       <a href="https://shop.court16.com" target="_blank" rel="noopener" class="btn btn-ghost">Pro Shop</a>
-      <a href="https://www.court16.com/login" target="_blank" rel="noopener" class="btn btn-ghost">Log in</a>
+      <div class="mb-auth" data-mb-auth></div>
       <a href="/trial" data-trial-cta class="btn btn-ball">Book free trial</a>
     </div>
 
@@ -185,6 +192,10 @@ const NAV_HTML = `
     <a href="/redesign/about.html" class="mobile-direct">About</a>
     <a href="/redesign/faq.html" class="mobile-direct">FAQ</a>
     <a href="/redesign/contact.html" class="mobile-direct">Contact</a>
+    <a href="tel:+17188755550" class="mobile-direct" style="display:flex;align-items:center;gap:10px">
+      <span style="display:inline-grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--court);color:var(--ink);font-size:16px">☎</span>
+      718-875-5550
+    </a>
     <div class="mobile-cta-row">
       <a href="/trial" data-trial-cta class="btn btn-ball" style="flex:1">Book free trial</a>
     </div>
@@ -298,6 +309,7 @@ function injectChrome() {
   const footMount = document.getElementById('site-footer');
   if (footMount) footMount.innerHTML = FOOTER_HTML;
   injectChatbot();
+  applyAuth();
 
   // Highlight active nav item
   const page = (location.pathname.split('/').pop() || 'index.html').replace('.html', '');
@@ -318,6 +330,62 @@ function injectChrome() {
     if (el) el.classList.add('active');
   }
 }
+
+/* ---------- MindBody auth (login button / user dropdown) ---------- */
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function renderAuthLoggedOut(mount) {
+  const ret = encodeURIComponent(location.pathname + location.search);
+  mount.innerHTML = `<a class="btn btn-ghost mb-login" href="/auth/mindbody/login?return_to=${ret}">Sign in</a>`;
+}
+
+function renderAuthLoggedIn(mount, user) {
+  const first = user.firstName || '';
+  const last = user.lastName || '';
+  const name = (first + ' ' + last).trim() || user.email || 'Member';
+  const initial = (first || user.email || '?').charAt(0).toUpperCase();
+  mount.innerHTML = `
+    <div class="mb-user" data-mb-user>
+      <button type="button" class="mb-user-trigger" aria-haspopup="menu" aria-expanded="false">
+        <span class="mb-user-avatar" aria-hidden="true">${escapeHtml(initial)}</span>
+        <span class="mb-user-name">${escapeHtml(name)}</span>
+        <span class="caret">▾</span>
+      </button>
+      <div class="mb-user-menu" role="menu" hidden>
+        <div class="mb-user-email">${escapeHtml(user.email || '')}</div>
+        <a class="mb-user-item" href="/auth/mindbody/logout" role="menuitem">Log out</a>
+      </div>
+    </div>
+  `;
+  const wrap = mount.querySelector('[data-mb-user]');
+  const trig = wrap.querySelector('.mb-user-trigger');
+  const menu = wrap.querySelector('.mb-user-menu');
+  trig.addEventListener('click', () => {
+    const open = menu.hasAttribute('hidden');
+    if (open) { menu.removeAttribute('hidden'); trig.setAttribute('aria-expanded', 'true'); }
+    else { menu.setAttribute('hidden', ''); trig.setAttribute('aria-expanded', 'false'); }
+  });
+  document.addEventListener('mousedown', e => {
+    if (!wrap.contains(e.target)) { menu.setAttribute('hidden', ''); trig.setAttribute('aria-expanded', 'false'); }
+  });
+}
+
+function applyAuth() {
+  const mounts = document.querySelectorAll('[data-mb-auth]');
+  if (!mounts.length) return;
+  // Optimistic logged-out render so the button shows immediately.
+  mounts.forEach(m => renderAuthLoggedOut(m));
+  fetch('/auth/me', { credentials: 'same-origin' })
+    .then(r => r.ok ? r.json() : null)
+    .then(data => {
+      if (!data || !data.authenticated) return;
+      mounts.forEach(m => renderAuthLoggedIn(m, data.user));
+    })
+    .catch(() => { /* stay logged-out */ });
+}
+window.applyAuth = applyAuth;
 
 /* ---------- Location picker modal ---------- */
 function openLocationPicker() {
