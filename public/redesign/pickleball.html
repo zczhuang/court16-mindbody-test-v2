@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pickleball — Court 16</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<style>
+.pickleball-hero {
+  position: relative;
+  padding: clamp(80px, 12vw, 160px) 0 clamp(60px, 8vw, 100px);
+  background: linear-gradient(180deg, rgba(13,20,16,0.55), rgba(13,20,16,0.75)), url('assets/pickleball-hero.jpg') center/cover;
+  color: var(--paper);
+  overflow: hidden;
+}
+.pickleball-hero h1 { color: var(--paper); }
+.pickleball-hero .lede { color: rgba(255,255,255,0.85); }
+</style>
+</head>
+<body>
+
+<div id="site-nav"></div>
+
+<section class="pickleball-hero">
+  <div class="wrap" style="position:relative">
+    <div class="breadcrumbs" style="color:rgba(255,255,255,0.6)"><a href="index.html">Court 16</a> / Pickleball</div>
+    <span class="eyebrow on-dark">Pickleball at Court 16</span>
+    <h1 class="mt-16">The fastest-growing<br>sport. Indoors.</h1>
+    <p class="lede">Dedicated pickleball courts at all 6 clubs. Open play, clinics, leagues, and court rentals — for first-time paddles to DUPR 4.5+.</p>
+    <div style="margin-top:32px;display:flex;gap:12px;flex-wrap:wrap">
+      <a href="#clinics" class="btn btn-ball btn-lg">Browse clinics</a>
+      <a href="#open" class="btn btn-outline on-dark btn-lg">Drop-in open play</a>
+    </div>
+  </div>
+</section>
+
+<!-- 3 CARDS: Clinics, Open Play, League -->
+<section class="section">
+  <div class="wrap">
+    <div class="text-center mb-48">
+      <span class="eyebrow">Four ways to play</span>
+      <h2 class="mt-16">Pick a path and we'll match you up.</h2>
+    </div>
+    <div class="grid grid-4 keep-2-mid">
+      <article class="program-card" id="clinics">
+        <div class="level">DUPR 1.0–3.0</div>
+        <h3>Beginner Clinic</h3>
+        <p style="font-size:14px;color:var(--muted);margin:0">Paddle grip, dink, third-shot drop. 4 weeks to confident open play.</p>
+        <div class="meta" style="border-top:1px solid var(--line);padding-top:16px"><span><strong>4 weeks</strong></span><span><strong>Max 8</strong></span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+          <div class="price">$<span data-base-price="180">180</span><small>/4-wk series</small></div>
+          <a href="#" class="btn btn-primary">Book</a>
+        </div>
+      </article>
+      <article class="program-card">
+        <div class="level lvl-3">DUPR 3.0–4.0</div>
+        <h3>Intermediate Clinic</h3>
+        <p style="font-size:14px;color:var(--muted);margin:0">Point construction, attacking the kitchen, defending the lob.</p>
+        <div class="meta" style="border-top:1px solid var(--line);padding-top:16px"><span><strong>4 weeks</strong></span><span><strong>Max 6</strong></span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+          <div class="price">$<span data-base-price="220">220</span><small>/4-wk series</small></div>
+          <a href="#" class="btn btn-primary">Book</a>
+        </div>
+      </article>
+      <article class="program-card" id="open">
+        <div class="level">DUPR 2.5+</div>
+        <h3>Open Play</h3>
+        <p style="font-size:14px;color:var(--muted);margin:0">Drop-in rotation play. Best way to meet other paddlers in your city.</p>
+        <div class="meta" style="border-top:1px solid var(--line);padding-top:16px"><span><strong>90 min</strong></span><span><strong>Daily</strong></span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+          <div class="price">$<span data-base-price="38">38</span><small>/drop-in</small></div>
+          <a href="#" class="btn btn-primary">Book</a>
+        </div>
+      </article>
+      <article class="program-card" id="league">
+        <div class="level lvl-5">DUPR 3.0+</div>
+        <h3>Seasonal League</h3>
+        <p style="font-size:14px;color:var(--muted);margin:0">8-week competitive league. Mixed doubles. Captain-led teams.</p>
+        <div class="meta" style="border-top:1px solid var(--line);padding-top:16px"><span><strong>8 weeks</strong></span><span><strong>Sat AM</strong></span></div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+          <div class="price">$<span data-base-price="320">320</span><small>/season</small></div>
+          <a href="#" class="btn btn-primary">Join</a>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- RENTALS -->
+<section class="section" style="background:var(--paper)">
+  <div class="wrap">
+    <div class="grid grid-2">
+      <div>
+        <span class="eyebrow">Court rentals</span>
+        <h2 class="mt-16">Bring your own crew.</h2>
+        <p class="lede mt-24">Court rentals at all 6 clubs. Permanent indoor pickleball in Downtown Brooklyn, FiDi, LIC, Yonkers, Fishtown, and Newton. Members get priority booking and member rates.</p>
+        <a href="locations.html" class="btn btn-primary mt-32">Check court availability <span class="arrow">→</span></a>
+      </div>
+      <div class="grid" style="gap:16px">
+        <div class="program-card">
+          <div class="level">Non-member</div>
+          <h3>Hourly Court Rental</h3>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:auto;padding-top:16px;border-top:1px solid var(--line)">
+            <div class="price">$<span data-base-price="65">65</span><small>/hr · court</small></div>
+            <span style="font-size:13px;color:var(--muted)">Up to 4 players</span>
+          </div>
+        </div>
+        <div class="program-card">
+          <div class="level lvl-2">Member</div>
+          <h3>Member Court Rate</h3>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-top:auto;padding-top:16px;border-top:1px solid var(--line)">
+            <div class="price">$<span data-base-price="42">42</span><small>/hr · court</small></div>
+            <span style="font-size:13px;color:var(--muted)">35% off + priority booking</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MEMBERSHIP CALLOUT -->
+<section class="section">
+  <div class="wrap">
+    <div class="pricing-strip">
+      <div>
+        <span class="eyebrow on-dark">Paddle Pass</span>
+        <h2 class="mt-16">For people who play 3+ times a week.</h2>
+        <p style="opacity:0.8;margin-top:16px;max-width:55ch">Pickleball membership pays for itself at ~6 open-play sessions/mo. Priority court booking, 30% off clinics, free open play, member rate on rentals.</p>
+        <a href="memberships.html#pickleball" class="btn btn-ball mt-24">See membership <span class="arrow">→</span></a>
+      </div>
+      <div class="price-block">
+        <div class="n">$<span data-base-price="129">129</span></div>
+        <div class="l">/ month · Cancel anytime. Auto-includes league enrollment with Competitor tier.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div id="site-footer"></div>
+<script src="app.js"></script>
+</body>
+</html>

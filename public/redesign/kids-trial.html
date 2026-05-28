@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kids Free Trial — Court 16</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div id="site-nav"></div>
+
+<section class="hero" style="padding-top:80px;padding-bottom:48px;background:var(--cream)">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow">Complimentary first class</span>
+      <h1 class="mt-16">Your kid's first<br>lesson is on us.</h1>
+      <p class="lede">Ages 4–17. Red, Orange, Green, or Yellow ball — we'll match them to the right level. Racquets provided. Just bring non-marking shoes.</p>
+      <div style="display:flex;gap:14px;margin-top:36px;flex-wrap:wrap">
+        <a href="/trial" data-trial-cta class="btn btn-primary btn-lg">Start free trial <span class="arrow">→</span></a>
+        <a href="#what-to-expect" class="btn btn-outline">What to expect</a>
+      </div>
+      <div style="margin-top:32px;display:flex;gap:24px;align-items:center;font-size:13px;color:var(--muted)">
+        <span>★★★★★ <strong style="color:var(--ink)">4.9</strong> from 1,200+ families</span>
+      </div>
+    </div>
+    <div>
+      <!-- Real-flow handoff card. The fake multi-step form was replaced with a deep-link into /trial (MindBody-integrated). -->
+      <div class="form-card" id="trial-handoff" style="display:flex;flex-direction:column;gap:20px">
+        <div>
+          <span class="eyebrow">Live class scheduler</span>
+          <h3 class="mt-16">3 steps. Real slots. Live availability.</h3>
+          <p class="muted" style="font-size:14px;margin-top:8px">Our signup pulls real openings from each club's schedule — pick a day, lock a slot, confirmed instantly.</p>
+        </div>
+        <div style="background:var(--cream-2);border-radius:var(--r-md);padding:20px;display:grid;gap:14px">
+          <div style="display:flex;gap:14px;align-items:center">
+            <div style="width:36px;height:36px;border-radius:50%;background:var(--court);color:var(--paper);display:grid;place-items:center;font-weight:800;font-family:var(--font-display)">1</div>
+            <div>
+              <strong style="display:block;font-size:14px">Pick your club</strong>
+              <span style="font-size:13px;color:var(--muted)">Showing slots for <strong style="color:var(--ink)" data-loc-full>Downtown Brooklyn, NY</strong></span>
+            </div>
+          </div>
+          <div style="display:flex;gap:14px;align-items:center">
+            <div style="width:36px;height:36px;border-radius:50%;background:var(--court);color:var(--paper);display:grid;place-items:center;font-weight:800;font-family:var(--font-display)">2</div>
+            <div>
+              <strong style="display:block;font-size:14px">Choose a day &amp; time</strong>
+              <span style="font-size:13px;color:var(--muted)">Live calendar pulls from the studio's MindBody schedule</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:14px;align-items:center">
+            <div style="width:36px;height:36px;border-radius:50%;background:var(--court);color:var(--paper);display:grid;place-items:center;font-weight:800;font-family:var(--font-display)">3</div>
+            <div>
+              <strong style="display:block;font-size:14px">Confirm &amp; show up</strong>
+              <span style="font-size:13px;color:var(--muted)">Email + text confirmation. Racquets provided.</span>
+            </div>
+          </div>
+        </div>
+        <a href="/trial" data-trial-cta class="btn btn-primary btn-lg" style="width:100%">Start your free trial <span class="arrow">→</span></a>
+        <div style="display:flex;gap:8px;align-items:center;justify-content:center;font-size:12px;color:var(--muted)">
+          <span style="width:8px;height:8px;border-radius:50%;background:#16a34a;box-shadow:0 0 0 3px rgba(22,163,74,0.2)"></span>
+          Live schedule · No credit card · Free
+        </div>
+      </div>
+      <!-- Legacy fake multi-step form (kept for reference, hidden) -->
+      <div class="form-card" id="trial-form-anchor" style="display:none">
+        <form id="trial-form">
+          <!-- Step progress -->
+          <div style="display:flex;gap:8px;margin-bottom:24px">
+            <div class="step-dot active"></div>
+            <div class="step-dot"></div>
+            <div class="step-dot"></div>
+          </div>
+
+          <!-- STEP 1 -->
+          <div class="trial-form-step">
+            <span class="eyebrow">Step 1 of 3</span>
+            <h3 class="mt-16">How old is your kid?</h3>
+            <p class="muted" style="font-size:14px;margin-top:6px">We'll match them to the right ball color &amp; court size.</p>
+            <div class="choice-grid mt-24">
+              <button type="button" class="choice"><span class="age">4–5</span>Red Ball</button>
+              <button type="button" class="choice"><span class="age">6–8</span>Red Ball</button>
+              <button type="button" class="choice"><span class="age">9–10</span>Orange Ball</button>
+              <button type="button" class="choice"><span class="age">11–12</span>Green Ball</button>
+              <button type="button" class="choice"><span class="age">13–15</span>Yellow Ball</button>
+              <button type="button" class="choice"><span class="age">16–17</span>Yellow Ball</button>
+            </div>
+            <button type="button" data-next class="btn btn-primary mt-32" style="width:100%">Continue <span class="arrow">→</span></button>
+          </div>
+
+          <!-- STEP 2 -->
+          <div class="trial-form-step" style="display:none">
+            <span class="eyebrow">Step 2 of 3</span>
+            <h3 class="mt-16">Pick a club.</h3>
+            <p class="muted" style="font-size:14px;margin-top:6px">Schedules vary slightly by location.</p>
+            <div class="choice-grid mt-24" style="grid-template-columns:1fr 1fr">
+              <button type="button" class="choice selected">Brooklyn · NY</button>
+              <button type="button" class="choice">LIC · NY</button>
+              <button type="button" class="choice">FiDi · NY</button>
+              <button type="button" class="choice">Ridge Hill · NY</button>
+              <button type="button" class="choice">Fishtown · PA</button>
+              <button type="button" class="choice">Newton · MA</button>
+            </div>
+            <div style="display:flex;gap:12px;margin-top:32px">
+              <button type="button" data-back class="btn btn-outline">← Back</button>
+              <button type="button" data-next class="btn btn-primary" style="flex:1">Continue <span class="arrow">→</span></button>
+            </div>
+          </div>
+
+          <!-- STEP 3 -->
+          <div class="trial-form-step" style="display:none">
+            <span class="eyebrow">Step 3 of 3</span>
+            <h3 class="mt-16">Where do we send the confirmation?</h3>
+            <div class="mt-24">
+              <div class="field-row">
+                <div class="field">
+                  <label>Parent name</label>
+                  <input type="text" placeholder="Jamie Lee" required>
+                </div>
+                <div class="field">
+                  <label>Kid's first name</label>
+                  <input type="text" placeholder="Riley" required>
+                </div>
+              </div>
+              <div class="field">
+                <label>Email</label>
+                <input type="email" placeholder="you@example.com" required>
+              </div>
+              <div class="field">
+                <label>Mobile (for text confirmation)</label>
+                <input type="tel" placeholder="(555) 123-4567" required>
+              </div>
+            </div>
+            <div style="display:flex;gap:12px;margin-top:24px">
+              <button type="button" data-back class="btn btn-outline">← Back</button>
+              <button type="submit" class="btn btn-primary" style="flex:1">Book my free trial <span class="arrow">→</span></button>
+            </div>
+            <p class="muted mt-16" style="font-size:12px;text-align:center">No credit card required. We'll text you within 1 business day.</p>
+          </div>
+
+          <!-- Confirmation -->
+          <div class="trial-form-step" style="display:none;text-align:center">
+            <div style="font-size:64px;line-height:1">🎾</div>
+            <h3 class="mt-16">You're booked!</h3>
+            <p class="lede" style="margin:16px auto 0">We've sent a confirmation to your inbox and will text within 1 business day to schedule your kid's first class.</p>
+            <a href="index.html" class="btn btn-primary mt-32">Back to home</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- WHAT TO EXPECT -->
+<section class="section" id="what-to-expect">
+  <div class="wrap">
+    <div class="text-center" style="max-width:720px;margin:0 auto 56px">
+      <span class="eyebrow">Before the first class</span>
+      <h2 class="mt-16">Here's what your kid's first day looks like.</h2>
+    </div>
+    <div class="grid grid-4 keep-2-mid">
+      <div class="program-card">
+        <div class="level">15 minutes before</div>
+        <h3>Check in</h3>
+        <p style="font-size:14px;color:var(--muted);margin:0">Walk in, give us your kid's name. We've already got them on the roster. Racquet comes from the desk.</p>
+      </div>
+      <div class="program-card">
+        <div class="level lvl-2">First 10 min</div>
+        <h3>Warm up</h3>
+        <p style="font-size:14px;color:var(--muted);margin:0">Coach meets the group, light games, hand-eye drills. Your kid learns names and gets comfortable.</p>
+      </div>
+      <div class="program-card">
+        <div class="level lvl-3">30 min of play</div>
+        <h3>On the court</h3>
+        <p style="font-size:14px;color:var(--muted);margin:0">Real tennis — at their level. Red/Orange/Green/Yellow ball matched to their age &amp; coordination.</p>
+      </div>
+      <div class="program-card">
+        <div class="level lvl-4">After class</div>
+        <h3>The honest chat</h3>
+        <p style="font-size:14px;color:var(--muted);margin:0">5-min debrief with the coach. What they did well, what to work on, and whether the academy is right for them.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- LEVELS EXPLAINER -->
+<section class="section" style="background:var(--paper)">
+  <div class="wrap">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:48px;flex-wrap:wrap">
+      <div>
+        <span class="eyebrow">The pathway</span>
+        <h2 class="mt-16">Red → Orange → Green → Yellow</h2>
+        <p class="lede mt-24" style="max-width:50ch">We don't race kids through. Each ball color is a real milestone. Most kids spend 1–2 years at each level — that's how the best players are built.</p>
+      </div>
+    </div>
+    <div class="grid grid-4 keep-2-mid">
+      <div class="program-card" style="background:#fef2f2">
+        <div class="level" style="color:#b91c1c">Red Ball · ages 4–8</div>
+        <h3>The introduction</h3>
+        <p style="font-size:14px;color:var(--muted);margin:0">36-foot court. Slow foam ball. Coordination &amp; fundamentals. Pure fun.</p>
+      </div>
+      <div class="program-card" style="background:#fff7ed">
+        <div class="level" style="color:#c2410c">Orange Ball · ages 9–10</div>
+        <h3>Real rallies</h3>
+        <p style="font-size:14px;color:var(--muted);margin:0">60-foot court. Ball that travels but doesn't fly. Forehand &amp; backhand structure.</p>
+      </div>
+      <div class="program-card" style="background:#f0fdf4">
+        <div class="level" style="color:#15803d">Green Ball · ages 11–12</div>
+        <h3>Strategy in</h3>
+        <p style="font-size:14px;color:var(--muted);margin:0">Full court. 75% compression. Players add spin, serves, and start point play.</p>
+      </div>
+      <div class="program-card" style="background:#fefce8">
+        <div class="level" style="color:#a16207">Yellow Ball · ages 13+</div>
+        <h3>The real deal</h3>
+        <p style="font-size:14px;color:var(--muted);margin:0">Standard tennis ball. Match play, league prep, tournament tracks for the committed.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TRUST -->
+<section class="section">
+  <div class="wrap">
+    <div class="text-center mb-48">
+      <span class="eyebrow">From parents</span>
+      <h2 class="mt-16">Why families come back.</h2>
+    </div>
+    <div class="grid grid-3 keep-2-mid">
+      <div class="testimonial">
+        <div class="stars">★★★★★</div>
+        <blockquote>"The trial was zero pressure. The coach actually told us our kid wasn't ready yet and to come back in 3 months. That earned my trust for life."</blockquote>
+        <div class="who">
+          <div class="avatar">JL</div>
+          <div class="meta"><strong>Jamie L.</strong><span>Brooklyn · 2 kids enrolled</span></div>
+        </div>
+      </div>
+      <div class="testimonial">
+        <div class="stars">★★★★★</div>
+        <blockquote>"My daughter has been Red Ball for a year and a half. Other places would have pushed her to Orange months ago. Here they actually teach the game."</blockquote>
+        <div class="who">
+          <div class="avatar">PT</div>
+          <div class="meta"><strong>Priya T.</strong><span>LIC · Red Ball</span></div>
+        </div>
+      </div>
+      <div class="testimonial">
+        <div class="stars">★★★★★</div>
+        <blockquote>"Two kids in the program, sibling discount made it doable. Worth every dollar — it's the highlight of their week."</blockquote>
+        <div class="who">
+          <div class="avatar">AM</div>
+          <div class="meta"><strong>Alex M.</strong><span>Fishtown · Orange + Green</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div id="site-footer"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
