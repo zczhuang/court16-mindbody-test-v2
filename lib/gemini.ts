@@ -18,6 +18,63 @@ function getAuth(): GoogleAuth {
   return _authClient;
 }
 
+/**
+ * Vercel Workload Identity Federation path: exchange the per-function
+ * VERCEL_OIDC_TOKEN for a federated GCP token via STS, then impersonate the
+ * configured service account to get an access token usable for Vertex AI.
+ *
+ * Falls back to ADC (`google-auth-library`) when VERCEL_OIDC_TOKEN isn't
+ * present — that's the local-dev path on a machine running `gcloud auth
+ * application-default login`.
+ */
+async function getAccessToken(): Promise<string> {
+  const oidc = process.env.VERCEL_OIDC_TOKEN;
+  const wip = process.env.GCP_WORKLOAD_IDENTITY_PROVIDER;
+  const saEmail = process.env.GCP_SERVICE_ACCOUNT_EMAIL;
+
+  if (oidc && wip && saEmail) {
+    // 1. Trade Vercel OIDC JWT for a federated Google access token.
+    const stsResp = await fetch("https://sts.googleapis.com/v1/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "urn:ietf:params:oauth:grant-type:token-exchange",
+        audience: `//iam.googleapis.com/${wip}`,
+        scope: "https://www.googleapis.com/auth/cloud-platform",
+        requested_token_type: "urn:ietf:params:oauth:token-type:access_token",
+        subject_token_type: "urn:ietf:params:oauth:token-type:jwt",
+        subject_token: oidc,
+      }).toString(),
+    });
+    const sts = (await stsResp.json()) as { access_token?: string; error?: string; error_description?: string };
+    if (!stsResp.ok || !sts.access_token) {
+      throw new Error(`STS exchange failed (${stsResp.status}): ${sts.error_description || sts.error || JSON.stringify(sts)}`);
+    }
+
+    // 2. Use the federated token to impersonate the service account.
+    const impUrl = `https://iamcredentials.googleapis.com/v1/projects/-/serviceAccounts/${encodeURIComponent(saEmail)}:generateAccessToken`;
+    const impResp = await fetch(impUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${sts.access_token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ scope: SCOPES }),
+    });
+    const imp = (await impResp.json()) as { accessToken?: string; error?: { message?: string } };
+    if (!impResp.ok || !imp.accessToken) {
+      throw new Error(`SA impersonation failed (${impResp.status}): ${imp.error?.message || JSON.stringify(imp)}`);
+    }
+    return imp.accessToken;
+  }
+
+  // Local ADC path.
+  const client = await getAuth().getClient();
+  const tok = await client.getAccessToken();
+  if (!tok?.token) throw new Error("ADC returned no access token");
+  return tok.token;
+}
+
 export interface GeminiMessage {
   role: "user" | "model";
   text: string;
@@ -64,10 +121,7 @@ export async function callGemini(opts: GeminiCallOpts): Promise<GeminiCallResult
     `https://${host}/v1/projects/${project}/locations/${region}` +
     `/publishers/google/models/${encodeURIComponent(opts.model)}:generateContent`;
 
-  const auth = getAuth();
-  const client = await auth.getClient();
-  const token = (await client.getAccessToken()).token;
-  if (!token) throw new Error("ADC returned no access token");
+  const token = await getAccessToken();
 
   const body: Record<string, unknown> = {
     systemInstruction: {
