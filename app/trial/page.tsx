@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import Header from "@/components/Header";
+import RedesignChrome from "@/components/RedesignChrome";
 import ProgressBar from "@/components/ProgressBar";
 import LocationSelector from "@/components/LocationSelector";
 import CalendarView from "@/components/CalendarView";
@@ -188,7 +188,7 @@ function TrialInner() {
   if (step === "confirmed" && submittedRequest) {
     return (
       <>
-        <Header />
+        <RedesignChrome />
         <ConfirmationScreen request={submittedRequest} correlationId={submittedCorrelationId} />
       </>
     );
@@ -196,7 +196,7 @@ function TrialInner() {
 
   return (
     <>
-      <Header />
+      <RedesignChrome />
       <div className="c16-container">
         <ProgressBar step={step} />
 

@@ -42,8 +42,8 @@ function applyLocation() {
 const NAV_HTML = `
 <header class="site-header">
   <div class="wrap nav">
-    <a href="index.html" class="brand" aria-label="Court 16 — Tennis Remixed">
-      <img src="assets/court16-logo.png" alt="Court 16 — Tennis Remixed" class="brand-logo">
+    <a href="/redesign/index.html" class="brand" aria-label="Court 16 — Tennis Remixed">
+      <img src="/redesign/assets/court16-logo.png" alt="Court 16 — Tennis Remixed" class="brand-logo">
     </a>
     <nav class="nav-links" aria-label="Primary">
       <div class="nav-item has-mega" data-nav="clubs">
@@ -53,16 +53,16 @@ const NAV_HTML = `
             <div class="mega-col">
               <span class="eyebrow">By region</span>
               <ul class="mega-list">
-                <li><a href="locations.html"><strong>New York City</strong><span>Brooklyn · LIC · FiDi · Yonkers</span></a></li>
-                <li><a href="locations.html"><strong>Philadelphia</strong><span>Fishtown</span></a></li>
-                <li><a href="locations.html"><strong>Boston</strong><span>Newton</span></a></li>
+                <li><a href="/redesign/locations.html"><strong>New York City</strong><span>Brooklyn · LIC · FiDi · Yonkers</span></a></li>
+                <li><a href="/redesign/locations.html"><strong>Philadelphia</strong><span>Fishtown</span></a></li>
+                <li><a href="/redesign/locations.html"><strong>Boston</strong><span>Newton</span></a></li>
               </ul>
             </div>
             <div class="mega-col mega-col-wide">
               <span class="eyebrow">All six clubs</span>
               <div class="mega-clubs-grid">
                 ${LOCATIONS.map(l => `
-                  <a href="locations.html#${l.id}" class="mega-club">
+                  <a href="/redesign/locations.html#${l.id}" class="mega-club">
                     <span class="city-tag">${l.city}</span>
                     <strong>${l.name}</strong>
                     <span class="addr">${l.addr}</span>
@@ -78,10 +78,10 @@ const NAV_HTML = `
         <button class="nav-trigger">Adults <span class="caret">▾</span></button>
         <div class="mega mega-narrow">
           <ul class="mega-list">
-            <li><a href="adult-classes.html"><strong>Adult Classes</strong><span>Group classes by USTA skill level</span></a></li>
-            <li><a href="adult-classes.html#private"><strong>Private &amp; Semi-Private</strong><span>1-on-1 or pairs with a pro</span></a></li>
-            <li><a href="adult-classes.html#ball-machine"><strong>Ball Machine Training</strong><span>Solo reps, member rates</span></a></li>
-            <li><a href="memberships.html#adult"><strong>Adult Membership</strong><span>Unlimited group classes</span></a></li>
+            <li><a href="/redesign/adult-classes.html"><strong>Adult Classes</strong><span>Group classes by USTA skill level</span></a></li>
+            <li><a href="/redesign/adult-classes.html#private"><strong>Private &amp; Semi-Private</strong><span>1-on-1 or pairs with a pro</span></a></li>
+            <li><a href="/redesign/adult-classes.html#ball-machine"><strong>Ball Machine Training</strong><span>Solo reps, member rates</span></a></li>
+            <li><a href="/redesign/memberships.html#adult"><strong>Adult Membership</strong><span>Unlimited group classes</span></a></li>
           </ul>
         </div>
       </div>
@@ -90,11 +90,11 @@ const NAV_HTML = `
         <button class="nav-trigger">Kids <span class="caret">▾</span></button>
         <div class="mega mega-narrow">
           <ul class="mega-list">
-            <li><a href="kids-trial.html"><strong>Free Trial Class</strong><span>Complimentary first lesson</span></a></li>
-            <li><a href="kids-trial.html#academy"><strong>Kids Tennis Academy</strong><span>Red → Orange → Green → Yellow</span></a></li>
-            <li><a href="summer-camp.html"><strong>Summer Camp</strong><span>NY · PA · 10 themed weeks</span></a></li>
-            <li><a href="summer-camp.html#holiday"><strong>Holiday Camps</strong><span>School-break programs</span></a></li>
-            <li><a href="memberships.html#kids"><strong>Kids Membership</strong><span>Sibling discounts</span></a></li>
+            <li><a href="/redesign/kids-trial.html"><strong>Free Trial Class</strong><span>Complimentary first lesson</span></a></li>
+            <li><a href="/redesign/kids-trial.html#academy"><strong>Kids Tennis Academy</strong><span>Red → Orange → Green → Yellow</span></a></li>
+            <li><a href="/redesign/summer-camp.html"><strong>Summer Camp</strong><span>NY · PA · 10 themed weeks</span></a></li>
+            <li><a href="/redesign/summer-camp.html#holiday"><strong>Holiday Camps</strong><span>School-break programs</span></a></li>
+            <li><a href="/redesign/memberships.html#kids"><strong>Kids Membership</strong><span>Sibling discounts</span></a></li>
           </ul>
         </div>
       </div>
@@ -103,10 +103,10 @@ const NAV_HTML = `
         <button class="nav-trigger">Pickleball <span class="caret">▾</span></button>
         <div class="mega mega-narrow">
           <ul class="mega-list">
-            <li><a href="pickleball.html"><strong>Clinics &amp; Rentals</strong><span>Beginner to open play</span></a></li>
-            <li><a href="pickleball.html#league"><strong>League Play</strong><span>Seasonal competitive league</span></a></li>
-            <li><a href="pickleball.html#open"><strong>Open Play</strong><span>Drop-in rotation games</span></a></li>
-            <li><a href="memberships.html#pickleball"><strong>Pickleball Membership</strong><span>Court priority + clinics</span></a></li>
+            <li><a href="/redesign/pickleball.html"><strong>Clinics &amp; Rentals</strong><span>Beginner to open play</span></a></li>
+            <li><a href="/redesign/pickleball.html#league"><strong>League Play</strong><span>Seasonal competitive league</span></a></li>
+            <li><a href="/redesign/pickleball.html#open"><strong>Open Play</strong><span>Drop-in rotation games</span></a></li>
+            <li><a href="/redesign/memberships.html#pickleball"><strong>Pickleball Membership</strong><span>Court priority + clinics</span></a></li>
           </ul>
         </div>
       </div>
@@ -123,7 +123,7 @@ const NAV_HTML = `
       </div>
 
       <div class="nav-item">
-        <a href="about.html" class="nav-trigger nav-trigger-link">About</a>
+        <a href="/redesign/about.html" class="nav-trigger nav-trigger-link">About</a>
       </div>
     </nav>
 
@@ -149,32 +149,32 @@ const NAV_HTML = `
   <button class="close" data-mobile-toggle aria-label="Close">✕</button>
   <div class="mobile-nav-inner">
     <details open><summary>Clubs</summary>
-      <a href="locations.html">All locations</a>
-      ${LOCATIONS.map(l => `<a href="locations.html#${l.id}">${l.name} · ${l.city}</a>`).join('')}
+      <a href="/redesign/locations.html">All locations</a>
+      ${LOCATIONS.map(l => `<a href="/redesign/locations.html#${l.id}">${l.name} · ${l.city}</a>`).join('')}
     </details>
     <details><summary>Adults</summary>
-      <a href="adult-classes.html">Adult Classes</a>
-      <a href="adult-classes.html#private">Private &amp; Semi-Private</a>
-      <a href="memberships.html#adult">Adult Membership</a>
+      <a href="/redesign/adult-classes.html">Adult Classes</a>
+      <a href="/redesign/adult-classes.html#private">Private &amp; Semi-Private</a>
+      <a href="/redesign/memberships.html#adult">Adult Membership</a>
     </details>
     <details><summary>Kids</summary>
-      <a href="kids-trial.html">Free Trial</a>
-      <a href="kids-trial.html#academy">Kids Academy</a>
-      <a href="summer-camp.html">Summer Camp</a>
-      <a href="memberships.html#kids">Kids Membership</a>
+      <a href="/redesign/kids-trial.html">Free Trial</a>
+      <a href="/redesign/kids-trial.html#academy">Kids Academy</a>
+      <a href="/redesign/summer-camp.html">Summer Camp</a>
+      <a href="/redesign/memberships.html#kids">Kids Membership</a>
     </details>
     <details><summary>Pickleball</summary>
-      <a href="pickleball.html">Clinics &amp; Rentals</a>
-      <a href="pickleball.html#league">League</a>
-      <a href="memberships.html#pickleball">Pickleball Membership</a>
+      <a href="/redesign/pickleball.html">Clinics &amp; Rentals</a>
+      <a href="/redesign/pickleball.html#league">League</a>
+      <a href="/redesign/memberships.html#pickleball">Pickleball Membership</a>
     </details>
     <details><summary>Events</summary>
       <a href="#">Corporate</a>
       <a href="#">Birthday Parties</a>
     </details>
-    <a href="about.html" class="mobile-direct">About</a>
-    <a href="faq.html" class="mobile-direct">FAQ</a>
-    <a href="contact.html" class="mobile-direct">Contact</a>
+    <a href="/redesign/about.html" class="mobile-direct">About</a>
+    <a href="/redesign/faq.html" class="mobile-direct">FAQ</a>
+    <a href="/redesign/contact.html" class="mobile-direct">Contact</a>
     <div class="mobile-cta-row">
       <a href="/trial" data-trial-cta class="btn btn-ball" style="flex:1">Book free trial</a>
     </div>
@@ -188,7 +188,7 @@ const FOOTER_HTML = `
     <div class="footer-grid">
       <div>
         <div class="brand brand-footer">
-          <img src="assets/court16-logo.png" alt="Court 16 — Tennis Remixed" class="brand-logo brand-logo-light">
+          <img src="/redesign/assets/court16-logo.png" alt="Court 16 — Tennis Remixed" class="brand-logo brand-logo-light">
         </div>
         <p style="margin-top:16px;max-width:30ch">Tennis Remixed. Six clubs across NYC, Philly &amp; Boston.</p>
         <div style="display:flex;gap:12px;margin-top:24px">
@@ -200,29 +200,29 @@ const FOOTER_HTML = `
       <div>
         <h5>Play</h5>
         <ul>
-          <li><a href="adult-classes.html">Adult Classes</a></li>
-          <li><a href="kids-trial.html">Kids Academy</a></li>
-          <li><a href="summer-camp.html">Summer Camp</a></li>
-          <li><a href="pickleball.html">Pickleball</a></li>
-          <li><a href="memberships.html">Memberships</a></li>
+          <li><a href="/redesign/adult-classes.html">Adult Classes</a></li>
+          <li><a href="/redesign/kids-trial.html">Kids Academy</a></li>
+          <li><a href="/redesign/summer-camp.html">Summer Camp</a></li>
+          <li><a href="/redesign/pickleball.html">Pickleball</a></li>
+          <li><a href="/redesign/memberships.html">Memberships</a></li>
         </ul>
       </div>
       <div>
         <h5>Clubs</h5>
         <ul>
-          ${LOCATIONS.map(l => `<li><a href="locations.html#${l.id}">${l.short} · ${l.city}</a></li>`).join('')}
-          <li><a href="locations.html">All locations</a></li>
+          ${LOCATIONS.map(l => `<li><a href="/redesign/locations.html#${l.id}">${l.short} · ${l.city}</a></li>`).join('')}
+          <li><a href="/redesign/locations.html">All locations</a></li>
         </ul>
       </div>
       <div>
         <h5>Company</h5>
         <ul>
-          <li><a href="about.html">About &amp; Mission</a></li>
+          <li><a href="/redesign/about.html">About &amp; Mission</a></li>
           <li><a href="#">Careers</a></li>
           <li><a href="#">Press</a></li>
           <li><a href="#">Court 16 Gazette</a></li>
-          <li><a href="faq.html">FAQ</a></li>
-          <li><a href="contact.html">Contact</a></li>
+          <li><a href="/redesign/faq.html">FAQ</a></li>
+          <li><a href="/redesign/contact.html">Contact</a></li>
         </ul>
       </div>
     </div>
@@ -399,6 +399,10 @@ function bindTabs() {
     }
   });
 }
+
+// Expose for late-loading consumers (e.g. Next.js <RedesignChrome /> on /trial)
+window.injectChrome = injectChrome;
+window.applyLocation = applyLocation;
 
 document.addEventListener('DOMContentLoaded', () => {
   injectChrome();
