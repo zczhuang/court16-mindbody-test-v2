@@ -420,7 +420,7 @@ function clearQuick() { quick.innerHTML = ''; }
 /* -------- Flow -------- */
 async function startFlow() {
   await addBot("Hey! I'm the Court 16 class concierge 🎾");
-  await addBot("I'll match you to the right adult class in about 30 seconds. Sound good?");
+  await addBot("Quick-match in 30 seconds, or just type any question (pricing, schedule, locations — I'll figure it out).");
   setQuickReplies([
     { label: "Let's go", onSelect: askExperience },
     { label: "I just have questions", secondary: true, onSelect: openEnded }
@@ -956,46 +956,97 @@ function restart() {
   });
   body.innerHTML = '';
   clearQuick();
+  llmHistory.length = 0;
   startFlow();
 }
 
-/* -------- Free-text fallback (keeps it conversational if user types) -------- */
+/* -------- Free-text → LLM fallback --------
+ * Booking-collection and handoff steps stay deterministic (we need exact
+ * field validation). Everything else flows to /api/chatbot/ask, which is
+ * the Gemini-backed concierge with full KB + live MindBody slots in
+ * context. The LLM may return `suggested` fields that nudge widget state
+ * (location / experience / format / openBookingFlow) — we apply them
+ * silently and then trigger the next deterministic step. */
+
+const llmHistory = []; // [{ role:'user'|'model', text }]
+
 async function handleFreeText(text) {
   addUser(text);
-  // If we're in the middle of collecting booking details, route there first
   if (state.step === 'collecting' && state.awaitingField) return handleCollectingInput(text);
   if (state.step === 'handoff' && state.awaitingField === 'email') return handleHandoffInput(text);
-  const t = text.toLowerCase();
+  return askLLM(text);
+}
 
-  // light keyword routing into the right step
-  if (/(beginner|new|never|first)/.test(t) && !state.experience) return pickExperience(/never|new/.test(t) ? 'never' : 'beginner');
-  if (/(intermediate|3\.0|2\.5)/.test(t) && !state.experience)   return pickExperience('intermediate');
-  if (/(advanced|3\.5|4\.0|tournament)/.test(t) && !state.experience) return pickExperience('advanced');
+async function askLLM(text) {
+  llmHistory.push({ role: 'user', text });
 
-  if (/brooklyn/.test(t))   return pickLocation('brooklyn');
-  if (/(lic|long island|queens)/.test(t)) return pickLocation('lic');
-  if (/(fidi|manhattan|financial)/.test(t)) return pickLocation('fidi');
-  if (/(yonkers|ridge hill)/.test(t)) return pickLocation('yonkers');
-  if (/(philly|philadelphia|fishtown)/.test(t)) return pickLocation('philly');
-  if (/(newton|boston|mass)/.test(t)) return pickLocation('newton');
+  // Show typing while we wait
+  const typing = document.createElement('div');
+  typing.className = 'c16-row bot';
+  typing.innerHTML = '<div class="c16-typing"><span></span><span></span><span></span></div>';
+  body.appendChild(typing);
+  body.scrollTop = body.scrollHeight;
 
-  if (/private/.test(t) && /semi/.test(t)) return pickFormat('semi');
-  if (/private/.test(t)) return pickFormat('private');
-  if (/group/.test(t))   return pickFormat('group');
-
-  if (/price|cost|how much/.test(t)) {
-    await addBot("Pricing varies by location — Philly is the most affordable ($45/class), Yonkers $55, and Brooklyn/LIC/FiDi are $69/class. Members save 10–15%. Tell me your location and I'll show exact numbers.");
+  let data;
+  try {
+    const r = await fetch('/api/chatbot/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: llmHistory,
+        state: {
+          experience: state.experience,
+          years: state.years,
+          goal: state.goal,
+          location: state.location,
+          format: state.format,
+        },
+      }),
+    });
+    data = await r.json().catch(() => ({}));
+    if (!r.ok || data.ok === false) throw new Error(data.error || `LLM ${r.status}`);
+  } catch (e) {
+    typing.remove();
+    await addBot(`I'm having trouble reaching my brain right now (${e.message}). Want to keep going on the quick-reply path?`);
+    if (!state.experience) return askExperience();
     if (!state.location) return askLocation();
+    if (!state.format) return askFormat();
     return;
   }
+  typing.remove();
 
-  // Otherwise nudge back to current step
-  await addBot("Got it. Let's keep going — tap one of the options below 👇");
-  // re-trigger current step's chips
+  // Render LLM reply
+  const row = document.createElement('div');
+  row.className = 'c16-row bot';
+  const b = document.createElement('div');
+  b.className = 'c16-bubble';
+  b.textContent = data.reply;
+  row.appendChild(b);
+  body.appendChild(row);
+  body.scrollTop = body.scrollHeight;
+  llmHistory.push({ role: 'model', text: data.reply });
+
+  // Apply suggested state nudges
+  const s = data.suggested || {};
+  if (s.experience && !state.experience) state.experience = s.experience;
+  if (s.format && !state.format) state.format = s.format;
+  if (s.location && !state.location) {
+    state.location = s.location;
+  }
+  // If LLM thinks we're ready to book and location supports it, jump there
+  if (s.openBookingFlow && state.location && LOCATIONS[state.location]?.bookingEnabled) {
+    return startBooking();
+  }
+
+  // Re-surface the next deterministic chip set so they always have an option
   if (!state.experience) return askExperience();
-  if (!state.goal) return askGoal();
   if (!state.location) return askLocation();
   if (!state.format) return askFormat();
+  // If qualification's done, show the match again as a refresher
+  if (state.experience && state.location && state.format && state.step !== 'match-shown') {
+    state.step = 'match-shown';
+    return showMatch();
+  }
 }
 </script>
 </body>
