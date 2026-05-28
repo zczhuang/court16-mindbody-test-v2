@@ -169,17 +169,27 @@ h4 { font-size: 18px; letter-spacing: -0.01em; line-height: 1.2; }
   white-space: nowrap;
   flex-shrink: 0;
 }
+.brand {
+  height: 44px;
+  overflow: hidden;
+}
 .brand-logo {
   height: 44px;
   width: auto;
+  max-width: none;
   display: block;
+  object-fit: contain;
+  object-position: left center;
 }
-.brand-footer { display: flex; align-items: flex-start; }
+.brand-footer { display: flex; align-items: flex-start; height: auto; overflow: visible; }
 .brand-logo-light {
   height: 56px;
   filter: invert(1) brightness(1.1);
 }
-@media (max-width: 600px) {
+@media (max-width: 760px) {
+  /* Clip the logo container to show ONLY the "Court 16" mark on mobile;
+     the "Tennis Remixed" wordmark portion is hidden to avoid overlap. */
+  .brand { width: 120px; height: 36px; }
   .brand-logo { height: 36px; }
 }
 
@@ -325,7 +335,8 @@ h4 { font-size: 18px; letter-spacing: -0.01em; line-height: 1.2; }
 .hamburger span::after { top: 6px; }
 
 @media (max-width: 980px) {
-  .nav-links { display: none; }
+  .nav-links { display: none !important; }
+  .mega { display: none !important; }
   .hamburger { display: inline-flex; }
   .nav-cta .btn:not(.btn-ball) { display: none; }
 }
