@@ -234,11 +234,60 @@ const FOOTER_HTML = `
 </footer>
 `;
 
+const CHATBOT_HTML = `
+<button class="c16-bot-launcher" id="c16-bot-launcher" aria-label="Open class finder">
+  <span class="ball">16</span>
+  <span>Find my class</span>
+  <span class="dot" aria-hidden="true"></span>
+</button>
+<div class="c16-bot-overlay" id="c16-bot-overlay" aria-hidden="true"></div>
+<aside class="c16-bot-panel" id="c16-bot-panel" role="dialog" aria-label="Court 16 class concierge" aria-hidden="true">
+  <button class="close-x" id="c16-bot-close" aria-label="Close">✕</button>
+</aside>
+`;
+
+function injectChatbot() {
+  const wrap = document.createElement('div');
+  wrap.innerHTML = CHATBOT_HTML;
+  while (wrap.firstChild) document.body.appendChild(wrap.firstChild);
+
+  const launcher = document.getElementById('c16-bot-launcher');
+  const panel = document.getElementById('c16-bot-panel');
+  const overlay = document.getElementById('c16-bot-overlay');
+  const closeBtn = document.getElementById('c16-bot-close');
+  let iframeLoaded = false;
+
+  function open() {
+    if (!iframeLoaded) {
+      const iframe = document.createElement('iframe');
+      iframe.src = '/chatbot.html?embed=1';
+      iframe.setAttribute('title', 'Court 16 Class Concierge');
+      panel.appendChild(iframe);
+      iframeLoaded = true;
+    }
+    panel.classList.add('open');
+    overlay.classList.add('open');
+    panel.setAttribute('aria-hidden', 'false');
+  }
+  function close() {
+    panel.classList.remove('open');
+    overlay.classList.remove('open');
+    panel.setAttribute('aria-hidden', 'true');
+  }
+  launcher.addEventListener('click', open);
+  closeBtn.addEventListener('click', close);
+  overlay.addEventListener('click', close);
+  window.addEventListener('message', e => {
+    if (e.data && e.data.type === 'c16-chatbot-close') close();
+  });
+}
+
 function injectChrome() {
   const navMount = document.getElementById('site-nav');
   if (navMount) navMount.innerHTML = NAV_HTML;
   const footMount = document.getElementById('site-footer');
   if (footMount) footMount.innerHTML = FOOTER_HTML;
+  injectChatbot();
 
   // Highlight active nav item
   const page = (location.pathname.split('/').pop() || 'index.html').replace('.html', '');

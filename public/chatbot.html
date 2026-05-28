@@ -351,7 +351,33 @@ document.getElementById('c16-launcher').addEventListener('click', () => {
   widget.classList.add('open');
   if (!body.dataset.started) { body.dataset.started = '1'; startFlow(); }
 });
-document.getElementById('c16-close').addEventListener('click', () => widget.classList.remove('open'));
+document.getElementById('c16-close').addEventListener('click', () => {
+  widget.classList.remove('open');
+  try {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ type: 'c16-chatbot-close' }, '*');
+    }
+  } catch (e) { /* noop */ }
+});
+
+// Embed mode for the redesign's iframe panel
+(function () {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('embed') === '1') {
+      const css = document.createElement('style');
+      css.textContent = `
+        .demo-stage { display: none !important; }
+        .c16-launcher { display: none !important; }
+        .c16-widget { position: static !important; width: 100% !important; height: 100vh !important; max-height: none !important; border-radius: 0 !important; box-shadow: none !important; }
+        body { background: transparent !important; }
+      `;
+      document.head.appendChild(css);
+      widget.classList.add('open');
+      if (!body.dataset.started) { body.dataset.started = '1'; startFlow(); }
+    }
+  } catch (e) { /* noop */ }
+})();
 
 form.addEventListener('submit', (e) => {
   e.preventDefault();
