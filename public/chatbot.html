@@ -1,0 +1,1002 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Court 16 — Class Concierge</title>
+<style>
+  :root {
+    --c16-yellow: #f5e62b;
+    --c16-ink: #0e0e0e;
+    --c16-ink-2: #2a2a2a;
+    --c16-muted: #6b6b6b;
+    --c16-line: #ececec;
+    --c16-bg: #fafafa;
+    --c16-bubble-bot: #f1f1ef;
+    --c16-bubble-user: #0e0e0e;
+    --c16-bubble-user-text: #ffffff;
+    --c16-accent: #0e0e0e;
+    --shadow: 0 12px 40px rgba(0,0,0,.18);
+    --radius: 18px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Helvetica, Arial, sans-serif; color: var(--c16-ink); background: #fff; }
+
+  /* Demo page chrome so the widget can be seen in isolation */
+  .demo-stage {
+    min-height: 100vh; padding: 40px 24px 120px;
+    background:
+      radial-gradient(1100px 600px at 80% -10%, rgba(245,230,43,.25), transparent 60%),
+      radial-gradient(800px 500px at 0% 100%, rgba(14,14,14,.05), transparent 60%),
+      #fafafa;
+  }
+  .demo-stage h1 { font-size: 22px; margin: 0 0 6px; }
+  .demo-stage p { color: var(--c16-muted); margin: 0; max-width: 560px; }
+
+  /* Floating launcher button */
+  .c16-launcher {
+    position: fixed; right: 24px; bottom: 24px; z-index: 99;
+    display: inline-flex; align-items: center; gap: 10px;
+    padding: 12px 18px; border-radius: 999px; border: 0;
+    background: var(--c16-yellow); color: var(--c16-ink);
+    font-weight: 700; font-size: 15px; letter-spacing: .2px;
+    box-shadow: var(--shadow); cursor: pointer;
+    transition: transform .12s ease;
+  }
+  .c16-launcher:hover { transform: translateY(-1px); }
+  .c16-launcher .dot { width: 8px; height: 8px; border-radius: 50%; background: #25a34c; box-shadow: 0 0 0 4px rgba(37,163,76,.18); }
+
+  /* Widget panel */
+  .c16-widget {
+    position: fixed; right: 24px; bottom: 24px; z-index: 100;
+    width: min(400px, calc(100vw - 32px));
+    height: min(640px, calc(100vh - 48px));
+    background: #fff; border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    display: none; flex-direction: column; overflow: hidden;
+    border: 1px solid var(--c16-line);
+  }
+  .c16-widget.open { display: flex; animation: pop .22s ease-out; }
+  @keyframes pop { from { transform: translateY(8px) scale(.98); opacity: 0; } to { transform: none; opacity: 1; } }
+
+  /* Header */
+  .c16-head {
+    background: var(--c16-ink); color: #fff;
+    padding: 14px 16px; display: flex; align-items: center; gap: 12px;
+  }
+  .c16-badge {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--c16-yellow); color: var(--c16-ink);
+    display: grid; place-items: center; font-weight: 900; font-size: 14px;
+    letter-spacing: .5px;
+  }
+  .c16-head-text { line-height: 1.15; }
+  .c16-head-text .t1 { font-weight: 700; font-size: 14px; }
+  .c16-head-text .t2 { font-size: 12px; opacity: .75; margin-top: 2px; }
+  .c16-close {
+    margin-left: auto; background: transparent; border: 0; color: #fff;
+    font-size: 20px; cursor: pointer; opacity: .8; padding: 4px 6px;
+  }
+  .c16-close:hover { opacity: 1; }
+
+  /* Messages */
+  .c16-body {
+    flex: 1; overflow-y: auto; padding: 14px 14px 8px;
+    background: #fff; scroll-behavior: smooth;
+  }
+  .c16-row { display: flex; margin: 6px 0; }
+  .c16-row.bot { justify-content: flex-start; }
+  .c16-row.user { justify-content: flex-end; }
+  .c16-bubble {
+    max-width: 86%; padding: 10px 13px; border-radius: 16px;
+    font-size: 14.5px; line-height: 1.4;
+    white-space: pre-wrap; word-wrap: break-word;
+  }
+  .c16-row.bot .c16-bubble {
+    background: var(--c16-bubble-bot); color: var(--c16-ink);
+    border-bottom-left-radius: 4px;
+  }
+  .c16-row.user .c16-bubble {
+    background: var(--c16-bubble-user); color: var(--c16-bubble-user-text);
+    border-bottom-right-radius: 4px;
+  }
+
+  /* Typing indicator */
+  .c16-typing {
+    display: inline-flex; gap: 4px; padding: 12px 14px;
+    background: var(--c16-bubble-bot); border-radius: 16px; border-bottom-left-radius: 4px;
+  }
+  .c16-typing span {
+    width: 6px; height: 6px; border-radius: 50%; background: #b6b6b6;
+    animation: blink 1.2s infinite ease-in-out;
+  }
+  .c16-typing span:nth-child(2) { animation-delay: .2s; }
+  .c16-typing span:nth-child(3) { animation-delay: .4s; }
+  @keyframes blink { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+
+  /* Quick replies */
+  .c16-quick {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    padding: 6px 14px 4px;
+  }
+  .c16-quick button {
+    border: 1px solid var(--c16-ink); background: #fff; color: var(--c16-ink);
+    padding: 8px 12px; border-radius: 999px; font-size: 13.5px; font-weight: 600;
+    cursor: pointer; transition: all .12s ease;
+  }
+  .c16-quick button:hover { background: var(--c16-ink); color: #fff; }
+  .c16-quick button.secondary { border-color: #d6d6d6; color: var(--c16-ink-2); }
+
+  /* Match card */
+  .c16-match {
+    margin: 8px 4px 4px; border: 1px solid var(--c16-line); border-radius: 14px;
+    overflow: hidden; background: #fff;
+  }
+  .c16-match-top {
+    background: var(--c16-yellow); padding: 10px 14px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-weight: 800; font-size: 13px; letter-spacing: .3px; text-transform: uppercase;
+  }
+  .c16-match-top .level { font-size: 11px; background: var(--c16-ink); color: var(--c16-yellow); padding: 3px 8px; border-radius: 999px; letter-spacing: .4px; }
+  .c16-match-body { padding: 12px 14px; }
+  .c16-match-body h3 { margin: 0 0 4px; font-size: 16px; }
+  .c16-match-body .why { color: var(--c16-muted); font-size: 13px; margin: 0 0 12px; }
+  .c16-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; font-size: 13px; }
+  .c16-meta .k { color: var(--c16-muted); font-size: 11.5px; text-transform: uppercase; letter-spacing: .4px; }
+  .c16-meta .v { font-weight: 700; margin-top: 1px; }
+  .c16-price-row { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--c16-line); display: flex; justify-content: space-between; align-items: baseline; }
+  .c16-price-row .label { font-size: 12px; color: var(--c16-muted); }
+  .c16-price-row .price { font-weight: 800; font-size: 20px; }
+  .c16-price-row .pack { font-size: 12px; color: var(--c16-muted); }
+
+  .c16-cta {
+    display: flex; gap: 8px; padding: 10px 14px 14px;
+  }
+  .c16-cta a, .c16-cta button {
+    flex: 1; text-align: center; padding: 11px 14px; border-radius: 10px;
+    font-weight: 700; font-size: 14px; text-decoration: none; cursor: pointer; border: 0;
+  }
+  .c16-cta .primary { background: var(--c16-ink); color: var(--c16-yellow); }
+  .c16-cta .primary:hover { background: #000; }
+  .c16-cta .ghost { background: transparent; color: var(--c16-ink); border: 1px solid var(--c16-line); }
+
+  /* Footer / input */
+  .c16-foot {
+    border-top: 1px solid var(--c16-line); padding: 8px 12px; display: flex; gap: 8px;
+    background: #fff; align-items: center;
+  }
+  .c16-foot input {
+    flex: 1; border: 0; outline: 0; font-size: 14px; padding: 10px 6px;
+    color: var(--c16-ink); background: transparent;
+  }
+  .c16-foot button {
+    background: var(--c16-ink); color: var(--c16-yellow); border: 0;
+    padding: 8px 12px; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 13px;
+  }
+  .c16-foot button:disabled { opacity: .35; cursor: not-allowed; }
+
+  .c16-brand {
+    text-align: center; font-size: 10.5px; color: #a8a8a8;
+    padding: 4px 0 6px; letter-spacing: .3px;
+  }
+</style>
+</head>
+<body>
+
+<div class="demo-stage">
+  <h1>Court 16 — Class Concierge (preview)</h1>
+  <p>Embeddable widget that qualifies prospects and matches them to the right adult tennis class. Click the yellow button at the bottom-right to start a conversation.</p>
+</div>
+
+<button class="c16-launcher" id="c16-launcher" aria-label="Open chat">
+  <span class="dot" aria-hidden="true"></span>
+  Find my class
+</button>
+
+<aside class="c16-widget" id="c16-widget" role="dialog" aria-label="Court 16 class finder">
+  <header class="c16-head">
+    <div class="c16-badge">16</div>
+    <div class="c16-head-text">
+      <div class="t1">Court 16 — Class Concierge</div>
+      <div class="t2">Usually replies instantly</div>
+    </div>
+    <button class="c16-close" id="c16-close" aria-label="Close">×</button>
+  </header>
+
+  <div class="c16-body" id="c16-body"></div>
+  <div class="c16-quick" id="c16-quick"></div>
+
+  <form class="c16-foot" id="c16-foot" autocomplete="off">
+    <input id="c16-input" placeholder="Type a message…" />
+    <button id="c16-send" type="submit">Send</button>
+  </form>
+  <div class="c16-brand">Powered by Court 16 · Tennis, Remixed.</div>
+</aside>
+
+<script>
+/* =========================================================================
+   Real data scraped from court16.com/adult-tennis-classes and the published
+   pricing image (PricingV2Programs-02.jpg, 2026). Group + private + semi-
+   private; member/non-member where shown. Newton, MA was listed on the site
+   but is not on the public pricing sheet, so we treat it as "contact us".
+   ========================================================================= */
+const LOCATIONS = {
+  'brooklyn': {
+    label: 'Downtown Brooklyn',
+    short: 'Brooklyn',
+    bookingEnabled: false, // service IDs not yet provisioned
+    membershipSingle: 695,
+    group:        { drop: 69, pack5: 295, pack10: 640,  pack20: 1180 },
+    groupMember:  { drop: 65, pack5: 326,  pack10: 604,  pack20: 954 },
+    privateSession: { nonMember: 157, member: 127 },
+    semiPrivate:    { nonMember: 100, member: 80 }
+  },
+  'lic': {
+    label: 'Long Island City, Queens',
+    short: 'LIC',
+    bookingEnabled: false,
+    membershipSingle: 525,
+    group:        { drop: 69, pack5: 295, pack10: 640,  pack20: 1180 },
+    groupMember:  { drop: 65, pack5: 326,  pack10: 618,  pack20: 1022 },
+    privateSession: { nonMember: 170, member: 151 },
+    semiPrivate:    { nonMember: 100, member: 80 }
+  },
+  'fidi': {
+    label: 'FiDi, Manhattan',
+    short: 'FiDi',
+    bookingEnabled: false,
+    membershipSingle: 695,
+    group:        { drop: 69, pack5: 295, pack10: 640,  pack20: 1180 },
+    groupMember:  { drop: 65, pack5: 326,  pack10: 604,  pack20: 954 },
+    privateSession: { nonMember: 157, member: 127 },
+    semiPrivate:    { nonMember: 100, member: 80 }
+  },
+  'yonkers': {
+    label: 'Ridge Hill, Yonkers',
+    short: 'Yonkers',
+    apiLocationId: 'ridgehill',
+    bookingEnabled: true,            // service IDs provisioned (Tennis $75, Pickleball $58)
+    introServiceId: 100236,           // tennis-intro-75 (informational; backend resolves)
+    membershipSingle: 550,
+    group:        { drop: 55, pack5: 265, pack10: 465,  pack20: 880 },
+    groupMember:  { drop: 49, pack5: 232,  pack10: 434,  pack20: 792 },
+    privateSession: { nonMember: 133, member: 103 },
+    semiPrivate:    { nonMember:  93, member:  73 }
+  },
+  'philly': {
+    label: 'Fishtown, Philadelphia',
+    short: 'Philly',
+    bookingEnabled: false,
+    membershipSingle: 425,
+    group:        { drop: 45, pack5: 215, pack10: 400,  pack20: 700 },
+    groupMember:  { drop: 39, pack5: 191,  pack10: 360,  pack20: 640 },
+    privateSession: { nonMember: 107, member:  87 },
+    semiPrivate:    { nonMember:  81, member:  61 }
+  },
+  'newton': {
+    label: 'Newton, Massachusetts',
+    short: 'Newton',
+    bookingEnabled: false,
+    membershipSingle: null,
+    contactOnly: true
+  }
+};
+
+const CLASSES = {
+  intro: {
+    name: 'Introduction to Tennis',
+    level: 'New to tennis',
+    usta:  'No rating',
+    blurb: 'Brand-new players. You\'ll learn racquet grip, footwork, and start gentle rallies — zero pressure, lots of reps.',
+    duration: '60 min · max 6 players'
+  },
+  beginner: {
+    name: 'Beginner',
+    level: 'Beginner',
+    usta:  'USTA 1.0 – 2.5',
+    blurb: 'You can rally a little. We\'ll cement forehands, backhands, volleys, serves, and the basic rules of play.',
+    duration: '60 min · max 6 players'
+  },
+  advBeginner: {
+    name: 'Advanced Beginner',
+    level: 'Advanced Beginner',
+    usta:  'USTA 2.0 – 2.5',
+    blurb: 'Grips and swing paths are there. Now we add topspin on groundstrokes and slice on serves.',
+    duration: '60 min · max 6 players'
+  },
+  intermediate: {
+    name: 'Intermediate',
+    level: 'Intermediate',
+    usta:  'USTA 2.5 – 3.5',
+    blurb: 'Sharper strokes and real point play. We push pace, depth, and pattern recognition.',
+    duration: '60 min · max 6 players'
+  },
+  advanced: {
+    name: 'Advanced',
+    level: 'Advanced',
+    usta:  'USTA 3.5+',
+    blurb: 'Match-ready. Footwork, doubles patterns, tournament prep, live-ball drills under pressure.',
+    duration: '60 min · max 6 players'
+  }
+};
+
+const BOOK_URL  = 'https://www.court16.com/locations';
+const PRIV_URL  = 'https://www.court16.com/book-private';
+const MEMB_URL  = 'https://www.court16.com/adult-membership';
+
+/* ====================== Conversation engine ====================== */
+
+const state = {
+  step: 'greet',
+  experience: null,   // never | beginner | advBeginner | intermediate | advanced
+  years: null,        // free text
+  goal: null,         // fitness | social | skill | competition
+  location: null,     // key of LOCATIONS
+  format: null,       // group | semi | private
+  // Booking state
+  slots: [],          // fetched MindBody class objects (filtered/ranked)
+  selectedSlot: null, // chosen class
+  awaitingField: null,// 'firstName' | 'lastName' | 'email' | 'phone' | 'birthDate'
+  adult: { firstName: '', lastName: '', email: '', phone: '', birthDate: '' }
+};
+
+const body   = document.getElementById('c16-body');
+const quick  = document.getElementById('c16-quick');
+const input  = document.getElementById('c16-input');
+const sendBtn= document.getElementById('c16-send');
+const form   = document.getElementById('c16-foot');
+const widget = document.getElementById('c16-widget');
+
+document.getElementById('c16-launcher').addEventListener('click', () => {
+  widget.classList.add('open');
+  if (!body.dataset.started) { body.dataset.started = '1'; startFlow(); }
+});
+document.getElementById('c16-close').addEventListener('click', () => widget.classList.remove('open'));
+
+form.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const v = input.value.trim();
+  if (!v) return;
+  input.value = '';
+  handleFreeText(v);
+});
+
+function addBot(text, opts={}) {
+  return new Promise((resolve) => {
+    const typing = document.createElement('div');
+    typing.className = 'c16-row bot';
+    typing.innerHTML = '<div class="c16-typing"><span></span><span></span><span></span></div>';
+    body.appendChild(typing);
+    body.scrollTop = body.scrollHeight;
+    const delay = opts.delay ?? Math.min(900, 320 + text.length * 9);
+    setTimeout(() => {
+      typing.remove();
+      const row = document.createElement('div');
+      row.className = 'c16-row bot';
+      const b = document.createElement('div');
+      b.className = 'c16-bubble';
+      b.textContent = text;
+      row.appendChild(b);
+      body.appendChild(row);
+      body.scrollTop = body.scrollHeight;
+      resolve();
+    }, delay);
+  });
+}
+function addUser(text) {
+  const row = document.createElement('div');
+  row.className = 'c16-row user';
+  const b = document.createElement('div');
+  b.className = 'c16-bubble';
+  b.textContent = text;
+  row.appendChild(b);
+  body.appendChild(row);
+  body.scrollTop = body.scrollHeight;
+}
+function addCustom(node) {
+  const row = document.createElement('div');
+  row.className = 'c16-row bot';
+  row.style.maxWidth = '100%';
+  row.appendChild(node);
+  body.appendChild(row);
+  body.scrollTop = body.scrollHeight;
+}
+function setQuickReplies(items) {
+  quick.innerHTML = '';
+  items.forEach(it => {
+    const b = document.createElement('button');
+    b.textContent = it.label;
+    if (it.secondary) b.classList.add('secondary');
+    b.addEventListener('click', () => {
+      addUser(it.label);
+      quick.innerHTML = '';
+      it.onSelect();
+    });
+    quick.appendChild(b);
+  });
+}
+function clearQuick() { quick.innerHTML = ''; }
+
+/* -------- Flow -------- */
+async function startFlow() {
+  await addBot("Hey! I'm the Court 16 class concierge 🎾");
+  await addBot("I'll match you to the right adult class in about 30 seconds. Sound good?");
+  setQuickReplies([
+    { label: "Let's go", onSelect: askExperience },
+    { label: "I just have questions", secondary: true, onSelect: openEnded }
+  ]);
+}
+
+async function openEnded() {
+  await addBot("Totally — ask me anything about levels, locations, or pricing. Or tap below when you're ready to get matched.");
+  setQuickReplies([{ label: "Match me to a class", onSelect: askExperience }]);
+}
+
+async function askExperience() {
+  state.step = 'experience';
+  await addBot("First — how would you describe your tennis right now?");
+  setQuickReplies([
+    { label: "Never played",           onSelect: () => pickExperience('never') },
+    { label: "Beginner",               onSelect: () => pickExperience('beginner') },
+    { label: "Advanced beginner",      onSelect: () => pickExperience('advBeginner') },
+    { label: "Intermediate",           onSelect: () => pickExperience('intermediate') },
+    { label: "Advanced",               onSelect: () => pickExperience('advanced') },
+  ]);
+}
+
+async function pickExperience(lvl) {
+  state.experience = lvl;
+  if (lvl === 'never') {
+    await addBot("Perfect — Intro to Tennis is built exactly for that. Quick follow-up:");
+    return askGoal();
+  }
+  await addBot("Got it. About how long have you been playing?");
+  state.step = 'years';
+  setQuickReplies([
+    { label: "Less than 1 year",  onSelect: () => { state.years = '<1 yr';  askGoal(); } },
+    { label: "1–3 years",         onSelect: () => { state.years = '1–3 yrs'; askGoal(); } },
+    { label: "3–5 years",         onSelect: () => { state.years = '3–5 yrs'; askGoal(); } },
+    { label: "5+ years",          onSelect: () => { state.years = '5+ yrs'; askGoal(); } },
+  ]);
+}
+
+async function askGoal() {
+  state.step = 'goal';
+  await addBot("What are you mainly looking to get out of it?");
+  setQuickReplies([
+    { label: "Fitness & fun",       onSelect: () => pickGoal('fitness') },
+    { label: "Social / meet people",onSelect: () => pickGoal('social') },
+    { label: "Build real skill",    onSelect: () => pickGoal('skill') },
+    { label: "Compete / leagues",   onSelect: () => pickGoal('competition') },
+  ]);
+}
+
+async function pickGoal(g) {
+  state.goal = g;
+  const reactions = {
+    fitness:     "Love it — group classes hit the cardio sweet spot.",
+    social:      "Group classes are perfect for that, max 6 on a court.",
+    skill:       "Then technique drilling is going to be your friend.",
+    competition: "Got it — we'll keep an eye out for higher-level options."
+  };
+  await addBot(reactions[g]);
+  askLocation();
+}
+
+async function askLocation() {
+  state.step = 'location';
+  await addBot("Which location is most convenient for you? (Pricing varies a bit by city.)");
+  setQuickReplies([
+    { label: "Brooklyn",        onSelect: () => pickLocation('brooklyn') },
+    { label: "Long Island City",onSelect: () => pickLocation('lic') },
+    { label: "FiDi (Manhattan)",onSelect: () => pickLocation('fidi') },
+    { label: "Yonkers",         onSelect: () => pickLocation('yonkers') },
+    { label: "Philadelphia",    onSelect: () => pickLocation('philly') },
+    { label: "Newton, MA",      onSelect: () => pickLocation('newton') },
+  ]);
+}
+
+async function pickLocation(loc) {
+  state.location = loc;
+  const L = LOCATIONS[loc];
+  if (L.contactOnly) {
+    await addBot(`Heads up — ${L.label} is our newest spot and pricing isn't on the public sheet yet. I'll still match you to the right class and link you to the team for current rates.`);
+  } else {
+    await addBot(`Nice, ${L.short} it is.`);
+  }
+  askFormat();
+}
+
+async function askFormat() {
+  state.step = 'format';
+  await addBot("Last thing — what format fits you best?");
+  setQuickReplies([
+    { label: "Group (max 6)",         onSelect: () => pickFormat('group') },
+    { label: "Semi-private (you + 1)",onSelect: () => pickFormat('semi') },
+    { label: "Private 1-on-1",        onSelect: () => pickFormat('private') },
+    { label: "Not sure — recommend",  secondary: true, onSelect: () => pickFormat('auto') },
+  ]);
+}
+
+async function pickFormat(f) {
+  if (f === 'auto') {
+    // Reasonable default based on goal + experience
+    if (state.experience === 'never' || state.goal === 'social' || state.goal === 'fitness') f = 'group';
+    else if (state.goal === 'skill') f = 'semi';
+    else f = 'group';
+    await addBot(`Based on your goals, I'd start you in a ${formatLabel(f)} — best value and the most reps.`);
+  }
+  state.format = f;
+  showMatch();
+}
+
+function formatLabel(f) {
+  return f === 'group' ? 'group class' : f === 'semi' ? 'semi-private session' : 'private session';
+}
+
+function classKeyFromExperience() {
+  return {
+    never: 'intro',
+    beginner: 'beginner',
+    advBeginner: 'advBeginner',
+    intermediate: 'intermediate',
+    advanced: 'advanced'
+  }[state.experience];
+}
+
+async function showMatch() {
+  const cls = CLASSES[classKeyFromExperience()];
+  const L = LOCATIONS[state.location];
+
+  await addBot(`Here's your match — based on ${ucFirst(cls.level.toLowerCase())} level at ${L.short}${state.format !== 'group' ? `, ${formatLabel(state.format)}` : ''}:`);
+
+  const card = document.createElement('div');
+  card.className = 'c16-match';
+
+  const top = document.createElement('div');
+  top.className = 'c16-match-top';
+  top.innerHTML = `<span>Recommended class</span><span class="level">${cls.usta}</span>`;
+  card.appendChild(top);
+
+  const bodyEl = document.createElement('div');
+  bodyEl.className = 'c16-match-body';
+  bodyEl.innerHTML = `
+    <h3>${cls.name} — ${L.short}</h3>
+    <p class="why">${cls.blurb}</p>
+    <div class="c16-meta">
+      <div><div class="k">Format</div><div class="v">${formatTitle(state.format)}</div></div>
+      <div><div class="k">Duration</div><div class="v">${cls.duration.split('·')[0].trim()}</div></div>
+      <div><div class="k">Location</div><div class="v">${L.label}</div></div>
+      <div><div class="k">Level</div><div class="v">${cls.level}</div></div>
+    </div>
+    ${priceBlock(L, state.format)}
+  `;
+  card.appendChild(bodyEl);
+
+  const cta = document.createElement('div');
+  cta.className = 'c16-cta';
+  const canBookInChat = L.bookingEnabled && state.format === 'group';
+  const bookHref = state.format === 'group' ? BOOK_URL : PRIV_URL;
+  if (canBookInChat) {
+    cta.innerHTML = `
+      <button class="primary" id="c16-book-now" type="button">Book first class · $75 →</button>
+      <button class="ghost" id="c16-restart" type="button">Start over</button>
+    `;
+  } else {
+    cta.innerHTML = `
+      <a class="primary" href="${bookHref}" target="_blank" rel="noopener">Book this class →</a>
+      <button class="ghost" id="c16-restart" type="button">Start over</button>
+    `;
+  }
+  card.appendChild(cta);
+
+  addCustom(card);
+  document.getElementById('c16-restart').addEventListener('click', restart);
+  if (canBookInChat) {
+    document.getElementById('c16-book-now').addEventListener('click', startBooking);
+  }
+
+  setTimeout(async () => {
+    if (canBookInChat) {
+      await addBot("First class is $75 for new players (any level). I can find you a time right here — or you can browse the full schedule on Court 16's site.");
+      setQuickReplies([
+        { label: "Find me a time", onSelect: startBooking },
+        { label: "Tell me about membership", secondary: true, onSelect: showMembership },
+        { label: "I'm good for now", secondary: true, onSelect: closeOut }
+      ]);
+    } else {
+      await addBot("Want a quick note on membership? Members save ~10–15% on classes and get pro-shop perks.");
+      setQuickReplies([
+        { label: "Tell me about membership", onSelect: showMembership },
+        { label: "I'm good for now", secondary: true, onSelect: closeOut }
+      ]);
+    }
+  }, 600);
+}
+
+/* ====================== Booking flow (real MindBody) ====================== */
+
+const API_LOCATION_ID = (locKey) => LOCATIONS[locKey].apiLocationId || locKey;
+const LEVEL_KEYWORDS = {
+  never:        ['intro', 'introduction', 'beginner', 'fundamentals'],
+  beginner:     ['beginner', 'intro', 'fundamentals'],
+  advBeginner:  ['advanced beginner', 'beginner', 'fundamentals'],
+  intermediate: ['intermediate'],
+  advanced:     ['advanced', 'tournament']
+};
+
+function fmtDate(d) {
+  return d.toISOString().slice(0, 10);
+}
+function classDisplayName(c) {
+  return c.ClassName || c?.ClassDescription?.Name || 'Adult Class';
+}
+function fmtSlotLabel(c) {
+  // c.StartDateTime is wall-clock ISO like "2026-06-02T18:00:00"
+  const [date, time] = c.StartDateTime.split('T');
+  const d = new Date(date + 'T12:00:00'); // noon avoids TZ drift on day-of-week
+  const day = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  const hh = Number(time.slice(0, 2));
+  const mm = time.slice(3, 5);
+  const ampm = hh >= 12 ? 'pm' : 'am';
+  const h12 = ((hh + 11) % 12) + 1;
+  return `${day} · ${h12}:${mm}${ampm}`;
+}
+function isAdultClass(c) {
+  const prog = (c?.ClassDescription?.Program?.Name || '').toLowerCase();
+  const name = classDisplayName(c).toLowerCase();
+  // exclude obvious children's programs/classes
+  if (/(children|kids|little freshman|freshman|sophomore|junior|squidlet|tots)/.test(prog + ' ' + name)) return false;
+  return true;
+}
+function rankClassForLevel(c, lvlKey) {
+  const name = classDisplayName(c).toLowerCase();
+  const kws = LEVEL_KEYWORDS[lvlKey] || [];
+  let score = 0;
+  kws.forEach((k, i) => { if (name.includes(k)) score += (kws.length - i); });
+  // Prefer tennis/pickleball names when the data has them
+  if (/(tennis|pickleball)/.test(name)) score += 2;
+  // demote private if user wants group
+  if (state.format === 'group' && /private/.test(name)) score -= 3;
+  return score;
+}
+
+async function startBooking() {
+  state.step = 'booking-fetch';
+  clearQuick();
+  await addBot("On it — pulling live availability at " + LOCATIONS[state.location].short + "…");
+
+  const today = new Date();
+  const end = new Date(today.getTime() + 14 * 24 * 3600 * 1000);
+  const url = `/api/mindbody/calendar?locationId=${encodeURIComponent(API_LOCATION_ID(state.location))}&startDate=${fmtDate(today)}&endDate=${fmtDate(end)}`;
+
+  let classes = [];
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('calendar ' + r.status);
+    const data = await r.json();
+    classes = Array.isArray(data.classes) ? data.classes : [];
+  } catch (e) {
+    await addBot("Hmm, I couldn't reach the live schedule just now. Tap below to open the full booking page instead.");
+    setQuickReplies([
+      { label: "Open booking page", onSelect: () => { window.open(BOOK_URL, '_blank'); closeOut(); } },
+      { label: "Try again", secondary: true, onSelect: startBooking }
+    ]);
+    return;
+  }
+
+  // Filter: adult, not canceled, has availability, future
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const adult = classes
+    .filter(c => !c.IsCanceled && isAdultClass(c))
+    .filter(c => (c.MaxCapacity ?? 0) - (c.TotalBooked ?? 0) > 0)
+    .filter(c => (c.StartDateTime || '') >= todayIso); // wall-clock string compare is safe
+
+  // Rank by level match, then by soonest
+  const ranked = adult
+    .map(c => ({ c, score: rankClassForLevel(c, state.experience) }))
+    .sort((a, b) => {
+      if (b.score !== a.score) return b.score - a.score;
+      return a.c.StartDateTime.localeCompare(b.c.StartDateTime);
+    })
+    .map(x => x.c);
+
+  // Prefer slots that actually scored on level; if too few, fall back to nearest adult slots
+  let pool = ranked.filter(c => rankClassForLevel(c, state.experience) > 0);
+  if (pool.length < 3) pool = ranked;
+  state.slots = pool.slice(0, 4);
+
+  if (state.slots.length === 0) {
+    await addBot("Looks like nothing's open in the next two weeks at that level. The team can hand-match you to a slot — want me to flag you?");
+    setQuickReplies([
+      { label: "Yes, have someone reach out", onSelect: () => startBookingHandoff() },
+      { label: "Open booking page", secondary: true, onSelect: () => { window.open(BOOK_URL, '_blank'); closeOut(); } }
+    ]);
+    return;
+  }
+
+  await addBot("Here are the closest matches. Which works?");
+  setQuickReplies([
+    ...state.slots.map((c, i) => ({
+      label: fmtSlotLabel(c),
+      onSelect: () => pickSlot(i)
+    })),
+    { label: "None of these", secondary: true, onSelect: () => startBookingHandoff() }
+  ]);
+}
+
+async function startBookingHandoff() {
+  await addBot("No problem — share your email and the team will get back to you with options that fit.");
+  state.awaitingField = 'email';
+  state.step = 'handoff';
+  input.focus();
+}
+
+async function pickSlot(i) {
+  state.selectedSlot = state.slots[i];
+  const c = state.selectedSlot;
+  await addBot(`Locked in: ${classDisplayName(c)} on ${fmtSlotLabel(c)} with ${c?.Staff?.DisplayName || 'a Court 16 coach'}. Just need a few details to hold your spot.`);
+  await addBot("What's your first name?");
+  state.awaitingField = 'firstName';
+  state.step = 'collecting';
+  input.focus();
+}
+
+function validateField(field, val) {
+  if (!val) return "Looks empty — mind typing it again?";
+  if (field === 'email' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) return "That email looks off — could you double-check?";
+  if (field === 'phone') {
+    const digits = val.replace(/\D/g, '');
+    if (digits.length < 10) return "Need a 10-digit phone so the coach can text you if needed.";
+  }
+  if (field === 'birthDate') {
+    const m = val.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!m) return "Please use YYYY-MM-DD (e.g. 1992-08-14) so MindBody accepts it.";
+    const y = Number(m[1]);
+    if (y < 1900 || y > new Date().getFullYear() - 13) return "That year looks off — adults only on this booking.";
+  }
+  return null;
+}
+
+async function handleCollectingInput(text) {
+  const field = state.awaitingField;
+  const err = validateField(field, text);
+  if (err) { await addBot(err); return; }
+
+  state.adult[field] = text.trim();
+  const next = {
+    firstName: ['lastName', "And last name?"],
+    lastName:  ['email',    "Email for the confirmation?"],
+    email:     ['phone',    "Best phone number?"],
+    phone:     ['birthDate',"Last one — birth date as YYYY-MM-DD?"],
+    birthDate: [null,       null]
+  }[field];
+
+  if (next[0]) {
+    state.awaitingField = next[0];
+    await addBot(next[1]);
+    return;
+  }
+  // All fields collected
+  state.awaitingField = null;
+  await submitBooking();
+}
+
+async function handleHandoffInput(text) {
+  const err = validateField('email', text);
+  if (err) { await addBot(err); return; }
+  // Fire-and-forget log via a no-op (no /api/lead endpoint exists yet)
+  state.awaitingField = null;
+  await addBot(`Thanks — got ${text.trim()}. Someone from Court 16 will reach out within a day.`);
+  setQuickReplies([{ label: "Start over", secondary: true, onSelect: restart }]);
+}
+
+async function submitBooking() {
+  const c = state.selectedSlot;
+  const L = LOCATIONS[state.location];
+  await addBot("Holding your spot now…");
+
+  const [date, time] = c.StartDateTime.split('T');
+  const d = new Date(date + 'T12:00:00');
+  const classDay = d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+  const hh = Number(time.slice(0, 2));
+  const ampm = hh >= 12 ? 'PM' : 'AM';
+  const h12 = ((hh + 11) % 12) + 1;
+  const classTime = `${h12}:${time.slice(3,5)} ${ampm}`;
+
+  const body = {
+    locationId: API_LOCATION_ID(state.location),
+    offerKey: 'tennis-intro-75',
+    adult: { ...state.adult },
+    classScheduleId: c.ClassScheduleId,
+    classId: c.Id,
+    className: classDisplayName(c),
+    classDay,
+    classTime,
+    classStartsAt: c.StartDateTime,
+    coachName: c?.Staff?.DisplayName || '',
+    notes: `Booked via chatbot · experience=${state.experience}, goal=${state.goal}, years=${state.years || 'n/a'}`
+  };
+
+  let result;
+  try {
+    const r = await fetch('/api/book/intro', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    result = await r.json().catch(() => ({}));
+    if (!r.ok || result.ok === false) {
+      const msg = (typeof result.error === 'string' ? result.error : null)
+              || (Array.isArray(result.errors) && result.errors.join(', '))
+              || `Booking failed (${r.status})`;
+      throw new Error(msg);
+    }
+  } catch (e) {
+    await addBot(`Hit a snag: ${e.message}. The team can finish this manually — want them to reach out?`);
+    setQuickReplies([
+      { label: "Yes, have them reach out", onSelect: () => closeOut() },
+      { label: "Try again", secondary: true, onSelect: () => submitBooking() }
+    ]);
+    return;
+  }
+
+  // Success — render confirmation card
+  const card = document.createElement('div');
+  card.className = 'c16-match';
+  card.innerHTML = `
+    <div class="c16-match-top"><span>You're in 🎾</span><span class="level">$75 INTRO</span></div>
+    <div class="c16-match-body">
+      <h3>${classDisplayName(c)}</h3>
+      <p class="why">${classDay} · ${classTime} · ${L.label}</p>
+      <div class="c16-meta">
+        <div><div class="k">Coach</div><div class="v">${c?.Staff?.DisplayName || '—'}</div></div>
+        <div><div class="k">Court</div><div class="v">${c?.Resource?.Name || '—'}</div></div>
+        <div><div class="k">Name</div><div class="v">${state.adult.firstName} ${state.adult.lastName}</div></div>
+        <div><div class="k">Email</div><div class="v" style="font-size:12px;">${state.adult.email}</div></div>
+      </div>
+      <div class="c16-price-row">
+        <div><div class="label">Status</div><div class="price" style="font-size:14px;">${prettyStatus(result.status)}</div></div>
+        <div class="pack">Ref: ${result.correlationId || '—'}</div>
+      </div>
+    </div>
+    <div class="c16-cta">
+      ${result.cartUrl ? `<a class="primary" href="${result.cartUrl}" target="_blank" rel="noopener">Complete payment →</a>` : ''}
+      <button class="ghost" id="c16-restart-2" type="button">Done</button>
+    </div>
+  `;
+  addCustom(card);
+  document.getElementById('c16-restart-2').addEventListener('click', closeOut);
+
+  await addBot(result.cartUrl
+    ? "Tap 'Complete payment' to lock it in. You'll get a confirmation email once payment clears."
+    : "Court 16 has your details — they'll follow up shortly to confirm."
+  );
+}
+
+function prettyStatus(s) {
+  switch (s) {
+    case 'pending_payment': return 'Pending payment';
+    case 'pending_staff_assist': return 'Pending — staff will confirm';
+    case 'duplicate_email_softwall': return 'Existing account — staff to assist';
+    case 'manual_review': return 'Manual review';
+    default: return s || 'Submitted';
+  }
+}
+
+function priceBlock(L, format) {
+  if (L.contactOnly) {
+    return `
+      <div class="c16-price-row">
+        <div>
+          <div class="label">Pricing</div>
+          <div class="price" style="font-size:14px;">Contact the Newton team</div>
+        </div>
+        <div class="pack">New location · rates not yet public</div>
+      </div>`;
+  }
+  if (format === 'group') {
+    return `
+      <div class="c16-price-row">
+        <div>
+          <div class="label">Drop-in</div>
+          <div class="price">$${L.group.drop}</div>
+        </div>
+        <div class="pack">10-pack $${L.group.pack10} · 20-pack $${L.group.pack20}<br/>Members from $${L.groupMember.drop}/class</div>
+      </div>`;
+  }
+  if (format === 'semi') {
+    return `
+      <div class="c16-price-row">
+        <div>
+          <div class="label">Semi-private (60 min)</div>
+          <div class="price">$${L.semiPrivate.nonMember}</div>
+        </div>
+        <div class="pack">Member rate $${L.semiPrivate.member}<br/>Price is per person</div>
+      </div>`;
+  }
+  return `
+    <div class="c16-price-row">
+      <div>
+        <div class="label">Private (60 min)</div>
+        <div class="price">$${L.privateSession.nonMember}</div>
+      </div>
+      <div class="pack">Member rate $${L.privateSession.member}</div>
+    </div>`;
+}
+
+function formatTitle(f) {
+  return f === 'group' ? 'Group (max 6)' : f === 'semi' ? 'Semi-private (2)' : 'Private (1-on-1)';
+}
+function ucFirst(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+async function showMembership() {
+  const L = LOCATIONS[state.location];
+  if (L && !L.contactOnly && L.membershipSingle) {
+    await addBot(`At ${L.short}, single membership is $${L.membershipSingle}/yr. You get member rates on every class, semi-private, and private — plus pro-shop discounts. Most folks who do 1+ class/week make it back fast.`);
+  } else {
+    await addBot("Membership unlocks 10–15% off classes plus pro-shop perks. Pricing varies by location.");
+  }
+  setQuickReplies([
+    { label: "Open membership page", onSelect: () => { window.open(MEMB_URL, '_blank'); closeOut(); } },
+    { label: "Maybe later", secondary: true, onSelect: closeOut }
+  ]);
+}
+
+async function closeOut() {
+  await addBot("Awesome — see you on court 🎾 If anything changes, tap the button anytime and I'll re-match you.");
+  setQuickReplies([{ label: "Start over", secondary: true, onSelect: restart }]);
+}
+
+function restart() {
+  Object.assign(state, {
+    step: 'greet', experience: null, years: null, goal: null, location: null, format: null,
+    slots: [], selectedSlot: null, awaitingField: null,
+    adult: { firstName: '', lastName: '', email: '', phone: '', birthDate: '' }
+  });
+  body.innerHTML = '';
+  clearQuick();
+  startFlow();
+}
+
+/* -------- Free-text fallback (keeps it conversational if user types) -------- */
+async function handleFreeText(text) {
+  addUser(text);
+  // If we're in the middle of collecting booking details, route there first
+  if (state.step === 'collecting' && state.awaitingField) return handleCollectingInput(text);
+  if (state.step === 'handoff' && state.awaitingField === 'email') return handleHandoffInput(text);
+  const t = text.toLowerCase();
+
+  // light keyword routing into the right step
+  if (/(beginner|new|never|first)/.test(t) && !state.experience) return pickExperience(/never|new/.test(t) ? 'never' : 'beginner');
+  if (/(intermediate|3\.0|2\.5)/.test(t) && !state.experience)   return pickExperience('intermediate');
+  if (/(advanced|3\.5|4\.0|tournament)/.test(t) && !state.experience) return pickExperience('advanced');
+
+  if (/brooklyn/.test(t))   return pickLocation('brooklyn');
+  if (/(lic|long island|queens)/.test(t)) return pickLocation('lic');
+  if (/(fidi|manhattan|financial)/.test(t)) return pickLocation('fidi');
+  if (/(yonkers|ridge hill)/.test(t)) return pickLocation('yonkers');
+  if (/(philly|philadelphia|fishtown)/.test(t)) return pickLocation('philly');
+  if (/(newton|boston|mass)/.test(t)) return pickLocation('newton');
+
+  if (/private/.test(t) && /semi/.test(t)) return pickFormat('semi');
+  if (/private/.test(t)) return pickFormat('private');
+  if (/group/.test(t))   return pickFormat('group');
+
+  if (/price|cost|how much/.test(t)) {
+    await addBot("Pricing varies by location — Philly is the most affordable ($45/class), Yonkers $55, and Brooklyn/LIC/FiDi are $69/class. Members save 10–15%. Tell me your location and I'll show exact numbers.");
+    if (!state.location) return askLocation();
+    return;
+  }
+
+  // Otherwise nudge back to current step
+  await addBot("Got it. Let's keep going — tap one of the options below 👇");
+  // re-trigger current step's chips
+  if (!state.experience) return askExperience();
+  if (!state.goal) return askGoal();
+  if (!state.location) return askLocation();
+  if (!state.format) return askFormat();
+}
+</script>
+</body>
+</html>
