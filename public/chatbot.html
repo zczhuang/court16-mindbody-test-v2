@@ -320,14 +320,25 @@ const CLASSES = {
   }
 };
 
-const BOOK_URL  = 'https://www.court16.com/locations';
-const PRIV_URL  = 'https://www.court16.com/book-private';
+// All booking handoffs go through our own MindBody-integrated /trial
+// route, with the user's selected club prefilled. The static
+// court16.com pages are no longer the destination — we own the
+// signup funnel end-to-end now.
+function bookUrlFor(state) {
+  const loc = state && state.location ? state.location : '';
+  const qs  = loc ? ('?location=' + encodeURIComponent(loc)) : '';
+  return '/trial' + qs;
+}
+const PRIV_URL  = '/trial';
 const MEMB_URL  = 'https://www.court16.com/adult-membership';
+// Audience gate destinations
+const KIDS_TRIAL_URL = '/trial';
 
 /* ====================== Conversation engine ====================== */
 
 const state = {
   step: 'greet',
+  audience: null,     // self | kid | both — gates the rest of the flow
   experience: null,   // never | beginner | advBeginner | intermediate | advanced
   years: null,        // free text
   goal: null,         // fitness | social | skill | competition
@@ -449,14 +460,44 @@ async function startFlow() {
   await addBot("Hey! I'm the Court 16 class concierge 🎾");
   await addBot("Quick-match in 30 seconds, or just type any question (pricing, schedule, locations — I'll figure it out).");
   setQuickReplies([
-    { label: "Let's go", onSelect: askExperience },
+    { label: "Let's go", onSelect: askAudience },
     { label: "I just have questions", secondary: true, onSelect: openEnded }
   ]);
 }
 
 async function openEnded() {
   await addBot("Totally — ask me anything about levels, locations, or pricing. Or tap below when you're ready to get matched.");
-  setQuickReplies([{ label: "Match me to a class", onSelect: askExperience }]);
+  setQuickReplies([{ label: "Match me to a class", onSelect: askAudience }]);
+}
+
+/* Audience gate — split adult-class flow from kids trial. */
+async function askAudience() {
+  state.step = 'audience';
+  await addBot("Who are we finding tennis for?");
+  setQuickReplies([
+    { label: "For me",            onSelect: () => pickAudience('self') },
+    { label: "For my kid",        onSelect: () => pickAudience('kid') },
+    { label: "Both — me + my kid", onSelect: () => pickAudience('both') },
+  ]);
+}
+
+async function pickAudience(a) {
+  state.audience = a;
+  if (a === 'kid' || a === 'both') {
+    // Kids (or both) route into the free trial funnel — that flow
+    // matches the child to Red/Orange/Green/Yellow level + live slot.
+    const note = a === 'both'
+      ? "Got it — let's start with your kid's free trial. We'll come back to your adult class right after."
+      : "Got it — let's get your kid in for a free trial class.";
+    await addBot(note);
+    setQuickReplies([
+      { label: "Start kids free trial →", onSelect: () => { window.open(KIDS_TRIAL_URL, '_top'); closeOut(); } },
+      { label: "Back", secondary: true, onSelect: askAudience }
+    ]);
+    return;
+  }
+  // self → continue to the adult class match flow
+  askExperience();
 }
 
 async function askExperience() {
@@ -603,7 +644,7 @@ async function showMatch() {
   const cta = document.createElement('div');
   cta.className = 'c16-cta';
   const canBookInChat = L.bookingEnabled && state.format === 'group';
-  const bookHref = state.format === 'group' ? BOOK_URL : PRIV_URL;
+  const bookHref = bookUrlFor(state);
   if (canBookInChat) {
     cta.innerHTML = `
       <button class="primary" id="c16-book-now" type="button">Book first class · $75 →</button>
@@ -611,7 +652,7 @@ async function showMatch() {
     `;
   } else {
     cta.innerHTML = `
-      <a class="primary" href="${bookHref}" target="_blank" rel="noopener">Book this class →</a>
+      <a class="primary" href="${bookHref}" target="_top" rel="noopener">Book this class →</a>
       <button class="ghost" id="c16-restart" type="button">Start over</button>
     `;
   }
@@ -706,7 +747,7 @@ async function startBooking() {
   } catch (e) {
     await addBot("Hmm, I couldn't reach the live schedule just now. Tap below to open the full booking page instead.");
     setQuickReplies([
-      { label: "Open booking page", onSelect: () => { window.open(BOOK_URL, '_blank'); closeOut(); } },
+      { label: "Open booking page", onSelect: () => { window.open(bookUrlFor(state), '_top'); closeOut(); } },
       { label: "Try again", secondary: true, onSelect: startBooking }
     ]);
     return;
@@ -737,7 +778,7 @@ async function startBooking() {
     await addBot("Looks like nothing's open in the next two weeks at that level. The team can hand-match you to a slot — want me to flag you?");
     setQuickReplies([
       { label: "Yes, have someone reach out", onSelect: () => startBookingHandoff() },
-      { label: "Open booking page", secondary: true, onSelect: () => { window.open(BOOK_URL, '_blank'); closeOut(); } }
+      { label: "Open booking page", secondary: true, onSelect: () => { window.open(bookUrlFor(state), '_top'); closeOut(); } }
     ]);
     return;
   }
