@@ -255,8 +255,20 @@ h4 { font-size: 18px; letter-spacing: -0.01em; line-height: 1.2; }
 }
 .has-mega:hover .nav-trigger .caret { transform: rotate(180deg); }
 .mega-narrow { min-width: 320px; }
-.mega-clubs { min-width: 720px; left: 50%; transform: translateX(-50%) translateY(-8px); }
-.has-mega:hover .mega-clubs { transform: translateX(-50%) translateY(0); }
+/* Clubs panel is wide and used to translate-X by -50% from the
+   leftmost nav item, which clipped both edges on most laptops.
+   Anchor left:0 to the Clubs button and constrain width so it never
+   exceeds the viewport (with a 24px safety gutter). */
+.mega-clubs {
+  left: 0;
+  width: min(720px, calc(100vw - 48px));
+  min-width: 0;
+}
+.mega-clubs .mega-inner { grid-template-columns: 200px 1fr; }
+@media (max-width: 1100px) {
+  .mega-clubs { width: min(560px, calc(100vw - 48px)); }
+  .mega-clubs .mega-clubs-grid { grid-template-columns: 1fr; }
+}
 .mega-inner { display: grid; grid-template-columns: 220px 1fr; gap: 32px; }
 .mega-col .eyebrow { display: block; margin-bottom: 12px; }
 .mega-col-wide .mega-clubs-grid {

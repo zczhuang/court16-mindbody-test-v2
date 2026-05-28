@@ -40,9 +40,16 @@ function applyLocation() {
   document.querySelectorAll('[data-loc-full]').forEach(el => el.textContent = loc.name + ', ' + loc.city);
   const priceMod = { brooklyn: 1.0, lic: 1.0, fidi: 1.08, ridgehill: 0.92, fishtown: 0.88, newton: 0.95 }[id] || 1.0;
 
-  // Rewrite all trial CTAs to deep-link into the real /trial flow with location pre-filled
+  // Rewrite all trial CTAs to deep-link into /trial. Until the MindBody
+  // upstream is configured for the other 5 sites on Vercel, hard-pin to
+  // Ridge Hill (the only club whose calendar API actually returns slots).
+  // The page-level location pill still respects the user's persisted
+  // choice — this only forces the BOOK button, where a broken calendar
+  // is the most visible silent fail.
+  const TRIAL_BOOKABLE = new Set(['ridgehill']); // expand as sites come online
+  const trialId = TRIAL_BOOKABLE.has(id) ? id : 'ridgehill';
   document.querySelectorAll('[data-trial-cta]').forEach(a => {
-    a.setAttribute('href', `/trial?location=${id}`);
+    a.setAttribute('href', `/trial?location=${trialId}`);
   });
   document.querySelectorAll('[data-base-price]').forEach(el => {
     const base = parseFloat(el.dataset.basePrice);
@@ -482,6 +489,21 @@ function bindTabs() {
 window.injectChrome = injectChrome;
 window.applyLocation = applyLocation;
 
+// Global delegated click handlers — bound at script-eval time, NOT
+// inside DOMContentLoaded. Reason: on /trial the script loads after
+// DOMContentLoaded has already fired (via <RedesignChrome />), so a
+// DCL-bound listener never attaches and the location-pill click is dead.
+// Body always exists by the time inline scripts run.
+(function bindGlobalDelegates() {
+  if (document.body && !document.body.dataset.c16Bound) {
+    document.body.dataset.c16Bound = '1';
+    document.body.addEventListener('click', e => {
+      if (e.target.closest('[data-loc-picker]')) { openLocationPicker(); return; }
+      if (e.target.closest('[data-mobile-toggle]')) { toggleMobileMenu(); return; }
+    });
+  }
+})();
+
 document.addEventListener('DOMContentLoaded', () => {
   injectChrome();
   applyLocation();
@@ -496,12 +518,6 @@ document.addEventListener('DOMContentLoaded', () => {
       bar.querySelectorAll('button').forEach(x => x.classList.remove('active'));
       b.classList.add('active');
     });
-  });
-
-  // Delegated click handlers for injected chrome
-  document.body.addEventListener('click', e => {
-    if (e.target.closest('[data-loc-picker]')) openLocationPicker();
-    if (e.target.closest('[data-mobile-toggle]')) toggleMobileMenu();
   });
 
   // FAQ accordion
