@@ -958,17 +958,37 @@ h4 { font-size: 18px; letter-spacing: -0.01em; line-height: 1.2; }
 .flex-center { display: flex; align-items: center; justify-content: center; }
 .muted { color: var(--muted); }
 
-/* Mobile drawer */
+/* Mobile drawer — closed state must be UNRENDERABLE.
+   Prior versions used transform:translateY(-100%) which left the
+   element technically in the layout; some browsers reported content
+   bleeding through at the top of the viewport on certain devices.
+   Nuclear option: display:none when closed + visibility/opacity/
+   pointer-events all flipped off, with an open class that restores
+   them. No CSS transition to keep the close behavior bulletproof. */
 .mobile-drawer {
   position: fixed;
-  inset: 0;
+  top: 0; left: 0; right: 0;
+  height: 100vh;
   background: var(--cream);
   z-index: 100;
   padding: 24px var(--gutter);
-  transform: translateY(-100%);
-  transition: transform .3s ease;
+  overflow: hidden;
+  display: none;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
 }
-.mobile-drawer.open { transform: translateY(0); }
+.mobile-drawer.open {
+  display: block;
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  animation: drawerIn .25s ease-out;
+}
+@keyframes drawerIn {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 .mobile-drawer .close {
   position: absolute; top: 24px; right: var(--gutter);
   width: 40px; height: 40px;
