@@ -125,9 +125,9 @@ const NAV_HTML = `
         <button class="nav-trigger">Events <span class="caret">▾</span></button>
         <div class="mega mega-narrow">
           <ul class="mega-list">
-            <li><a href="#"><strong>Corporate Events</strong><span>Team builders &amp; offsites</span></a></li>
-            <li><a href="#"><strong>Birthday Parties</strong><span>Kids &amp; teens</span></a></li>
-            <li><a href="#"><strong>Private Court Rental</strong><span>Hourly bookings</span></a></li>
+            <li><a href="https://www.court16.com/private-corporate-events" target="_blank" rel="noopener"><strong>Corporate Events</strong><span>Team builders &amp; offsites</span></a></li>
+            <li><a href="https://www.court16.com/birthday-parties" target="_blank" rel="noopener"><strong>Birthday Parties</strong><span>Kids &amp; teens</span></a></li>
+            <li><a href="https://www.court16.com/private-corporate-events" target="_blank" rel="noopener"><strong>Private Court Rental</strong><span>Hourly bookings</span></a></li>
           </ul>
         </div>
       </div>
@@ -146,8 +146,8 @@ const NAV_HTML = `
     </button>
 
     <div class="nav-cta">
-      <a href="https://shop.court16.com" class="btn btn-ghost">Pro Shop</a>
-      <a href="#" class="btn btn-ghost">Log in</a>
+      <a href="https://shop.court16.com" target="_blank" rel="noopener" class="btn btn-ghost">Pro Shop</a>
+      <a href="https://www.court16.com/login" target="_blank" rel="noopener" class="btn btn-ghost">Log in</a>
       <a href="/trial" data-trial-cta class="btn btn-ball">Book free trial</a>
     </div>
 
@@ -179,8 +179,8 @@ const NAV_HTML = `
       <a href="/redesign/memberships.html#pickleball">Pickleball Membership</a>
     </details>
     <details><summary>Events</summary>
-      <a href="#">Corporate</a>
-      <a href="#">Birthday Parties</a>
+      <a href="https://www.court16.com/private-corporate-events" target="_blank" rel="noopener">Corporate</a>
+      <a href="https://www.court16.com/birthday-parties" target="_blank" rel="noopener">Birthday Parties</a>
     </details>
     <a href="/redesign/about.html" class="mobile-direct">About</a>
     <a href="/redesign/faq.html" class="mobile-direct">FAQ</a>
@@ -202,9 +202,9 @@ const FOOTER_HTML = `
         </div>
         <p style="margin-top:16px;max-width:30ch">Tennis Remixed. Six clubs across NYC, Philly &amp; Boston.</p>
         <div style="display:flex;gap:12px;margin-top:24px">
-          <a href="#" aria-label="Instagram" style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.08);display:grid;place-items:center">IG</a>
-          <a href="#" aria-label="Facebook" style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.08);display:grid;place-items:center">FB</a>
-          <a href="#" aria-label="LinkedIn" style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.08);display:grid;place-items:center">in</a>
+          <a href="https://www.instagram.com/court16tennis" target="_blank" rel="noopener" aria-label="Court 16 on Instagram" style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.08);display:grid;place-items:center;transition:background .15s" onmouseover="this.style.background='rgba(255,224,51,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'">IG</a>
+          <a href="https://www.facebook.com/Court16tennis/" target="_blank" rel="noopener" aria-label="Court 16 on Facebook" style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.08);display:grid;place-items:center;transition:background .15s" onmouseover="this.style.background='rgba(255,224,51,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'">FB</a>
+          <a href="https://www.linkedin.com/company/court16" target="_blank" rel="noopener" aria-label="Court 16 on LinkedIn" style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.08);display:grid;place-items:center;transition:background .15s" onmouseover="this.style.background='rgba(255,224,51,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.08)'">in</a>
         </div>
       </div>
       <div>
@@ -228,17 +228,17 @@ const FOOTER_HTML = `
         <h5>Company</h5>
         <ul>
           <li><a href="/redesign/about.html">About &amp; Mission</a></li>
-          <li><a href="#">Careers</a></li>
-          <li><a href="#">Press</a></li>
-          <li><a href="#">Court 16 Gazette</a></li>
+          <li><a href="https://www.court16.com/careers" target="_blank" rel="noopener">Careers</a></li>
+          <li><a href="https://www.court16.com/press" target="_blank" rel="noopener">Press</a></li>
+          <li><a href="https://www.court16.com/blog" target="_blank" rel="noopener">Court 16 Gazette</a></li>
           <li><a href="/redesign/faq.html">FAQ</a></li>
           <li><a href="/redesign/contact.html">Contact</a></li>
         </ul>
       </div>
     </div>
     <div class="footer-bottom">
-      <span>© 2026 Court 16 · 718-875-5550 · hello@court16.com</span>
-      <span><a href="#">Terms</a> · <a href="#">Privacy</a> · <a href="#">Mailing List</a></span>
+      <span>© 2026 Court 16 · <a href="tel:+17188755550">718-875-5550</a> · <a href="mailto:hello@court16.com">hello@court16.com</a></span>
+      <span><a href="https://www.court16.com/terms" target="_blank" rel="noopener">Terms</a> · <a href="https://www.court16.com/privacy" target="_blank" rel="noopener">Privacy</a> · <a href="https://www.court16.com/mailing-list" target="_blank" rel="noopener">Mailing List</a></span>
     </div>
   </div>
 </footer>
