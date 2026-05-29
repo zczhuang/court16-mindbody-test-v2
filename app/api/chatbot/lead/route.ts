@@ -98,6 +98,12 @@ export async function POST(req: NextRequest) {
   const loc = body.state?.location ? getLocationById(body.state.location) : null;
   const summary = summarizeState(body.state);
   const transcriptTrimmed = (body.transcript || "").slice(-2000);
+  // `lead_source` is a portal-baked dropdown — allowed options are:
+  // Word of Mouth | Flyer | Friend with a Court 16 member | Google |
+  // Facebook | Instagram | Other | Events. "Chatbot" isn't one (yet),
+  // so we set "Other" and let staff disambiguate via the note + the
+  // explicit `Source: Chatbot widget (…)` prefix in
+  // any_question_just_let_us_know. Same pattern /api/book/intro uses.
   const noteParts = [
     `Source: Chatbot widget (${body.reason || "unknown"})`,
     summary ? `Collected: ${summary}` : "",
@@ -109,16 +115,15 @@ export async function POST(req: NextRequest) {
     const result = await upsertContactByEmail(cfg, log, lookupEmail, {
       firstname: body.firstName || undefined,
       phone: phone || undefined,
-      lead_source: "Chatbot — Class Concierge",
+      lead_source: "Other",
       court16_intent: body.state?.audience === "kid" || body.state?.audience === "both"
         ? "kid_trial"
         : "adult_intro",
       court16_location_slug: body.state?.location || undefined,
-      court16_failure_reason: body.reason === "abandoned" ? "abandoned_chat" : undefined,
-      // Stash conversation summary on a Contact property the staff can
-      // read at a glance. (`hs_predictivecontactscore_v2` is read-only
-      // so we use a custom-ish text field that ships with the trial
-      // form's contact schema; if it doesn't exist HubSpot will drop it.)
+      // Stash conversation summary on the Contact so staff sees what the
+      // user asked at a glance. `court16_failure_reason` is intentionally
+      // omitted — its dropdown options are portal-baked and the abandoned
+      // signal is already in the note prefix.
       any_question_just_let_us_know: noteParts.join("\n"),
     });
     log.info("Chatbot lead upserted to HubSpot", {
