@@ -804,10 +804,11 @@ async function startBooking() {
 }
 
 async function startBookingHandoff() {
-  await addBot("No problem — share your email and the team will get back to you with options that fit.");
-  state.awaitingField = 'email';
-  state.step = 'handoff';
-  input.focus();
+  // Route the handoff into the polished lead-capture card, which posts to
+  // /api/chatbot/lead → HubSpot. (Previously this used an inline text
+  // input and the lead was dropped on the floor — see the no-op in earlier
+  // versions of handleHandoffInput.)
+  await askForContact('handoff');
 }
 
 async function pickSlot(i) {
@@ -858,15 +859,6 @@ async function handleCollectingInput(text) {
   // All fields collected
   state.awaitingField = null;
   await submitBooking();
-}
-
-async function handleHandoffInput(text) {
-  const err = validateField('email', text);
-  if (err) { await addBot(err); return; }
-  // Fire-and-forget log via a no-op (no /api/lead endpoint exists yet)
-  state.awaitingField = null;
-  await addBot(`Thanks — got ${text.trim()}. Someone from Court 16 will reach out within a day.`);
-  setQuickReplies([{ label: "Start over", secondary: true, onSelect: restart }]);
 }
 
 async function submitBooking() {
@@ -1042,15 +1034,18 @@ async function closeOut() {
  *   - 'abandoned' (user clicked X mid-flow)
  *   - 'completed' (finished the flow but didn't book in chat)
  *   - 'questions' (opted out of the match flow)
+ *   - 'handoff'   (booking blocked — non-bookable location or no slots open)
  */
 async function askForContact(reason) {
   state.leadReason = reason;
-  const headline = reason === 'abandoned'
-    ? "Before you go — want us to follow up?"
-    : "Want our team to reach out with options?";
-  const sub = reason === 'abandoned'
-    ? "Drop your email or phone and a coach will send class times that fit. No spam."
-    : "We'll put together a short email with the right classes for your level + location.";
+  const headline = ({
+    abandoned: "Before you go — want us to follow up?",
+    handoff:   "I'll have the team reach out with options that fit.",
+  })[reason] || "Want our team to reach out with options?";
+  const sub = ({
+    abandoned: "Drop your email or phone and a coach will send class times that fit. No spam.",
+    handoff:   "Share your email or phone and a Court 16 coordinator will get back with the right slot, usually within one business day.",
+  })[reason] || "We'll put together a short email with the right classes for your level + location.";
   await addBot(headline);
   await addBot(sub);
 
@@ -1202,7 +1197,6 @@ const llmHistory = []; // [{ role:'user'|'model', text }]
 async function handleFreeText(text) {
   addUser(text);
   if (state.step === 'collecting' && state.awaitingField) return handleCollectingInput(text);
-  if (state.step === 'handoff' && state.awaitingField === 'email') return handleHandoffInput(text);
   return askLLM(text);
 }
 
