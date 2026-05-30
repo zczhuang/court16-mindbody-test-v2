@@ -320,19 +320,29 @@ const CLASSES = {
   }
 };
 
-// All booking handoffs go through our own MindBody-integrated /trial
-// route, with the user's selected club prefilled. The static
-// court16.com pages are no longer the destination — we own the
-// signup funnel end-to-end now.
-function bookUrlFor(state) {
-  const loc = state && state.location ? state.location : '';
-  const qs  = loc ? ('?location=' + encodeURIComponent(loc)) : '';
-  return '/trial' + qs;
-}
-const PRIV_URL  = '/trial';
+// Adult booking destinations (kids go through /trial; adults do NOT).
+const ADULT_GROUP_URL = 'https://www.court16.com/locations';      // group classes by club
+const ADULT_PRIVATE_URL = 'https://www.court16.com/book-private'; // private + semi-private
 const MEMB_URL  = 'https://www.court16.com/adult-membership';
-// Audience gate destinations
+// Kids audience gate destination — our MindBody-integrated free trial.
 const KIDS_TRIAL_URL = '/trial';
+
+// Resolve the right "Book this class" target from the conversation state.
+// Kids (and "both") → our own /trial free-trial flow with the club prefilled.
+// Adults → Court 16's real adult booking pages, routed by format:
+//   private / semi-private → /book-private,  group (or unset) → /locations.
+// The /trial route is the KIDS funnel and must never be the adult target.
+function bookUrlFor(state) {
+  const s = state || {};
+  if (s.audience === 'kid' || s.audience === 'both') {
+    const qs = s.location ? ('?location=' + encodeURIComponent(s.location)) : '';
+    return '/trial' + qs;
+  }
+  if (s.format === 'private' || s.format === 'semi') {
+    return ADULT_PRIVATE_URL;
+  }
+  return ADULT_GROUP_URL;
+}
 
 /* ====================== Conversation engine ====================== */
 
@@ -655,6 +665,9 @@ async function showMatch() {
   cta.className = 'c16-cta';
   const canBookInChat = L.bookingEnabled && state.format === 'group';
   const bookHref = bookUrlFor(state);
+  // External court16.com booking pages open in a new tab so the redesign
+  // stays put; the same-origin /trial flow navigates the top frame.
+  const bookTarget = bookHref.startsWith('http') ? '_blank' : '_top';
   if (canBookInChat) {
     cta.innerHTML = `
       <button class="primary" id="c16-book-now" type="button">Book first class · $75 →</button>
@@ -662,7 +675,7 @@ async function showMatch() {
     `;
   } else {
     cta.innerHTML = `
-      <a class="primary" href="${bookHref}" target="_top" rel="noopener">Book this class →</a>
+      <a class="primary" href="${bookHref}" target="${bookTarget}" rel="noopener">Book this class →</a>
       <button class="ghost" id="c16-restart" type="button">Start over</button>
     `;
   }
@@ -757,7 +770,7 @@ async function startBooking() {
   } catch (e) {
     await addBot("Hmm, I couldn't reach the live schedule just now. Tap below to open the full booking page instead.");
     setQuickReplies([
-      { label: "Open booking page", onSelect: () => { window.open(bookUrlFor(state), '_top'); closeOut(); } },
+      { label: "Open booking page", onSelect: () => { window.open(bookUrlFor(state), bookUrlFor(state).startsWith('http') ? '_blank' : '_top'); closeOut(); } },
       { label: "Try again", secondary: true, onSelect: startBooking }
     ]);
     return;
@@ -788,7 +801,7 @@ async function startBooking() {
     await addBot("Looks like nothing's open in the next two weeks at that level. The team can hand-match you to a slot — want me to flag you?");
     setQuickReplies([
       { label: "Yes, have someone reach out", onSelect: () => startBookingHandoff() },
-      { label: "Open booking page", secondary: true, onSelect: () => { window.open(bookUrlFor(state), '_top'); closeOut(); } }
+      { label: "Open booking page", secondary: true, onSelect: () => { window.open(bookUrlFor(state), bookUrlFor(state).startsWith('http') ? '_blank' : '_top'); closeOut(); } }
     ]);
     return;
   }

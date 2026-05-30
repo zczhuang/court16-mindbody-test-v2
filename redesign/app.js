@@ -309,7 +309,7 @@ function injectChatbot() {
   function open() {
     if (!iframeLoaded) {
       const iframe = document.createElement('iframe');
-      iframe.src = '/chatbot.html?embed=1';
+      iframe.src = '/chatbot.html?embed=1&v=15';
       iframe.setAttribute('title', 'Court 16 Class Concierge');
       panel.appendChild(iframe);
       iframeLoaded = true;
