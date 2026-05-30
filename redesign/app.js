@@ -320,7 +320,7 @@ function injectChatbot() {
   function open() {
     if (!iframeLoaded) {
       const iframe = document.createElement('iframe');
-      iframe.src = '/chatbot.html?embed=1&v=18';
+      iframe.src = '/chatbot.html?embed=1&v=20';
       iframe.setAttribute('title', 'Court 16 Class Concierge');
       panel.appendChild(iframe);
       iframeLoaded = true;
@@ -553,6 +553,51 @@ function toggleMobileMenu() {
   document.querySelector('.mobile-drawer')?.classList.toggle('open');
 }
 
+/* ---------- Carousel (location showcase) ----------
+ * Scroll-snap track with prev/next arrows. Arrows step by one card +
+ * gap; they disable at the track ends. Touch users swipe natively.
+ * The prev/next buttons may live outside the .carousel (e.g. in the
+ * section header), so we resolve them within the nearest section. */
+function bindCarousels() {
+  document.querySelectorAll('[data-carousel]').forEach(car => {
+    const track = car.querySelector('[data-carousel-track]');
+    if (!track) return;
+    const scope = car.closest('section') || document;
+    const prev = scope.querySelector('[data-carousel-prev]');
+    const next = scope.querySelector('[data-carousel-next]');
+
+    const items = () => Array.from(track.querySelectorAll('.carousel-item'));
+
+    // Index of the first item whose left edge is at/after the track's left
+    // edge — i.e. the leftmost item currently snapped into view.
+    function currentIndex() {
+      const list = items();
+      const left = track.getBoundingClientRect().left;
+      const idx = list.findIndex(it => it.getBoundingClientRect().left >= left - 4);
+      return idx < 0 ? list.length - 1 : idx;
+    }
+    // Move one card. We use scrollIntoView on the target item rather than
+    // track.scrollLeft / scrollBy — the latter are unreliable on a
+    // scroll-snap container in some engines, while scrollIntoView is
+    // universal and respects the snap points.
+    function go(dir) {
+      const list = items();
+      const target = Math.max(0, Math.min(list.length - 1, currentIndex() + dir));
+      list[target].scrollIntoView({ behavior: 'smooth', inline: 'start', block: 'nearest' });
+    }
+    function update() {
+      const max = track.scrollWidth - track.clientWidth - 2;
+      if (prev) prev.toggleAttribute('disabled', track.scrollLeft <= 2);
+      if (next) next.toggleAttribute('disabled', track.scrollLeft >= max);
+    }
+    if (prev) prev.addEventListener('click', () => go(-1));
+    if (next) next.addEventListener('click', () => go(1));
+    track.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    update();
+  });
+}
+
 function bindChoices() {
   document.querySelectorAll('.choice-grid').forEach(group => {
     group.addEventListener('click', e => {
@@ -636,6 +681,7 @@ document.addEventListener('DOMContentLoaded', () => {
   bindChoices();
   bindTrialForm();
   bindTabs();
+  bindCarousels();
 
   document.querySelectorAll('.filter-bar').forEach(bar => {
     bar.addEventListener('click', e => {

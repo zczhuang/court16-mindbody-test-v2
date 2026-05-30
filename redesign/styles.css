@@ -674,6 +674,48 @@ h4 { font-size: 18px; letter-spacing: -0.01em; line-height: 1.2; }
   height: 100%;
   display: flex; flex-direction: column;
 }
+
+/* ---------- Carousel (location showcase) ---------- */
+.carousel-nav { display: inline-flex; gap: 8px; }
+.carousel-arrow {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+  display: grid; place-items: center;
+  font-size: 22px; line-height: 1; color: var(--ink);
+  cursor: pointer;
+  transition: background .15s, transform .15s, opacity .2s, border-color .15s;
+  font-family: var(--font-sans);
+  padding-bottom: 3px; /* optically center the chevron glyph */
+}
+.carousel-arrow:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.carousel-arrow[disabled] { opacity: .3; cursor: default; pointer-events: none; }
+
+.carousel { position: relative; }
+.carousel-track {
+  display: flex;
+  gap: 24px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;            /* Firefox */
+  padding: 6px 2px 18px;            /* room for card hover-lift + shadow */
+  margin: -6px -2px -18px;          /* cancel the padding's layout shift */
+}
+.carousel-track::-webkit-scrollbar { display: none; } /* WebKit */
+.carousel-item {
+  flex: 0 0 clamp(280px, 31%, 372px);
+  scroll-snap-align: start;
+}
+@media (max-width: 760px) {
+  /* On touch, arrows hide and the visitor swipes; show a peek of the
+     next card so it's obviously scrollable. */
+  .carousel-nav { display: none; }
+  .carousel-item { flex-basis: 84%; }
+}
 .location-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); }
 .location-card .hero-img {
   aspect-ratio: 16 / 10;
