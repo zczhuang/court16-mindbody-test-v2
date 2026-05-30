@@ -306,10 +306,21 @@ function injectChatbot() {
   const closeBtn = document.getElementById('c16-bot-close');
   let iframeLoaded = false;
 
+  // Once the visitor has opened OR dismissed the concierge, never auto-pop
+  // again for the rest of the session (persists across page navigations).
+  const SEEN_KEY = 'c16_bot_seen';
+  let seen = false;
+  try { seen = sessionStorage.getItem(SEEN_KEY) === '1'; } catch (e) { /* private mode */ }
+  function markSeen() {
+    seen = true;
+    try { sessionStorage.setItem(SEEN_KEY, '1'); } catch (e) { /* noop */ }
+    cancelProactive();
+  }
+
   function open() {
     if (!iframeLoaded) {
       const iframe = document.createElement('iframe');
-      iframe.src = '/chatbot.html?embed=1&v=15';
+      iframe.src = '/chatbot.html?embed=1&v=18';
       iframe.setAttribute('title', 'Court 16 Class Concierge');
       panel.appendChild(iframe);
       iframeLoaded = true;
@@ -317,11 +328,13 @@ function injectChatbot() {
     panel.classList.add('open');
     overlay.classList.add('open');
     panel.setAttribute('aria-hidden', 'false');
+    markSeen();
   }
   function close() {
     panel.classList.remove('open');
     overlay.classList.remove('open');
     panel.setAttribute('aria-hidden', 'true');
+    markSeen();
   }
   launcher.addEventListener('click', open);
   closeBtn.addEventListener('click', close);
@@ -329,6 +342,69 @@ function injectChatbot() {
   window.addEventListener('message', e => {
     if (e.data && e.data.type === 'c16-chatbot-close') close();
   });
+  // WCAG 2.1.1 — Esc closes the proactive invite.
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && panel.classList.contains('open')) close();
+  });
+
+  /* ---------- Proactive auto-open ----------------------------------
+   * Research-backed timing (see workflow chatbot-popup-timing-research):
+   *   • Desktop default: 12s — clears the ~10s "engaged session" bar,
+   *     sits in the 10–30s industry cluster, fires well inside the
+   *     ~55s avg time-on-page, and avoids the sub-5s "pushy" window.
+   *   • High-intent pages (classes/trial/book/memberships/pickleball):
+   *     8s — intent is already established.
+   *   • Scroll past ~50% before the timer → fire immediately (scroll is
+   *     a stronger intent signal than raw time). A 3s grace keeps a
+   *     load-time scroll jitter from tripping it.
+   *   • Mobile: NO bare-timer auto-open (Google intrusive-interstitial
+   *     risk + scarce screen). The passive launcher bubble stays
+   *     tap-to-open.
+   *   • Once per session; opening OR dismissing suppresses re-fire on
+   *     every later page in the session.
+   *   • (Desktop exit-intent was evaluated and deliberately left out —
+   *     marginal lift, highest false-positive risk during a live demo.
+   *     Easy to add later behind the same fire() if desired.)
+   * ----------------------------------------------------------------- */
+  let proactiveCleanup = null;
+  function cancelProactive() { if (proactiveCleanup) { proactiveCleanup(); proactiveCleanup = null; } }
+
+  function armProactive() {
+    const isMobile =
+      window.matchMedia('(max-width: 760px)').matches ||
+      (navigator.maxTouchPoints > 0 && window.matchMedia('(pointer: coarse)').matches);
+    if (seen || isMobile) return; // respect dismissal + skip mobile
+
+    const path = location.pathname + (location.search || '');
+    const highIntent = /(adult-classes|kids-trial|summer-camp|pickleball|memberships)\.html|\/trial|\/book/.test(path);
+    const delayMs = (highIntent ? 8 : 12) * 1000;
+
+    const GRACE_MS = 3000; // no fire in the first 3s regardless of signal
+    const startedAt = Date.now();
+    const pastGrace = () => (Date.now() - startedAt) >= GRACE_MS;
+
+    let fired = false;
+    function fire() {
+      if (fired || seen || panel.classList.contains('open')) return;
+      fired = true;
+      open(); // open() calls markSeen() → cancels everything
+    }
+    const timer = setTimeout(fire, delayMs);
+
+    function onScroll() {
+      if (!pastGrace()) return;
+      const reached = window.scrollY + window.innerHeight;
+      const total = document.documentElement.scrollHeight;
+      if (total > 0 && reached / total >= 0.5) fire();
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    proactiveCleanup = function () {
+      clearTimeout(timer);
+      window.removeEventListener('scroll', onScroll);
+    };
+  }
+  armProactive();
 }
 
 function injectChrome() {
