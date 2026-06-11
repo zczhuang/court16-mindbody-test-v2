@@ -5,6 +5,7 @@
   "description": "Court 16 — MindBody write happy-path test. De-risks the BLINK failure mode before Phase 3.",
   "scripts": {
     "dev": "next dev",
+    "dev:https": "next dev --experimental-https",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
