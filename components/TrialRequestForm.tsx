@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { TrialClass, TrialRequest } from "@/lib/trial-types";
 import type { ChildEntry } from "@/components/AgeSelector";
+import { ageFromDob } from "@/lib/class-utils";
 
 interface Props {
   trialClass: TrialClass;
@@ -13,7 +14,8 @@ interface Props {
   onCancel: () => void;
 }
 
-const AGE_OPTIONS = Array.from({ length: 15 }, (_, i) => i + 3); // 3-17
+const MIN_TRIAL_AGE = 3;
+const MAX_TRIAL_AGE = 17;
 
 export default function TrialRequestForm({
   trialClass,
@@ -28,7 +30,8 @@ export default function TrialRequestForm({
   const [parentPhone, setParentPhone] = useState("");
   const [parentBirthDate, setParentBirthDate] = useState("");
   const [childFirstName, setChildFirstName] = useState("");
-  const [childAge, setChildAge] = useState<number | "">("");
+  const [childLastName, setChildLastName] = useState("");
+  const [childBirthDate, setChildBirthDate] = useState("");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,11 +52,19 @@ export default function TrialRequestForm({
     };
   }, []);
 
+  const derivedAge = childBirthDate ? ageFromDob(childBirthDate) : NaN;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (childAge === "") {
-      setError("Child's age is required.");
+    if (!childBirthDate || Number.isNaN(derivedAge)) {
+      setError("Child's date of birth is required.");
+      return;
+    }
+    if (derivedAge < MIN_TRIAL_AGE || derivedAge > MAX_TRIAL_AGE) {
+      setError(
+        `Trials are for kids ages ${MIN_TRIAL_AGE}–${MAX_TRIAL_AGE} (this date of birth makes your child ${derivedAge}).`,
+      );
       return;
     }
     setSubmitting(true);
@@ -64,10 +75,19 @@ export default function TrialRequestForm({
         parentLastName,
         parentEmail,
         parentPhone,
-        parentBirthDate: parentBirthDate || undefined,
+        parentBirthDate,
         childFirstName,
-        childAge: Number(childAge),
-        children: [{ firstName: childFirstName, age: Number(childAge) }],
+        childLastName,
+        childAge: derivedAge,
+        childBirthDate,
+        children: [
+          {
+            firstName: childFirstName,
+            lastName: childLastName,
+            age: derivedAge,
+            birthDate: childBirthDate,
+          },
+        ],
         locationId,
         locationName,
         classScheduleId: trialClass.classScheduleId,
@@ -170,9 +190,10 @@ export default function TrialRequestForm({
                   className="trf-input"
                 />
               </Field>
-              <Field label="Your date of birth (optional)" hint="Keeps your MindBody account clean.">
+              <Field label="Your date of birth *" hint="Sets up your MindBody account correctly.">
                 <input
                   type="date"
+                  required
                   value={parentBirthDate}
                   onChange={(e) => setParentBirthDate(e.target.value)}
                   className="trf-input"
@@ -194,26 +215,33 @@ export default function TrialRequestForm({
                   className="trf-input"
                 />
               </Field>
-              <Field label="Age *">
-                <select
+              <Field label="Last name *">
+                <input
+                  type="text"
                   required
-                  value={childAge === "" ? "" : String(childAge)}
-                  onChange={(e) =>
-                    setChildAge(e.target.value === "" ? "" : Number(e.target.value))
-                  }
+                  value={childLastName}
+                  onChange={(e) => setChildLastName(e.target.value)}
+                  placeholder="Child's last name"
                   className="trf-input"
-                >
-                  <option value="" disabled>
-                    Select age…
-                  </option>
-                  {AGE_OPTIONS.map((a) => (
-                    <option key={a} value={a}>
-                      Age {a}
-                    </option>
-                  ))}
-                </select>
+                />
               </Field>
             </div>
+            <Field
+              label="Child's date of birth *"
+              hint={
+                !Number.isNaN(derivedAge)
+                  ? `Age ${derivedAge} — we'll match the right class level.`
+                  : "Sets up their MindBody profile correctly."
+              }
+            >
+              <input
+                type="date"
+                required
+                value={childBirthDate}
+                onChange={(e) => setChildBirthDate(e.target.value)}
+                className="trf-input"
+              />
+            </Field>
             <Field label="Anything we should know? (optional)">
               <textarea
                 value={notes}

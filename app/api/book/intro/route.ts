@@ -48,6 +48,8 @@ interface IntroBody {
   coachName: string;
   notes?: string;
   waiverVersion?: string;
+  /** HubSpot attribution context captured client-side (see trial route). */
+  hsContext?: { hutk?: string; pageUri?: string; pageName?: string };
 }
 
 export async function POST(req: Request) {
@@ -106,6 +108,7 @@ export async function POST(req: Request) {
   }
   const hsCfg = loadHubspotConfig();
   const baseUrl = process.env.APP_BASE_URL ?? "http://localhost:3000";
+  const hsContext = sanitizeHsContext(body.hsContext);
 
   log.info("intro.start", {
     writeMode: mbCfg.writeMode,
@@ -152,7 +155,7 @@ export async function POST(req: Request) {
         adultMbId: existing[0]?.Id != null ? String(existing[0].Id) : undefined,
         baseUrl,
       });
-      await submitFormSafely(hsCfg, log, fields, trace, "hubspot.submitTrialForm (softwall)");
+      await submitFormSafely(hsCfg, log, fields, trace, "hubspot.submitTrialForm (softwall)", hsContext);
       await createDealSafely(
         hsCfg,
         log,
@@ -227,7 +230,7 @@ export async function POST(req: Request) {
         adultMbId: undefined,
         baseUrl,
       });
-      await submitFormSafely(hsCfg, log, fields, trace, "hubspot.submitTrialForm (manual_review)");
+      await submitFormSafely(hsCfg, log, fields, trace, "hubspot.submitTrialForm (manual_review)", hsContext);
       await createDealSafely(
         hsCfg,
         log,
@@ -269,7 +272,7 @@ export async function POST(req: Request) {
         adultMbId: adult.Id ? String(adult.Id) : undefined,
         baseUrl,
       });
-      await submitFormSafely(hsCfg, log, fields, trace, "hubspot.submitTrialForm (staff_assist)");
+      await submitFormSafely(hsCfg, log, fields, trace, "hubspot.submitTrialForm (staff_assist)", hsContext);
       await createDealSafely(
         hsCfg,
         log,
@@ -321,7 +324,7 @@ export async function POST(req: Request) {
       adultMbId: adult.Id ? String(adult.Id) : undefined,
       baseUrl,
     });
-    await submitFormSafely(hsCfg, log, fields, trace, "hubspot.submitTrialForm");
+    await submitFormSafely(hsCfg, log, fields, trace, "hubspot.submitTrialForm", hsContext);
     await createDealSafely(
       hsCfg,
       log,
@@ -426,6 +429,7 @@ async function submitFormSafely(
   fields: ReturnType<typeof buildFormFields>,
   trace: Array<{ step: string; status: "ok" | "skipped" | "error"; data?: unknown; error?: unknown }>,
   label: string,
+  context?: { hutk?: string; pageUri?: string; pageName?: string },
 ): Promise<void> {
   if (!hsCfg) {
     log.info("intro.hubspot.skipped", { reason: "HubSpot not configured" });
@@ -433,12 +437,28 @@ async function submitFormSafely(
     return;
   }
   try {
-    await submitTrialForm(hsCfg, log, fields);
+    await submitTrialForm(hsCfg, log, fields, context ? { context } : undefined);
     trace.push({ step: label, status: "ok" });
   } catch (e) {
     log.warn("intro.hubspot.fail", { error: serialize(e) });
     trace.push({ step: label, status: "error", error: serialize(e) });
   }
+}
+
+/**
+ * Same hutk/pageUri sanitation as the trial route — a malformed hutk gets
+ * the whole Forms API submission rejected, so validate before forwarding.
+ */
+function sanitizeHsContext(
+  ctx: IntroBody["hsContext"],
+): { hutk?: string; pageUri?: string; pageName?: string } | undefined {
+  if (!ctx) return undefined;
+  const out: { hutk?: string; pageUri?: string; pageName?: string } = {};
+  if (typeof ctx.hutk === "string" && /^[a-f0-9]{32}$/i.test(ctx.hutk)) out.hutk = ctx.hutk;
+  if (typeof ctx.pageUri === "string" && /^https?:\/\//.test(ctx.pageUri))
+    out.pageUri = ctx.pageUri.slice(0, 500);
+  if (typeof ctx.pageName === "string" && ctx.pageName) out.pageName = ctx.pageName.slice(0, 200);
+  return Object.keys(out).length > 0 ? out : undefined;
 }
 
 /** Subset of buildFormFields output that maps to real Contact CRM props. */

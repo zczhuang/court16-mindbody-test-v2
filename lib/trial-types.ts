@@ -63,7 +63,11 @@ export interface TrialClass {
 /** A single child in a trial request */
 export interface ChildInfo {
   firstName: string;
+  /** Required by the API (Ibtissam review Jun 11): real MindBody profile needs it. */
+  lastName?: string;
   age: number;
+  /** ISO "YYYY-MM-DD". Required by the API; age is derived server-side. */
+  birthDate?: string;
 }
 
 /** Trial request form submission */
@@ -74,12 +78,15 @@ export interface TrialRequest {
   parentEmail: string;
   /** Required — staff calls within hours to confirm the trial. */
   parentPhone: string;
-  /** Optional. Some MindBody sites require BirthDate on AddClient — when
-   * present we pass it through; when blank the route falls back to a
-   * placeholder year so the sandbox doesn't 400. ISO "YYYY-MM-DD". */
-  parentBirthDate?: string;
+  /** Required (Ibtissam review Jun 11) — real DOB on the MindBody parent
+   * record, no more placeholder fallback. ISO "YYYY-MM-DD". */
+  parentBirthDate: string;
   childFirstName: string;
+  /** Required by the API — MindBody child profile needs the real last name. */
+  childLastName?: string;
   childAge: number;
+  /** ISO "YYYY-MM-DD". Required by the API; childAge is derived from it. */
+  childBirthDate?: string;
   children: ChildInfo[];
   locationId: string;
   locationName: string;
@@ -99,4 +106,11 @@ export interface TrialRequest {
   classStartsAt?: string;
   coachName: string;
   notes?: string;
+  /**
+   * HubSpot attribution context captured client-side (Ibtissam review
+   * item 6 — without pageUri the Contact's "form inquiry" activity links
+   * to the legacy website form's page). hutk is the visitor's hubspotutk
+   * cookie when present; server validates the format before forwarding.
+   */
+  hsContext?: { hutk?: string; pageUri?: string; pageName?: string };
 }

@@ -39,10 +39,20 @@ function base64urlDecode(s: string): Buffer {
   return Buffer.from(padded, "base64");
 }
 
+/**
+ * Default token lifetime. 72h (not 24h) so a Friday-evening trial request's
+ * confirm/deny links survive the weekend before staff acts on them.
+ * Override per-deploy with STAFF_TOKEN_TTL_HOURS.
+ */
+function defaultTtlHours(): number {
+  const n = Number(process.env.STAFF_TOKEN_TTL_HOURS ?? "72");
+  return Number.isFinite(n) && n >= 1 ? n : 72;
+}
+
 export function signToken(
   params: { correlationId: string; action: StaffAction; ttlHours?: number },
 ): string {
-  const ttl = params.ttlHours ?? 24;
+  const ttl = params.ttlHours ?? defaultTtlHours();
   const payload: TokenPayload = {
     correlationId: params.correlationId,
     action: params.action,

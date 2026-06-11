@@ -11,6 +11,11 @@ interface Props {
   onSelectDate: (date: string) => void;
   onPrevMonth: () => void;
   onNextMonth: () => void;
+  /**
+   * Last bookable date "YYYY-MM-DD" (inclusive). Days beyond it render
+   * disabled and next-month nav stops once the window is exhausted.
+   */
+  maxDateStr?: string;
 }
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -27,6 +32,7 @@ export default function CalendarView({
   onSelectDate,
   onPrevMonth,
   onNextMonth,
+  maxDateStr,
 }: Props) {
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
@@ -47,6 +53,12 @@ export default function CalendarView({
   for (let i = 0; i < firstDow; i++) cells.push(null);
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
   while (cells.length % 7 !== 0) cells.push(null);
+
+  const nextMonthFirst =
+    month === 12
+      ? `${year + 1}-01-01`
+      : `${year}-${String(month + 1).padStart(2, "0")}-01`;
+  const nextDisabled = !!maxDateStr && nextMonthFirst > maxDateStr;
 
   return (
     <div className="cal">
@@ -76,6 +88,8 @@ export default function CalendarView({
           className="cal-nav"
           onClick={onNextMonth}
           aria-label="Next month"
+          disabled={nextDisabled}
+          style={nextDisabled ? { opacity: 0.35, cursor: "default" } : undefined}
         >
           <svg viewBox="0 0 16 16" width="14" height="14">
             <path
@@ -108,18 +122,19 @@ export default function CalendarView({
           const isSelected = dateStr === selectedDate;
           const isToday = dateStr === todayStr;
           const isPast = dateStr < todayStr;
+          const isBeyondWindow = !!maxDateStr && dateStr > maxDateStr;
 
           return (
             <button
               key={dateStr}
               type="button"
-              className={`cal-cell ${isPast ? "past" : ""} ${has ? "has" : ""} ${isSelected ? "sel" : ""} ${isToday ? "today" : ""}`}
-              disabled={!has || isPast}
+              className={`cal-cell ${isPast || isBeyondWindow ? "past" : ""} ${has && !isBeyondWindow ? "has" : ""} ${isSelected ? "sel" : ""} ${isToday ? "today" : ""}`}
+              disabled={!has || isPast || isBeyondWindow}
               onClick={() => onSelectDate(dateStr)}
             >
               <span className="cal-num">{day}</span>
               {isToday && !isPast && <span className="today-dot" />}
-              {has && (
+              {has && !isBeyondWindow && (
                 <span className="cal-tag">
                   <span className="tag-count">
                     {dayClasses.length} {dayClasses.length === 1 ? "class" : "classes"}

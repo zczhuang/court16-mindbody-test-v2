@@ -19,6 +19,7 @@ import {
   filterChildrenOnly,
   filterAvailable,
 } from "@/lib/class-utils";
+import { maxBookableDateStr } from "@/config/trial-config";
 import type { ChildEntry } from "@/components/AgeSelector";
 
 type Step = "location" | "calendar" | "confirmed";
@@ -158,6 +159,16 @@ function TrialInner() {
   }
 
   function handleNextMonth() {
+    // Booking window: don't navigate past the month containing the last
+    // bookable date (CalendarView also disables the button; this is belt
+    // and suspenders).
+    if (location) {
+      const nextFirst =
+        calMonth === 12
+          ? `${calYear + 1}-01-01`
+          : `${calYear}-${String(calMonth + 1).padStart(2, "0")}-01`;
+      if (nextFirst > maxBookableDateStr(location.timezone)) return;
+    }
     setSelectedDate(null);
     setSelectedClass(null);
     if (calMonth === 12) {
@@ -169,10 +180,20 @@ function TrialInner() {
   }
 
   async function handleTrialSubmit(request: TrialRequest) {
+    // HubSpot attribution context: pageUri/pageName make the Contact's
+    // "form inquiry" activity link to THIS page instead of the legacy
+    // website form; hutk (when the tracking cookie exists) ties the
+    // submission to the visitor's analytics session.
+    const hutk = document.cookie.match(/(?:^|;\s*)hubspotutk=([a-f0-9]{32})/i)?.[1];
+    const hsContext = {
+      hutk,
+      pageUri: window.location.href,
+      pageName: document.title,
+    };
     const resp = await fetch("/api/book/trial", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(request),
+      body: JSON.stringify({ ...request, hsContext }),
     });
     if (!resp.ok) {
       const data = await resp.json().catch(() => ({}));
@@ -410,6 +431,7 @@ function TrialInner() {
                     onSelectDate={handleDateSelect}
                     onPrevMonth={handlePrevMonth}
                     onNextMonth={handleNextMonth}
+                    maxDateStr={maxBookableDateStr(location.timezone)}
                   />
                 </div>
                 <aside className="detail-col">

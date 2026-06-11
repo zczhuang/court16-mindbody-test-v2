@@ -17,8 +17,14 @@ import {
 import { buildStaffUrl } from "@/lib/staff-tokens";
 import { classifyIntent } from "@/lib/intent";
 import { createLogger, makeCorrelationId } from "@/lib/logger";
-import { formatClassDayTime, parseAgeRangeFromTitle, siteLocalToUtcIso } from "@/lib/class-utils";
+import {
+  ageFromDob,
+  formatClassDayTime,
+  parseAgeRangeFromTitle,
+  siteLocalToUtcIso,
+} from "@/lib/class-utils";
 import { getLocationById } from "@/config/locations";
+import { maxBookableDateStr, TRIAL_MAX_ADVANCE_DAYS } from "@/config/trial-config";
 import { getDealPipeline, getHubspotPreferredLocation } from "@/config/hubspot-deals";
 import type { TrialRequest } from "@/lib/trial-types";
 
@@ -35,9 +41,6 @@ const HUBSPOT_DEFAULTS = {
   lead_source: "Other",
 } as const;
 
-// MindBody's -99 sandbox requires BirthDate; prod sites may not.
-const PARENT_DOB_PLACEHOLDER = "1985-01-01";
-
 /** Map an integer age to the closest HubSpot `childage` band value. */
 function ageToBand(age: number): string {
   if (age <= 3) return "2.5 - 3 yo";
@@ -47,12 +50,6 @@ function ageToBand(age: number): string {
   if (age <= 11) return "9 - 11 yo";
   if (age <= 15) return "12 yo or older";
   return "15 and older";
-}
-
-/** Compute a placeholder child DOB from an integer age, Jan 1 of the year they'd be that age. */
-function dobFromAge(age: number): string {
-  const year = new Date().getFullYear() - Math.max(0, age);
-  return `${year}-01-01`;
 }
 
 export async function POST(req: Request) {
@@ -97,14 +94,37 @@ export async function POST(req: Request) {
   }
   const hsCfg = loadHubspotConfig();
   const baseUrl = process.env.APP_BASE_URL ?? `http://localhost:3000`;
+  const hsContext = sanitizeHsContext(body.hsContext);
 
   // For Track 1 we process the first child only; multi-child is Track 2.
   const primaryKid = body.children[0] ?? {
     firstName: body.childFirstName,
+    lastName: body.childLastName,
     age: body.childAge,
+    birthDate: body.childBirthDate,
   };
-  const childDob = dobFromAge(primaryKid.age);
-  const ageBand = ageToBand(primaryKid.age);
+  // validate() guarantees these — real values per Ibtissam's review (Jun 11):
+  // no more "-" last name or Jan-1 synthesized DOB on the MindBody record.
+  const childLastName = primaryKid.lastName ?? body.childLastName ?? "";
+  const childDob = primaryKid.birthDate ?? body.childBirthDate ?? "";
+  const childAge = ageFromDob(childDob);
+  const ageBand = ageToBand(childAge);
+
+  // Booking window: reject requests beyond today + TRIAL_MAX_ADVANCE_DAYS
+  // (server-side authority — the calendar UI/API only hide far-out slots).
+  if (body.classStartsAt) {
+    const maxDate = maxBookableDateStr(location.timezone);
+    if (body.classStartsAt.slice(0, 10) > maxDate) {
+      return NextResponse.json(
+        {
+          ok: false,
+          correlationId,
+          error: `Trials can be booked at most ${TRIAL_MAX_ADVANCE_DAYS} days ahead (latest bookable date: ${maxDate})`,
+        },
+        { status: 400 },
+      );
+    }
+  }
 
   // MindBody returns `StartDateTime` as site-local wall-clock without a TZ
   // suffix. Convert to absolute UTC ISO here so HubSpot Deal `class_date`
@@ -158,7 +178,7 @@ export async function POST(req: Request) {
         childMbId: undefined,
         baseUrl,
       });
-      await submitFormSafely(hsCfg, log, fields, trace, "hubspot.submitTrialForm (softwall)");
+      await submitFormSafely(hsCfg, log, fields, trace, "hubspot.submitTrialForm (softwall)", hsContext);
       await createDealSafely(
         hsCfg,
         log,
@@ -168,7 +188,7 @@ export async function POST(req: Request) {
           locationId: location.id,
           contactProperties: contactPropertiesFromFields(fields),
           classStartsAt: classStartsAtUtc,
-          dealName: `Kids trial (softwall) — ${primaryKid.firstName} · ${location.fullName}`,
+          dealName: `${primaryKid.firstName} ${childLastName} - ${body.parentEmail} (softwall)`,
           amount: 0,
         },
         trace,
@@ -205,7 +225,7 @@ export async function POST(req: Request) {
           LastName: body.parentLastName,
           Email: body.parentEmail,
           MobilePhone: body.parentPhone,
-          BirthDate: body.parentBirthDate || PARENT_DOB_PLACEHOLDER,
+          BirthDate: body.parentBirthDate,
           ReferredBy: "Online",
           Gender: GENDER_PLACEHOLDER,
           ...addressDefaults,
@@ -230,11 +250,15 @@ export async function POST(req: Request) {
         // saves the round-trip and works in consumer mode (the standalone
         // addClientRelationship via UpdateClient returns
         // InvalidPermissionConfiguration without a staff token).
-        const childEmail = `kid+${correlationId}@court16-test.invalid`;
-        child = await addClient(mbCfg, log, {
+        //
+        // Email: parent's address first (Ibtissam Jun 11 — both accounts
+        // share the parent's email). Some MindBody site configs enforce
+        // unique emails per client; on rejection, retry once with a
+        // synthetic placeholder so the booking still goes through.
+        const buildChildPayload = (email: string) => ({
           FirstName: primaryKid.firstName,
-          LastName: "-",
-          Email: childEmail,
+          LastName: childLastName,
+          Email: email,
           BirthDate: childDob,
           MobilePhone: body.parentPhone, // parent's phone is the kid's contact
           ReferredBy: "Online",
@@ -250,13 +274,30 @@ export async function POST(req: Request) {
           // surfaces the kid under the parent's dashboard automatically.
           ClientRelationships: [
             {
-              RelatedClientId: String(parent.Id),
+              RelatedClientId: String(parent!.Id),
               RelationshipName: PAYS_FOR_RELATIONSHIP.RelationshipName2, // "Pays For"
               Relationship: { ...PAYS_FOR_RELATIONSHIP },
             },
           ],
         });
-        trace.push({ step: "addClient (child + inline Pays For)", status: "ok", data: { id: child.Id } });
+        try {
+          child = await addClient(mbCfg, log, buildChildPayload(body.parentEmail));
+          trace.push({
+            step: "addClient (child + inline Pays For)",
+            status: "ok",
+            data: { id: child.Id, email: "parent" },
+          });
+        } catch (e) {
+          log.warn("trial.child.parentEmailRejected", { error: serialize(e) });
+          trace.push({ step: "addClient (child, parent email)", status: "error", error: serialize(e) });
+          const placeholderEmail = `kid+${correlationId}@court16-test.invalid`;
+          child = await addClient(mbCfg, log, buildChildPayload(placeholderEmail));
+          trace.push({
+            step: "addClient (child + inline Pays For, placeholder email)",
+            status: "ok",
+            data: { id: child.Id, email: "placeholder" },
+          });
+        }
       } catch (e) {
         log.warn("trial.mindbody.degraded", { step: "addClient", error: serialize(e) });
         mbDegraded = true;
@@ -280,7 +321,7 @@ export async function POST(req: Request) {
         childMbId: undefined,
         baseUrl,
       });
-      await submitFormSafely(hsCfg, log, fields, trace, "hubspot.submitTrialForm (manual_review)");
+      await submitFormSafely(hsCfg, log, fields, trace, "hubspot.submitTrialForm (manual_review)", hsContext);
       await createDealSafely(
         hsCfg,
         log,
@@ -290,7 +331,7 @@ export async function POST(req: Request) {
           locationId: location.id,
           contactProperties: contactPropertiesFromFields(fields),
           classStartsAt: classStartsAtUtc,
-          dealName: `Kids trial (manual review) — ${primaryKid.firstName} · ${location.fullName}`,
+          dealName: `${primaryKid.firstName} ${childLastName} - ${body.parentEmail} (manual review)`,
           amount: 0,
         },
         trace,
@@ -324,7 +365,7 @@ export async function POST(req: Request) {
       childMbId: child.Id ? String(child.Id) : undefined,
       baseUrl,
     });
-    await submitFormSafely(hsCfg, log, fields, trace, "hubspot.submitTrialForm");
+    await submitFormSafely(hsCfg, log, fields, trace, "hubspot.submitTrialForm", hsContext);
     await createDealSafely(
       hsCfg,
       log,
@@ -334,7 +375,9 @@ export async function POST(req: Request) {
         locationId: location.id,
         contactProperties: contactPropertiesFromFields(fields),
         classStartsAt: classStartsAtUtc,
-        dealName: `Kids trial — ${primaryKid.firstName} · ${location.fullName}`,
+        // Deal-name house convention (Ibtissam Jun 11): child's full name +
+        // parent's email — matches the legacy workflow-created deals.
+        dealName: `${primaryKid.firstName} ${childLastName} - ${body.parentEmail}`,
         amount: 0,
       },
       trace,
@@ -363,7 +406,7 @@ export async function POST(req: Request) {
 interface BuildFieldsArgs {
   correlationId: string;
   body: TrialRequest;
-  primaryKid: { firstName: string; age: number };
+  primaryKid: { firstName: string; lastName?: string; age: number };
   childDob: string;
   ageBand: string;
   location: NonNullable<ReturnType<typeof getLocationById>>;
@@ -385,7 +428,7 @@ function buildFormFields(args: BuildFieldsArgs) {
     // match exactly. Fall back to fullName if the location isn't mapped.
     preferred_location: getHubspotPreferredLocation(location.id) ?? location.fullName,
     child_name: primaryKid.firstName,
-    child_1___last_name: "-",
+    child_1___last_name: primaryKid.lastName || "-",
     childage: ageBand,
     // Single un-suffixed field; HubSpot form rejects the 3-part split with
     // "Required field 'child_date_of_birth' is missing" (caught by smoke #2).
@@ -520,6 +563,7 @@ async function submitFormSafely(
   fields: ReturnType<typeof buildFormFields>,
   trace: Array<{ step: string; status: "ok" | "skipped" | "error"; data?: unknown; error?: unknown }>,
   label: string,
+  context?: { hutk?: string; pageUri?: string; pageName?: string },
 ): Promise<void> {
   if (!hsCfg) {
     log.info("trial.hubspot.skipped", { reason: "HubSpot not configured" });
@@ -527,12 +571,29 @@ async function submitFormSafely(
     return;
   }
   try {
-    await submitTrialForm(hsCfg, log, fields);
+    await submitTrialForm(hsCfg, log, fields, context ? { context } : undefined);
     trace.push({ step: label, status: "ok" });
   } catch (e) {
     log.warn("trial.hubspot.fail", { error: serialize(e) });
     trace.push({ step: label, status: "error", error: serialize(e) });
   }
+}
+
+/**
+ * Validate the client-supplied HubSpot attribution context before forwarding.
+ * A malformed hutk gets the whole Forms API submission rejected, so only
+ * pass it through when it looks like a real tracking cookie (32 hex chars).
+ */
+function sanitizeHsContext(
+  ctx: TrialRequest["hsContext"],
+): { hutk?: string; pageUri?: string; pageName?: string } | undefined {
+  if (!ctx) return undefined;
+  const out: { hutk?: string; pageUri?: string; pageName?: string } = {};
+  if (typeof ctx.hutk === "string" && /^[a-f0-9]{32}$/i.test(ctx.hutk)) out.hutk = ctx.hutk;
+  if (typeof ctx.pageUri === "string" && /^https?:\/\//.test(ctx.pageUri))
+    out.pageUri = ctx.pageUri.slice(0, 500);
+  if (typeof ctx.pageName === "string" && ctx.pageName) out.pageName = ctx.pageName.slice(0, 200);
+  return Object.keys(out).length > 0 ? out : undefined;
 }
 
 function validate(body: TrialRequest | undefined): string[] {
@@ -543,22 +604,48 @@ function validate(body: TrialRequest | undefined): string[] {
   if (!/^\S+@\S+\.\S+$/.test(body.parentEmail ?? "")) errors.push("parentEmail is invalid");
   if (!body.parentPhone || body.parentPhone.replace(/\D/g, "").length < 7)
     errors.push("parentPhone is required");
-  if (body.parentBirthDate && !/^\d{4}-\d{2}-\d{2}$/.test(body.parentBirthDate))
-    errors.push('parentBirthDate must be "YYYY-MM-DD"');
+
+  // Adult DOB is required (Ibtissam review Jun 11) and must belong to an
+  // adult — keeps the MindBody parent record real, no placeholder fallback.
+  if (!body.parentBirthDate || !/^\d{4}-\d{2}-\d{2}$/.test(body.parentBirthDate)) {
+    errors.push('parentBirthDate is required ("YYYY-MM-DD")');
+  } else if (ageFromDob(body.parentBirthDate) < 18) {
+    errors.push("parentBirthDate must be an adult's date of birth (18+)");
+  }
+
   if (!body.childFirstName && (!body.children || body.children.length === 0))
     errors.push("childFirstName or children[] is required");
+
+  // Child last name + DOB required (Ibtissam review Jun 11) — they drive
+  // the real MindBody profile, the HubSpot form fields, and the deal name.
+  const primaryLastName = body.children?.[0]?.lastName ?? body.childLastName;
+  if (!primaryLastName) errors.push("child lastName is required");
+  const primaryDob = body.children?.[0]?.birthDate ?? body.childBirthDate;
+  if (!primaryDob || !/^\d{4}-\d{2}-\d{2}$/.test(primaryDob)) {
+    errors.push('child birthDate is required ("YYYY-MM-DD")');
+  } else {
+    const age = ageFromDob(primaryDob);
+    if (age < 0 || age > 17) errors.push(`child birthDate gives age ${age} — trials are for kids under 18`);
+  }
+
   if (!body.locationId) errors.push("locationId is required");
   if (typeof body.classScheduleId !== "number") errors.push("classScheduleId must be a number");
   if (typeof body.classId !== "number") errors.push("classId must be a number");
+  // Required for the booking-window check and HubSpot Deal class_date.
+  if (!body.classStartsAt) errors.push("classStartsAt is required");
 
   // Age-range check: reject bookings where a child's age falls outside the
   // class's eligible band. Range is parsed from the class title itself
   // (Court 16 titles encode the true range explicitly, e.g. "7 - 12.9yo").
   // Permissive — skipped when the title doesn't include a parseable range.
+  // Ages derive from DOB when present (the source of truth post-Jun-11);
+  // the client-sent integer age is the fallback for older payloads.
   const range = body.className ? parseAgeRangeFromTitle(body.className) : null;
   if (range) {
-    const ages = (body.children ?? []).map((c) => c.age);
-    if (body.childAge && !ages.includes(body.childAge)) ages.push(body.childAge);
+    const ages = (body.children ?? []).map((c) =>
+      c.birthDate && /^\d{4}-\d{2}-\d{2}$/.test(c.birthDate) ? ageFromDob(c.birthDate) : c.age,
+    );
+    if (ages.length === 0 && body.childAge) ages.push(body.childAge);
     for (const age of ages) {
       if (age < range.ageMin || age > range.ageMax) {
         errors.push(

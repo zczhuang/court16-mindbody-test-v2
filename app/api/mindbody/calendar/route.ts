@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authedMindbodyGet } from "@/lib/mindbody";
 import { createLogger, makeCorrelationId } from "@/lib/logger";
 import { LOCATIONS, getLocationById } from "@/config/locations";
+import { maxBookableDateStr } from "@/config/trial-config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -53,6 +54,24 @@ export async function GET(request: NextRequest) {
 
   const loc = getLocationById(locationId)!;
 
+  // Booking window (Ibtissam Jun 11): for kid trials, never return classes
+  // beyond today + TRIAL_MAX_ADVANCE_DAYS — server-side authority so a
+  // hand-crafted query can't see (and then book) slots weeks out.
+  let effectiveEndDate = endDate;
+  if (intent === "kid_trial") {
+    const maxDate = maxBookableDateStr(loc.timezone);
+    if (startDate > maxDate) {
+      return NextResponse.json({
+        classes: [],
+        correlationId,
+        siteId: String(loc.siteId),
+        filteredByProgramId: null,
+        clampedToBookingWindow: true,
+      });
+    }
+    if (endDate > maxDate) effectiveEndDate = maxDate;
+  }
+
   // Dev escape hatch: if the dev Api-Key isn't authorized against Court 16's
   // real site IDs yet, flip MINDBODY_USE_SANDBOX_FALLBACK=true to route all
   // calendar queries at the MINDBODY_SITE_ID env var (e.g. the -99 sandbox).
@@ -75,7 +94,7 @@ export async function GET(request: NextRequest) {
       path: "/class/classes",
       query: {
         StartDateTime: `${startDate}T00:00:00`,
-        EndDateTime: `${endDate}T23:59:59`,
+        EndDateTime: `${effectiveEndDate}T23:59:59`,
         ProgramIds: programIds,
         Limit: 200,
       },

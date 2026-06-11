@@ -121,6 +121,19 @@ export function formatClassDayTime(localIso: string, timezone: string): string {
 }
 
 /**
+ * Whole-year age as of today for an ISO "YYYY-MM-DD" birth date.
+ * Returns NaN for unparseable input.
+ */
+export function ageFromDob(dobIso: string): number {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dobIso)) return NaN;
+  const [y, m, d] = dobIso.split("-").map(Number);
+  const now = new Date();
+  let age = now.getFullYear() - y;
+  if (now.getMonth() + 1 < m || (now.getMonth() + 1 === m && now.getDate() < d)) age--;
+  return age;
+}
+
+/**
  * Parse a MindBody class object into our simplified TrialClass format.
  * Class name lives at `ClassDescription.Name` in MindBody v6; some older
  * proxies surface it as a top-level `ClassName` — accept both.

@@ -38,3 +38,30 @@ export const TRIAL_CONFIG: Record<string, LocationTrialConfig> = {
  * False = show ALL children's classes (useful until staff populates IDs).
  */
 export const ENFORCE_TRIAL_ELIGIBILITY = false;
+
+/**
+ * How far ahead parents can request a trial, in days from today.
+ * Ibtissam (Trial Process Review, Jun 11 2026): cap advance bookings so
+ * requests don't land weeks out. NEXT_PUBLIC_ so the client-side calendar
+ * sees the same number the API enforces; the API clamp is the authority.
+ */
+export const TRIAL_MAX_ADVANCE_DAYS = (() => {
+  const n = Number(process.env.NEXT_PUBLIC_TRIAL_MAX_ADVANCE_DAYS ?? "7");
+  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : 7;
+})();
+
+/** YYYY-MM-DD for "today" in the given IANA timezone. */
+export function todayStrInTz(timezone: string): string {
+  // en-CA locale formats as YYYY-MM-DD.
+  return new Intl.DateTimeFormat("en-CA", { timeZone: timezone }).format(new Date());
+}
+
+/**
+ * Last bookable date (YYYY-MM-DD inclusive), counting from today in the
+ * site's timezone. Noon-UTC anchor dodges DST-boundary off-by-ones.
+ */
+export function maxBookableDateStr(timezone: string): string {
+  const base = new Date(`${todayStrInTz(timezone)}T12:00:00Z`);
+  base.setUTCDate(base.getUTCDate() + TRIAL_MAX_ADVANCE_DAYS);
+  return base.toISOString().slice(0, 10);
+}
