@@ -478,6 +478,13 @@ function contactPropertiesFromFields(fields: ReturnType<typeof buildFormFields>)
     lastname: fields.lastname,
     phone: fields.phone,
     preferred_location: fields.preferred_location,
+    // Child identity must ride the synchronous CRM upsert, not just the
+    // async Forms API submit: the staff-notification workflow enrolls on
+    // the booking-status flip in this same upsert and renders its email
+    // immediately — form-only fields lose that race (verified Jun 11:
+    // notification email showed a blank Child line).
+    child_name: fields.child_name,
+    child_1___last_name: fields.child_1___last_name,
     court16_correlation_id: fields.court16_correlation_id,
     court16_intent: fields.court16_intent,
     court16_booking_status: fields.court16_booking_status,
