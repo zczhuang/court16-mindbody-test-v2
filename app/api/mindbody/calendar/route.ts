@@ -107,8 +107,17 @@ export async function GET(request: NextRequest) {
       // renders for sites that haven't flipped on staff-token access.
       staffMode: true,
     });
+    // Drop cancelled occurrences server-side. MindBody keeps returning
+    // them with IsAvailable=true, and the kid_trial Program-filtered path
+    // skips the legacy filterChildrenOnly() that used to weed them out —
+    // which let a parent-facing calendar offer a cancelled class (verified
+    // live Jun 12: class 15680 was cancelled overnight, still bookable,
+    // staff confirm then failed with "Class is cancelled").
+    const classes = (result.Classes ?? []).filter(
+      (c) => !(c as { IsCanceled?: boolean }).IsCanceled,
+    );
     return NextResponse.json({
-      classes: result.Classes ?? [],
+      classes,
       correlationId,
       siteId,
       filteredByProgramId: programIds ? Number(programIds) : null,
