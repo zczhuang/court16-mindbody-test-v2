@@ -160,7 +160,23 @@ async function handle(req: Request) {
         court16_booking_status: "failed",
         court16_failure_reason: `AddClientToClass: ${serialized}`.slice(0, 4000),
       });
-      return html(`MindBody booking failed. Staff: check admin queue.`, 502);
+      // Staff-facing page gets the human reason (e.g. "Class is cancelled
+      // and cannot be booked.") — first hit live Jun 12 when Ibtissam
+      // confirmed a request whose class had since been cancelled and got
+      // only the generic line. The raw JSON stays on the HubSpot contact.
+      let reason = "MindBody declined the booking.";
+      if (e instanceof MindbodyError) {
+        const body = e.toJSON().body as { Error?: { Message?: string } } | null | undefined;
+        if (body?.Error?.Message) reason = body.Error.Message;
+      }
+      return html(
+        `MindBody declined this booking: ${reason} ` +
+          `This usually means the class was cancelled or filled after the request came in. ` +
+          `Use the Reassign link from the same email to move the child to a different slot, ` +
+          `or follow up with the parent directly. ` +
+          `The request is marked as Failed in HubSpot with the full details.`,
+        502,
+      );
     }
   }
 
