@@ -550,6 +550,31 @@ export const PAYS_FOR_RELATIONSHIP = {
 } as const;
 
 /**
+ * Parent/Guardian → Child relationship for site 5748154 (RH). This is the
+ * semantically correct familial link between a parent and their kid —
+ * confirmed in the live relationship catalog (`GET /site/relationships`,
+ * negative built-in IDs) and verified accepted inline on consumer-mode
+ * AddClient (Jun 16: stores bidirectionally — parent reads "Parent/Guardian",
+ * child reads "Child").
+ *
+ * Set on the CHILD's AddClient with RelatedClientId = parent and
+ * RelationshipName = RelationshipName2 ("Child"), mirroring how PAYS_FOR was
+ * wired. Preferred over PAYS_FOR_RELATIONSHIP (-4), which is a *billing*
+ * relationship; if billing attribution is ever needed for paid bookings,
+ * both can be sent in the same ClientRelationships array.
+ *
+ * Note: even this is a peer relationship between two full client records —
+ * NOT MindBody's consumer "Add Family Member" custodian/dependent account.
+ * True family accounts still require the parent to add the dependent in the
+ * consumer app + a staff merge (see docs/court16-family-account-sop.html).
+ */
+export const PARENT_GUARDIAN_RELATIONSHIP = {
+  Id: -6,
+  RelationshipName1: "Parent/Guardian",
+  RelationshipName2: "Child",
+} as const;
+
+/**
  * @deprecated Use PAYS_FOR_RELATIONSHIP. The old `Id: 20` Guardian value
  * does NOT exist in site 5748154's relationship catalog and triggers
  * "Relationship validation failed" on AddClient. Kept as an export

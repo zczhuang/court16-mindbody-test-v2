@@ -5,7 +5,7 @@ import {
   getClientsByEmail,
   loadConfigFromEnv,
   MindbodyError,
-  PAYS_FOR_RELATIONSHIP,
+  PARENT_GUARDIAN_RELATIONSHIP,
 } from "@/lib/mindbody";
 import {
   createTrialDeal,
@@ -269,21 +269,23 @@ export async function POST(req: Request) {
           EmergencyContactInfoPhone: body.parentPhone,
           EmergencyContactInfoEmail: body.parentEmail,
           EmergencyContactInfoRelationship: "Parent",
-          // Inline "Pays For" relationship: parent (related) pays for this
-          // child (current AddClient). MindBody's Family Account UX
-          // surfaces the kid under the parent's dashboard automatically.
+          // Inline Parent/Guardian → Child relationship: links this child
+          // (current AddClient) to the parent (RelatedClientId). This is the
+          // correct familial link in MindBody's catalog; -4 "Pays For" was a
+          // billing relationship. Add PAYS_FOR back to this array if billing
+          // attribution is ever needed for paid bookings.
           ClientRelationships: [
             {
               RelatedClientId: String(parent!.Id),
-              RelationshipName: PAYS_FOR_RELATIONSHIP.RelationshipName2, // "Pays For"
-              Relationship: { ...PAYS_FOR_RELATIONSHIP },
+              RelationshipName: PARENT_GUARDIAN_RELATIONSHIP.RelationshipName2, // "Child"
+              Relationship: { ...PARENT_GUARDIAN_RELATIONSHIP },
             },
           ],
         });
         try {
           child = await addClient(mbCfg, log, buildChildPayload(body.parentEmail));
           trace.push({
-            step: "addClient (child + inline Pays For)",
+            step: "addClient (child + inline Parent/Guardian)",
             status: "ok",
             data: { id: child.Id, email: "parent" },
           });
@@ -293,7 +295,7 @@ export async function POST(req: Request) {
           const placeholderEmail = `kid+${correlationId}@court16-test.invalid`;
           child = await addClient(mbCfg, log, buildChildPayload(placeholderEmail));
           trace.push({
-            step: "addClient (child + inline Pays For, placeholder email)",
+            step: "addClient (child + inline Parent/Guardian, placeholder email)",
             status: "ok",
             data: { id: child.Id, email: "placeholder" },
           });
