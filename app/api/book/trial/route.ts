@@ -246,15 +246,19 @@ export async function POST(req: Request) {
         });
         trace.push({ step: "addClient (parent)", status: "ok", data: { id: parent.Id } });
 
-        // Child AddClient with INLINE Pays For relationship to parent —
-        // saves the round-trip and works in consumer mode (the standalone
+        // Child AddClient with INLINE Parent/Guardian relationship to parent
+        // — saves the round-trip and works in consumer mode (the standalone
         // addClientRelationship via UpdateClient returns
         // InvalidPermissionConfiguration without a staff token).
         //
-        // Email: parent's address first (Ibtissam Jun 11 — both accounts
-        // share the parent's email). Some MindBody site configs enforce
-        // unique emails per client; on rejection, retry once with a
-        // synthetic placeholder so the booking still goes through.
+        // Email: a synthetic placeholder ON THE CHILD, NOT the parent's email.
+        // A MindBody dependent has no login email of its own; giving the child
+        // the parent's address (the old item-7 behavior) makes MindBody see
+        // two clients sharing one email — the exact "duplicate account" the
+        // -6 Parent/Guardian link is meant to avoid. The parent keeps their
+        // real email; the child is linked to them as a dependent. `.invalid`
+        // is a reserved TLD so the placeholder can never reach a real inbox.
+        const childEmail = `kid+${correlationId}@court16-test.invalid`;
         const buildChildPayload = (email: string) => ({
           FirstName: primaryKid.firstName,
           LastName: childLastName,
@@ -282,24 +286,12 @@ export async function POST(req: Request) {
             },
           ],
         });
-        try {
-          child = await addClient(mbCfg, log, buildChildPayload(body.parentEmail));
-          trace.push({
-            step: "addClient (child + inline Parent/Guardian)",
-            status: "ok",
-            data: { id: child.Id, email: "parent" },
-          });
-        } catch (e) {
-          log.warn("trial.child.parentEmailRejected", { error: serialize(e) });
-          trace.push({ step: "addClient (child, parent email)", status: "error", error: serialize(e) });
-          const placeholderEmail = `kid+${correlationId}@court16-test.invalid`;
-          child = await addClient(mbCfg, log, buildChildPayload(placeholderEmail));
-          trace.push({
-            step: "addClient (child + inline Parent/Guardian, placeholder email)",
-            status: "ok",
-            data: { id: child.Id, email: "placeholder" },
-          });
-        }
+        child = await addClient(mbCfg, log, buildChildPayload(childEmail));
+        trace.push({
+          step: "addClient (child + inline Parent/Guardian)",
+          status: "ok",
+          data: { id: child.Id, email: "placeholder" },
+        });
       } catch (e) {
         log.warn("trial.mindbody.degraded", { step: "addClient", error: serialize(e) });
         mbDegraded = true;
