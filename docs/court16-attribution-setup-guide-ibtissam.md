@@ -22,6 +22,19 @@ You'll do it by giving instructions to **Claude Code** (opened in the booking-ap
 
 ---
 
+## Step 0 — Get set up in Claude Code (about 2 minutes)
+
+You'll use Claude Code right in your browser — nothing to install.
+
+1. **Accept the GitHub invite.** Open the email from GitHub ("…invited you to court16-mindbody-test"), click **Accept invitation**, and sign in or create a free account using `ibtissam@court16.com`.
+2. **Open Claude Code.** Go to **[claude.ai/code](https://claude.ai/code)** and sign in with your Claude account. *(No account yet? Stuart will sort out access.)*
+3. **Connect the project.** Click to connect GitHub, allow access, and choose the **court16-mindbody-test** repository.
+4. **Confirm it works.** In the message box, type `What is this project?` and send. If it answers, you're ready — go to Step 1.
+
+> Prefer to do it together? It's a 10-minute screenshare — just ask. *(Desktop alternative: Claude Code also has a Mac/Windows app if you'd rather not work in the browser.)*
+
+---
+
 ## Before you start (5 minutes)
 
 Have these open / make sure you have access:
