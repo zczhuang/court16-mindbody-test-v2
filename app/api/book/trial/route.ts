@@ -166,6 +166,16 @@ export async function POST(req: Request) {
     });
 
     if (intent === "existing_user_softwall") {
+      // The child now shares the parent's email, so getClientsByEmail can
+      // return both records. Pick the parent by name match (it's created
+      // first, but don't rely on return order) before falling back to the
+      // first result.
+      const parentMatch =
+        existing.find(
+          (c) =>
+            (c.FirstName ?? "").trim().toLowerCase() === body.parentFirstName.trim().toLowerCase() &&
+            (c.LastName ?? "").trim().toLowerCase() === body.parentLastName.trim().toLowerCase(),
+        ) ?? existing[0];
       const fields = buildFormFields({
         correlationId,
         body,
@@ -174,7 +184,7 @@ export async function POST(req: Request) {
         ageBand,
         location,
         status: "duplicate_email_softwall",
-        parentMbId: existing[0]?.Id != null ? String(existing[0].Id) : undefined,
+        parentMbId: parentMatch?.Id != null ? String(parentMatch.Id) : undefined,
         childMbId: undefined,
         baseUrl,
       });
@@ -251,14 +261,17 @@ export async function POST(req: Request) {
         // addClientRelationship via UpdateClient returns
         // InvalidPermissionConfiguration without a staff token).
         //
-        // Email: a synthetic placeholder ON THE CHILD, NOT the parent's email.
-        // A MindBody dependent has no login email of its own; giving the child
-        // the parent's address (the old item-7 behavior) makes MindBody see
-        // two clients sharing one email — the exact "duplicate account" the
-        // -6 Parent/Guardian link is meant to avoid. The parent keeps their
-        // real email; the child is linked to them as a dependent. `.invalid`
-        // is a reserved TLD so the placeholder can never reach a real inbox.
-        const childEmail = `kid+${correlationId}@court16-test.invalid`;
+        // Email: the child shares the PARENT'S email so the record carries a
+        // real, reachable address. Court 16's marketing/mailing lists for
+        // enrolled kids then surface the parent's email instead of an
+        // unreachable placeholder (Ibtissam, Trial Process Review). MindBody's
+        // duplicate rule keys on FirstName+LastName+Email *together* (not email
+        // alone), so a differently-named child sharing the parent's email is
+        // NOT a duplicate — MindBody itself recommends the shared email for
+        // dependents. If a specific site is configured to reject shared emails,
+        // we fall back to a synthetic placeholder so the booking still succeeds
+        // (`.invalid` is a reserved TLD that can never reach a real inbox).
+        const placeholderEmail = `kid+${correlationId}@court16-test.invalid`;
         const buildChildPayload = (email: string) => ({
           FirstName: primaryKid.firstName,
           LastName: childLastName,
@@ -273,6 +286,10 @@ export async function POST(req: Request) {
           EmergencyContactInfoPhone: body.parentPhone,
           EmergencyContactInfoEmail: body.parentEmail,
           EmergencyContactInfoRelationship: "Parent",
+          // Child shares the parent's email, so suppress MindBody's account /
+          // welcome email on the child — the parent already receives theirs and
+          // a second one would land in the same inbox.
+          SendAccountEmails: false,
           // Inline Parent/Guardian → Child relationship: links this child
           // (current AddClient) to the parent (RelatedClientId). This is the
           // correct familial link in MindBody's catalog; -4 "Pays For" was a
@@ -286,12 +303,38 @@ export async function POST(req: Request) {
             },
           ],
         });
-        child = await addClient(mbCfg, log, buildChildPayload(childEmail));
+        // Prefer the parent's email; fall back to the placeholder only if a
+        // site rejects the shared address as a duplicate. Any other error
+        // bubbles to the outer degraded-mode handler.
+        let childEmailUsed: "parent" | "placeholder" = "parent";
+        try {
+          child = await addClient(mbCfg, log, buildChildPayload(body.parentEmail));
+        } catch (e) {
+          const blob = JSON.stringify(serialize(e)).toLowerCase();
+          const isDuplicate =
+            e instanceof MindbodyError &&
+            e.status === 400 &&
+            (blob.includes("duplicate") || blob.includes("invalidclientcreation"));
+          if (!isDuplicate) throw e;
+          log.warn("trial.mindbody.childEmailFallback", { correlationId, error: serialize(e) });
+          childEmailUsed = "placeholder";
+          child = await addClient(mbCfg, log, buildChildPayload(placeholderEmail));
+          trace.push({
+            step: "addClient (child) shared email rejected → placeholder fallback",
+            status: "ok",
+            data: { reason: serialize(e) },
+          });
+        }
         trace.push({
           step: "addClient (child + inline Parent/Guardian)",
           status: "ok",
-          data: { id: child.Id, email: "placeholder" },
+          data: { id: child.Id, email: childEmailUsed },
         });
+        // Per-site signal for the shared-email rollout check: grep
+        // "trial.child.emailPath" in the runtime logs to see, per club,
+        // whether the child took the parent's email or fell back to a
+        // placeholder (i.e. whether that site rejects shared emails).
+        log.info("trial.child.emailPath", { siteId: mbCfg.siteId, childEmailUsed });
       } catch (e) {
         log.warn("trial.mindbody.degraded", { step: "addClient", error: serialize(e) });
         mbDegraded = true;
