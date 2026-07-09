@@ -258,7 +258,11 @@ export async function POST(req: Request) {
         // -6 Parent/Guardian link is meant to avoid. The parent keeps their
         // real email; the child is linked to them as a dependent. `.invalid`
         // is a reserved TLD so the placeholder can never reach a real inbox.
-        const childEmail = `kid+${correlationId}@court16-test.invalid`;
+        // EXPERIMENT BRANCH (shared-email): child reuses the parent's email
+        // instead of a placeholder, so we can see how same-email parent+child
+        // records appear in the MindBody backend (duplicate detection, family
+        // view). NOT for main — the placeholder version is the shipped default.
+        const childEmail = body.parentEmail;
         const buildChildPayload = (email: string) => ({
           FirstName: primaryKid.firstName,
           LastName: childLastName,
