@@ -6,6 +6,7 @@ import {
   getClientsByEmail,
   loadConfigFromEnv,
   MindbodyError,
+  pickAdultClient,
 } from "@/lib/mindbody";
 import {
   createTrialDeal,
@@ -146,13 +147,17 @@ export async function POST(req: Request) {
     });
 
     if (intent === "existing_user_softwall") {
+      // Kids-trial families share the parent's email across parent AND child
+      // records, so the email search can return the booker's kid — reference
+      // the adult record, not whichever match came back first.
+      const existingAdult = pickAdultClient(existing);
       const fields = buildFormFields({
         correlationId,
         body,
         offer,
         location,
         status: "duplicate_email_softwall",
-        adultMbId: existing[0]?.Id != null ? String(existing[0].Id) : undefined,
+        adultMbId: existingAdult?.Id != null ? String(existingAdult.Id) : undefined,
         baseUrl,
       });
       await submitFormSafely(hsCfg, log, fields, trace, "hubspot.submitTrialForm (softwall)", hsContext);

@@ -7,6 +7,7 @@ import {
   getClientsByEmail,
   loadConfigFromEnv,
   MindbodyError,
+  pickAdultClient,
 } from "@/lib/mindbody";
 import { createLogger, makeCorrelationId } from "@/lib/logger";
 
@@ -78,10 +79,11 @@ export async function POST(req: Request) {
     const existing = await getClientsByEmail(cfg, log, body.parent.email);
     trace.push({ step: "getClientsByEmail", status: "ok", data: { matched: existing.length, clients: existing } });
 
-    // 2. Create or reuse parent.
+    // 2. Create or reuse parent. Family bookings share one email across
+    //    parent and child records, so pick the adult — never existing[0].
     let parentId: string | number;
     if (existing.length > 0) {
-      parentId = existing[0].Id;
+      parentId = pickAdultClient(existing)!.Id;
       trace.push({ step: "addClient (parent)", status: "skipped", data: { reason: "already exists", parentId } });
     } else {
       const created = await addClient(cfg, log, {

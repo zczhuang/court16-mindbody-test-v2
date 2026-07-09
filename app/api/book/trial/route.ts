@@ -6,6 +6,7 @@ import {
   loadConfigFromEnv,
   MindbodyError,
   PARENT_GUARDIAN_RELATIONSHIP,
+  pickAdultClient,
 } from "@/lib/mindbody";
 import {
   createTrialDeal,
@@ -166,6 +167,10 @@ export async function POST(req: Request) {
     });
 
     if (intent === "existing_user_softwall") {
+      // The family shares one email, so `existing` can contain both the
+      // parent and the child — reference the adult, not whichever record
+      // the search happened to return first.
+      const existingParent = pickAdultClient(existing);
       const fields = buildFormFields({
         correlationId,
         body,
@@ -174,7 +179,7 @@ export async function POST(req: Request) {
         ageBand,
         location,
         status: "duplicate_email_softwall",
-        parentMbId: existing[0]?.Id != null ? String(existing[0].Id) : undefined,
+        parentMbId: existingParent?.Id != null ? String(existingParent.Id) : undefined,
         childMbId: undefined,
         baseUrl,
       });
@@ -251,22 +256,18 @@ export async function POST(req: Request) {
         // addClientRelationship via UpdateClient returns
         // InvalidPermissionConfiguration without a staff token).
         //
-        // Email: a synthetic placeholder ON THE CHILD, NOT the parent's email.
-        // A MindBody dependent has no login email of its own; giving the child
-        // the parent's address (the old item-7 behavior) makes MindBody see
-        // two clients sharing one email — the exact "duplicate account" the
-        // -6 Parent/Guardian link is meant to avoid. The parent keeps their
-        // real email; the child is linked to them as a dependent. `.invalid`
-        // is a reserved TLD so the placeholder can never reach a real inbox.
-        // EXPERIMENT BRANCH (shared-email): child reuses the parent's email
-        // instead of a placeholder, so we can see how same-email parent+child
-        // records appear in the MindBody backend (duplicate detection, family
-        // view). NOT for main — the placeholder version is the shipped default.
-        const childEmail = body.parentEmail;
-        const buildChildPayload = (email: string) => ({
+        // Email: intentionally the PARENT'S email on the child record —
+        // validated with MindBody's Family Accounts team (case 05463499,
+        // Jul 7): the shared email is what lets MindBody's account-claim
+        // flow assemble a true family account from these existing records
+        // ("both can be claimed"), and mailing-list/report pulls for the
+        // child's enrollments carry the parent's reachable address. The
+        // Parent/Guardian relationship below links the two records; the
+        // account-claim flow means no duplicate profiles are ever created.
+        child = await addClient(mbCfg, log, {
           FirstName: primaryKid.firstName,
           LastName: childLastName,
-          Email: email,
+          Email: body.parentEmail,
           BirthDate: childDob,
           MobilePhone: body.parentPhone, // parent's phone is the kid's contact
           ReferredBy: "Online",
@@ -290,11 +291,10 @@ export async function POST(req: Request) {
             },
           ],
         });
-        child = await addClient(mbCfg, log, buildChildPayload(childEmail));
         trace.push({
           step: "addClient (child + inline Parent/Guardian)",
           status: "ok",
-          data: { id: child.Id, email: "placeholder" },
+          data: { id: child.Id, email: "parent" },
         });
       } catch (e) {
         log.warn("trial.mindbody.degraded", { step: "addClient", error: serialize(e) });

@@ -440,8 +440,25 @@ export interface MindbodyClient {
   FirstName?: string;
   LastName?: string;
   Email?: string;
+  BirthDate?: string;
   CreationDate?: string;
   [k: string]: unknown;
+}
+
+/**
+ * Family bookings put the PARENT'S email on both the parent and the child
+ * records, so an email search returns the whole family. Pick the account
+ * holder: prefer a record whose BirthDate is 18+ years ago; fall back to
+ * the first match when birth dates are missing.
+ */
+export function pickAdultClient(clients: MindbodyClient[]): MindbodyClient | undefined {
+  if (clients.length <= 1) return clients[0];
+  const YEAR_MS = 365.25 * 24 * 3600 * 1000;
+  const adult = clients.find((c) => {
+    const born = c.BirthDate ? Date.parse(c.BirthDate) : NaN;
+    return Number.isFinite(born) && Date.now() - born >= 18 * YEAR_MS;
+  });
+  return adult ?? clients[0];
 }
 
 export interface GetClientsResponse {
@@ -449,7 +466,16 @@ export interface GetClientsResponse {
   Clients?: MindbodyClient[];
 }
 
-/** Search clients by email. Returns [] if none. */
+/**
+ * Look up clients by email. Returns [] if none.
+ *
+ * Family bookings put the PARENT'S email on the parent AND the child
+ * records, so this routinely returns the whole family. Never treat `[0]`
+ * as the account holder — use `pickAdultClient()` to select the adult.
+ *
+ * MindBody's SearchText is a fuzzy search; results are filtered here to
+ * exact (case-insensitive) Email matches so "by email" means what it says.
+ */
 export async function getClientsByEmail(
   cfg: MindbodyConfig,
   log: Logger,
@@ -461,10 +487,13 @@ export async function getClientsByEmail(
   const res = await authedFetch<GetClientsResponse>(cfg, log, {
     method: "GET",
     path: "/client/clients",
-    query: { SearchText: email, Limit: 5 },
+    // Limit sized for the shared-email world: one family can occupy
+    // several rows, and fuzzy matches may pad the page before filtering.
+    query: { SearchText: email, Limit: 20 },
     consumerMode: true,
   });
-  return res.Clients ?? [];
+  const wanted = email.trim().toLowerCase();
+  return (res.Clients ?? []).filter((c) => (c.Email ?? "").trim().toLowerCase() === wanted);
 }
 
 export interface AddClientInput {
