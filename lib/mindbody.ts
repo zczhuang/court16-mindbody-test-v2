@@ -481,19 +481,42 @@ export async function getClientsByEmail(
   log: Logger,
   email: string,
 ): Promise<MindbodyClient[]> {
-  // Consumer mode: /client/clients search works with Api-Key + SiteId alone
-  // on real sites (verified against site 5748154 May 15). No staff token
-  // needed — saves the token issuance round-trip on every booking.
-  const res = await authedFetch<GetClientsResponse>(cfg, log, {
-    method: "GET",
+  // Staff mode (source-staff bearer): consumer-mode /client/clients search
+  // returns 0 results on production sites as of Jul 10 2026 — verified on
+  // 5748154 even for months-old records with plain emails — which silently
+  // disabled the duplicate softwall. staffFetch degrades to consumer mode
+  // when source creds are absent (sandbox), preserving behavior there.
+  //
+  // CAUTION: even staff-mode SearchText misses some existing records
+  // outright (e.g. one of two records sharing an email). Callers must not
+  // treat [] as proof of absence — the trial route's ID-first HubSpot
+  // guard is the primary duplicate defense; this search is the fallback.
+  const res = await staffFetch<GetClientsResponse>(cfg, log, {
     path: "/client/clients",
     // Limit sized for the shared-email world: one family can occupy
     // several rows, and fuzzy matches may pad the page before filtering.
     query: { SearchText: email, Limit: 20 },
-    consumerMode: true,
   });
   const wanted = email.trim().toLowerCase();
   return (res.Clients ?? []).filter((c) => (c.Email ?? "").trim().toLowerCase() === wanted);
+}
+
+/**
+ * Direct lookup by MindBody client IDs. Reliable where SearchText is not:
+ * ID lookups returned records throughout the Jul 10 investigation while
+ * email search returned nothing. Used by the ID-first duplicate guard.
+ */
+export async function getClientsByIds(
+  cfg: MindbodyConfig,
+  log: Logger,
+  ids: Array<string | number>,
+): Promise<MindbodyClient[]> {
+  if (ids.length === 0) return [];
+  // ClientIds is a repeated query param, which staffFetch's query map
+  // can't express — encode it into the path instead.
+  const qs = ids.map((id) => `ClientIds=${encodeURIComponent(String(id))}`).join("&");
+  const res = await staffFetch<GetClientsResponse>(cfg, log, { path: `/client/clients?${qs}` });
+  return res.Clients ?? [];
 }
 
 export interface AddClientInput {

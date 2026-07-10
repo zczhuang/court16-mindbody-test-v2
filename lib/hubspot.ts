@@ -273,10 +273,13 @@ export async function findContactByEmail(
   cfg: HubspotConfig,
   log: Logger,
   email: string,
+  /** Extra properties to include beyond HubSpot's defaults (e.g. the stored MindBody ids). */
+  properties?: string[],
 ): Promise<ContactRecord | null> {
+  const props = properties?.length ? `&properties=${properties.map(encodeURIComponent).join(",")}` : "";
   try {
     const res = await hsFetch<ContactRecord>(log, {
-      url: `${cfg.apiBaseUrl}/crm/v3/objects/contacts/${encodeURIComponent(email)}?idProperty=email`,
+      url: `${cfg.apiBaseUrl}/crm/v3/objects/contacts/${encodeURIComponent(email)}?idProperty=email${props}`,
       method: "GET",
       headers: { Authorization: `Bearer ${requireAccessToken(cfg)}` },
       label: "GET /crm/v3/objects/contacts/:email",

@@ -3,6 +3,7 @@ import {
   addClient,
   checkCallerToken,
   getClientsByEmail,
+  getClientsByIds,
   loadConfigFromEnv,
   MindbodyError,
   PARENT_GUARDIAN_RELATIONSHIP,
@@ -10,6 +11,7 @@ import {
 } from "@/lib/mindbody";
 import {
   createTrialDeal,
+  findContactByEmail,
   HubspotError,
   loadHubspotConfig,
   submitTrialForm,
@@ -152,13 +154,61 @@ export async function POST(req: Request) {
 
   try {
     let existing: Awaited<ReturnType<typeof getClientsByEmail>> = [];
-    try {
-      existing = await getClientsByEmail(mbCfg, log, body.parentEmail);
-      trace.push({ step: "getClientsByEmail", status: "ok", data: { matched: existing.length } });
-    } catch (e) {
-      log.warn("trial.mindbody.degraded", { step: "getClientsByEmail", error: serialize(e) });
+
+    // ID-first duplicate guard (Jul 10): MindBody's email search misses
+    // existing records even in staff mode, so a repeat booking could
+    // silently create a second parent+child. Past bookings stamp the
+    // MindBody ids on the HubSpot contact — trust those first, verified
+    // by direct ID lookup (which is reliable where SearchText is not).
+    let idGuardAmbiguous = false;
+    if (hsCfg) {
+      try {
+        const contact = await findContactByEmail(hsCfg, log, body.parentEmail, [
+          "court16_mindbody_parent_id",
+          "court16_mindbody_child_id",
+        ]);
+        const knownIds = [
+          contact?.properties?.court16_mindbody_parent_id,
+          contact?.properties?.court16_mindbody_child_id,
+        ].filter((v): v is string => typeof v === "string" && v.length > 0);
+        if (knownIds.length > 0) {
+          existing = await getClientsByIds(mbCfg, log, knownIds);
+          idGuardAmbiguous = existing.length === 0;
+          trace.push({
+            step: "idFirstGuard",
+            status: "ok",
+            data: { knownIds, verified: existing.length, ambiguous: idGuardAmbiguous },
+          });
+        } else {
+          trace.push({
+            step: "idFirstGuard",
+            status: "skipped",
+            data: { reason: contact ? "contact has no stored MindBody ids" : "no HubSpot contact" },
+          });
+        }
+      } catch (e) {
+        // Guard is best-effort: HubSpot being down must not block bookings.
+        log.warn("trial.idguard.fail", { error: serialize(e) });
+        trace.push({ step: "idFirstGuard", status: "error", error: serialize(e) });
+      }
+    }
+
+    if (idGuardAmbiguous) {
+      // HubSpot says this family already has MindBody records, but the
+      // direct ID lookup can't see them (merged? deleted?). Creating new
+      // records here risks a duplicate family — degrade to manual review
+      // and create nothing.
       mbDegraded = true;
-      trace.push({ step: "getClientsByEmail", status: "error", error: serialize(e) });
+      trace.push({ step: "getClientsByEmail", status: "skipped", data: { reason: "id guard ambiguous" } });
+    } else if (existing.length === 0) {
+      try {
+        existing = await getClientsByEmail(mbCfg, log, body.parentEmail);
+        trace.push({ step: "getClientsByEmail", status: "ok", data: { matched: existing.length } });
+      } catch (e) {
+        log.warn("trial.mindbody.degraded", { step: "getClientsByEmail", error: serialize(e) });
+        mbDegraded = true;
+        trace.push({ step: "getClientsByEmail", status: "error", error: serialize(e) });
+      }
     }
 
     const intent = classifyIntent({
