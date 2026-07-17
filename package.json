@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "test:trial-intake": "node --no-warnings --experimental-strip-types scripts/test-trial-intake.ts",
     "test:trial-reporting": "node --no-warnings --experimental-strip-types scripts/test-trial-reporting.ts",
+    "test:hubspot-config": "node --no-warnings --experimental-strip-types scripts/test-hubspot-config.ts",
     "validate:trial-config": "node --no-warnings --experimental-strip-types scripts/validate-trial-config.ts",
     "audit:mindbody-sites": "node --env-file-if-exists=.env.local --no-warnings --experimental-strip-types scripts/audit-mindbody-sites.ts"
   },

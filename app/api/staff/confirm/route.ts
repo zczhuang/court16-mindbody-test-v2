@@ -97,7 +97,7 @@ async function confirmBooking(payload: ReturnType<typeof verifyToken>) {
   const hsCfg = loadHubspotConfig();
   if (!hsCfg) {
     return html(
-      "HubSpot is not configured on this deployment. Staff confirm cannot run without HUBSPOT_ACCESS_TOKEN / HUBSPOT_PORTAL_ID / HUBSPOT_TRIAL_FORM_GUID.",
+      "HubSpot is not configured on this deployment. Staff confirm requires HUBSPOT_ACCESS_TOKEN and HUBSPOT_PORTAL_ID.",
       503,
     );
   }

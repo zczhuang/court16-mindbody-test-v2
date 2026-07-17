@@ -41,7 +41,7 @@
   <h3 style="margin-top: 14px;">Trigger &amp; workflow</h3>
   <ul>
     <li><strong>Workflow:</strong> Workflow 1 — Staff trial notification.</li>
-    <li><strong>Current trigger:</strong> Contact property <code>court16_booking_status</code> equals <code>pending_staff</code> AND <code>court16_intent</code> equals <code>kid_trial</code>.</li>
+    <li><strong>Live trigger:</strong> <code>court16_booking_status=pending_staff</code> only. The workflow is off; add the required <code>court16_intent=kid_trial</code> filter and per-club routing before testing.</li>
     <li><strong>Classification:</strong> Internal notification. Not marketing.</li>
   </ul>
 </div>
@@ -81,9 +81,9 @@ Deny: {{contact.court16_staff_deny_url}}</div>
   <h3 style="margin-top: 14px;">Trigger &amp; workflow</h3>
   <ul>
     <li><strong>Workflow:</strong> Workflow 2 — Parent trial confirmation.</li>
-    <li><strong>Current trigger:</strong> Contact property <code>court16_booking_status</code> equals <code>confirmed</code> AND <code>court16_intent</code> equals <code>kid_trial</code>.</li>
+    <li><strong>Live trigger:</strong> <code>court16_booking_status=confirmed</code> AND <code>court16_location_slug</code> contains <code>ridgehill</code>. The workflow is off.</li>
     <li><strong>After spec 04:</strong> Trigger moves to "Deal stage changes to Scheduled Trial."</li>
-    <li><strong>Classification:</strong> Transactional.</li>
+    <li><strong>Classification:</strong> intended transactional; live email currently reports <code>isTransactional=false</code>.</li>
   </ul>
 </div>
 <div class="email">
@@ -96,12 +96,12 @@ Deny: {{contact.court16_staff_deny_url}}</div>
 
 <h2>Template 3 · Parent Mindbody account nudge</h2>
 <div class="card">
-  <div><span class="pill partial"><span class="dot"></span>Revised draft in HubSpot · workflow off</span></div>
+  <div><span class="pill partial"><span class="dot"></span>API-visible email published · workflow off</span></div>
   <h3 style="margin-top: 14px;">Trigger &amp; workflow</h3>
   <ul>
     <li><strong>Workflow:</strong> Spec 06.</li>
-    <li><strong>Candidate enrollment:</strong> Deal enters Trials pipeline in Requested Trial; enrollment alone is not permission to send.</li>
-    <li><strong>Rule:</strong> Mindbody sends the secure password/claim link; HubSpot only reminds after a trusted <code>parent_claim_pending</code> check. Workflow <code>1820551993</code> remains off until that branch exists and is tested.</li>
+    <li><strong>Enrollment:</strong> Contact is Ridge Hill + <code>kid_trial</code> + <code>parent_claim_pending</code>; re-enrollment is off.</li>
+    <li><strong>Rule:</strong> Mindbody sends the secure password/claim link; HubSpot only reminds after a trusted <code>parent_claim_pending</code> check. New workflow <code>1853127851</code> has that branch and remains off pending tests; old shell <code>1820551993</code> is superseded and off.</li>
   </ul>
 </div>
 <div class="email">

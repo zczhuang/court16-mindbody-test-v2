@@ -18,7 +18,7 @@ export interface DealPipelineConfig {
   pipelineId: string;
   /** Stage IDs we use directly from the app. */
   stages: {
-    /** Where a Deal lands on form submit. */
+    /** Where the app-created Deal lands on a new request. */
     requested: string;
     /** Where staff-confirm / intro-confirm moves a Deal to. */
     scheduled: string;
@@ -94,7 +94,10 @@ export function getDealPipeline(locationId: string): DealPipelineConfig | null {
  * with `INVALID_OPTION`. Map our internal `location.id` slugs to the
  * verbatim dropdown labels.
  *
- * Verified against the live portal 4832170 on 2026-05-12.
+ * Verified against the live portal 4832170 on 2026-05-12, with Allston's
+ * option added from a fresh live-property read on 2026-07-17. A preferred
+ * location may be known before its Deal pipeline is ready; the launch gate
+ * still requires both.
  */
 export const HUBSPOT_PREFERRED_LOCATION_LABEL: Record<string, string> = {
   brooklyn: "Gowanus, Brooklyn",
@@ -103,6 +106,7 @@ export const HUBSPOT_PREFERRED_LOCATION_LABEL: Record<string, string> = {
   ridgehill: "Ridge Hill - Yonkers",
   fishtown: "Fishtown, Philadelphia",
   newton: "Newton - Massachusetts",
+  allston: "Allston - Massachusetts",
 };
 
 export function getHubspotPreferredLocation(locationId: string): string | undefined {

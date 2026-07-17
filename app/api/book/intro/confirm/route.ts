@@ -75,7 +75,7 @@ export async function POST(req: Request) {
         ok: false,
         correlationId,
         error:
-          "HubSpot not configured — cannot resolve booking context. Set HUBSPOT_ACCESS_TOKEN / HUBSPOT_PORTAL_ID / HUBSPOT_TRIAL_FORM_GUID.",
+          "HubSpot not configured — cannot resolve booking context. Set HUBSPOT_ACCESS_TOKEN and HUBSPOT_PORTAL_ID.",
       },
       { status: 503 },
     );

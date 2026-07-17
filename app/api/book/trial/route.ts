@@ -616,6 +616,10 @@ export async function POST(req: Request) {
       status: "pending_staff",
       parentMbId: parent.Id ? String(parent.Id) : undefined,
       childMbId: child.Id ? String(child.Id) : undefined,
+      // This is the only family state the native-email path can establish
+      // automatically. Later states require verified OAuth readback or an
+      // explicit staff check of the original Mindbody client IDs.
+      familyAccountStatus: "parent_claim_pending",
       baseUrl,
     });
     await submitFormSafely(hsCfg, log, fields, trace, "hubspot.submitTrialForm", hsContext);
@@ -671,10 +675,23 @@ interface BuildFieldsArgs {
   status: "pending_staff" | "duplicate_email_softwall" | "pending_payment" | "manual_review";
   parentMbId?: string;
   childMbId?: string;
+  familyAccountStatus?: "parent_claim_pending";
   baseUrl: string;
 }
 function buildFormFields(args: BuildFieldsArgs) {
-  const { correlationId, body, primaryKid, childDob, ageBand, location, status, parentMbId, childMbId, baseUrl } = args;
+  const {
+    correlationId,
+    body,
+    primaryKid,
+    childDob,
+    ageBand,
+    location,
+    status,
+    parentMbId,
+    childMbId,
+    familyAccountStatus,
+    baseUrl,
+  } = args;
   const reportingFields = buildHubspotTrialReportingFields(body);
 
   return {
@@ -715,6 +732,7 @@ function buildFormFields(args: BuildFieldsArgs) {
     court16_waiver_version: WAIVER_VERSION,
     court16_mindbody_parent_id: parentMbId,
     court16_mindbody_child_id: childMbId,
+    court16_family_account_status: familyAccountStatus,
     court16_staff_confirm_url: buildStaffUrl({ action: "confirm", correlationId, baseUrl }),
     court16_staff_reassign_url: buildStaffUrl({ action: "reassign", correlationId, baseUrl }),
     court16_staff_deny_url: buildStaffUrl({ action: "deny", correlationId, baseUrl }),
@@ -723,9 +741,9 @@ function buildFormFields(args: BuildFieldsArgs) {
 
 /**
  * Subset of buildFormFields output that maps to verified HubSpot Contact
- * CRM properties. Used by createDealSafely below to upsert the Contact in
- * parallel with the form submit — gives us a synchronous Contact ID for
- * the Deal association and preserves reporting if the Forms API soft-fails.
+ * CRM properties. Used by createDealSafely below as the primary Contact write;
+ * it gives us a synchronous Contact ID for the Deal association. The optional
+ * legacy form event is a separate compatibility path.
  */
 function contactPropertiesFromFields(fields: ReturnType<typeof buildFormFields>): Record<string, string | undefined> {
   return {
@@ -733,11 +751,10 @@ function contactPropertiesFromFields(fields: ReturnType<typeof buildFormFields>)
     lastname: fields.lastname,
     phone: fields.phone,
     preferred_location: fields.preferred_location,
-    // Child identity must ride the synchronous CRM upsert, not just the
-    // async Forms API submit: the staff-notification workflow enrolls on
-    // the booking-status flip in this same upsert and renders its email
-    // immediately — form-only fields lose that race (verified Jun 11:
-    // notification email showed a blank Child line).
+    // Child identity must ride the synchronous CRM upsert. The staff workflow
+    // enrolls on the booking-status flip in this same write and renders its
+    // email immediately (verified Jun 11 after a form-only race produced a
+    // blank Child line).
     child_name: fields.child_name,
     child_1___last_name: fields.child_1___last_name,
     child_1___playing_level: fields.child_1___playing_level,
@@ -755,6 +772,7 @@ function contactPropertiesFromFields(fields: ReturnType<typeof buildFormFields>)
     court16_waiver_version: fields.court16_waiver_version,
     court16_mindbody_parent_id: fields.court16_mindbody_parent_id,
     court16_mindbody_child_id: fields.court16_mindbody_child_id,
+    court16_family_account_status: fields.court16_family_account_status,
     court16_staff_confirm_url: fields.court16_staff_confirm_url,
     court16_staff_reassign_url: fields.court16_staff_reassign_url,
     court16_staff_deny_url: fields.court16_staff_deny_url,
@@ -860,6 +878,17 @@ async function submitFormSafely(
   if (!hsCfg) {
     log.info("trial.hubspot.skipped", { reason: "HubSpot not configured" });
     trace.push({ step: label, status: "skipped", data: { reason: "HubSpot not configured" } });
+    return;
+  }
+  if (!hsCfg.submitLegacyTrialForm) {
+    log.info("trial.hubspot.legacy-form.skipped", {
+      reason: "HUBSPOT_SUBMIT_LEGACY_TRIAL_FORM is not true",
+    });
+    trace.push({
+      step: label,
+      status: "skipped",
+      data: { reason: "legacy HubSpot form compatibility is disabled" },
+    });
     return;
   }
   try {

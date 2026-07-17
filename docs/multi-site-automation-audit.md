@@ -11,12 +11,12 @@ The copy/paste owner and admin steps are in [the access-authorization handoff](.
 
 Ridge Hill is the only authorized control site. Its Mindbody source-token probe returned `200`, and its known trial configuration is Program `61` plus $0 Service `100328`. The same source-token probe returned `403` (no site access) for the other six clubs. Consumer/API-key read probes on those six clubs also returned `403`, so consumer mode is **not** a safe fallback.
 
-This proves authorization and configuration visibility only; it does not prove a club is ready for families. The reusable 30-day audit on July 17 found Program `61`, Service `100328`, required fields, and family relationships at Ridge Hill, but returned **zero upcoming Program 61 occurrences**. Ridge Hill therefore needs a schedule check before accepting a real request. The parent-claim status gate in HubSpot is also still missing.
+This proves authorization and configuration visibility only; it does not prove a club is ready for families. The reusable 30-day audit on July 17 found Program `61`, Service `100328`, required fields, and family relationships at Ridge Hill, but returned **zero upcoming Program 61 occurrences**. Ridge Hill therefore needs a schedule check before accepting a real request. The live HubSpot family-status dropdown now exists, but a trustworthy Mindbody claim/link completion readback still does not.
 
 Labels used below:
 
-- **Verified** — observed in the live API, live HubSpot change record, or current application configuration.
-- **Recorded** — present in source control, but the external HubSpot asset was not re-opened in this audit.
+- **Verified** — observed in the live Mindbody API, live HubSpot API, or current application configuration.
+- **Recorded** — present in source control but not re-opened from its source system during this audit.
 - **Unknown** — must be obtained from the club or read from Mindbody after access is granted. No ID should be guessed or copied from Ridge Hill.
 
 ## Seven-club readiness matrix
@@ -25,13 +25,13 @@ The live API evidence used source `CedarWindSolutionsLLC`. For the six blocked s
 
 | Club | Mindbody Site ID | Live API authorization | Kids-trial Program / $0 Service | HubSpot Deal routing in code | Readiness |
 |---|---:|---|---|---|---|
-| **Allston** | `5754600` | **Verified blocked:** source `403`; consumer reads `403` | **Unknown / unknown** | **Unknown and not configured:** no verified pipeline, stages, or `preferred_location` enum value | **Blocked** |
+| **Allston** | `5754600` | **Verified blocked:** source `403`; consumer reads `403` | **Unknown / unknown** | **Partial:** live `preferred_location` value is `Allston - Massachusetts`; no verified pipeline or stages | **Blocked** |
 | **Downtown Brooklyn** | `135479` | **Verified blocked:** source `403`; consumer reads `403` | **Unknown / unknown** | **Recorded:** pipeline `default`; `appointmentscheduled` → `qualifiedtobuy` | **Blocked** |
 | **Fishtown** | `5742169` | **Verified blocked:** source `403`; consumer reads `403` | **Unknown / unknown** | **Recorded:** pipeline `1818411`; `6445996` → `1031324174` | **Blocked** |
 | **Long Island City** | `985499` | **Verified blocked:** source `403`; consumer reads `403` | **Unknown / unknown** | **Recorded:** pipeline `1460258`; `5321400` → `11096161` | **Blocked** |
 | **Manhattan–FiDi** | `5728093` | **Verified blocked:** source `403`; consumer reads `403` | **Unknown / unknown** | **Recorded:** pipeline `2477627`; `8517561` → `8517634` | **Blocked** |
 | **Newton** | `5751422` | **Verified blocked:** source `403`; consumer reads `403` | **Unknown / unknown** | **Recorded:** pipeline `873061120`; `1307706690` → `1307706693` | **Blocked** |
-| **Ridge Hill** | `5748154` | **Verified:** source token and all five read probes `200`; zero Program 61 occurrences in the next 30 days | **Verified live:** Program `61`; Service `100328`; required fields and family relationships visible | **Recorded:** pipeline `830977386`; `1231873814` → `1231873816` | **Authorized control; schedule required before live requests** |
+| **Ridge Hill** | `5748154` | **Verified:** source token and all six read probes `200`; zero Program 61 occurrences in the next 30 days | **Verified live:** Program `61`; Service `100328`; required fields and family relationships visible | **Verified live:** pipeline `830977386`; `1231873814` → `1231873816` | **Authorized control; schedule required before live requests** |
 
 Known Site IDs and existing six-site pipeline mappings are configuration facts. Program IDs, Service IDs, required fields, relationship IDs, email settings, and class inventory are **site-specific** and remain unknown wherever the table says unknown.
 
@@ -79,6 +79,32 @@ For a clean new-family test:
 
 If a duplicate is created, stop. Do not merge, deactivate, reassign, or delete production records through an untested automation. Mindbody test writes are real and there is no supported API delete in this implementation; use tagged fixtures and an agreed staff cleanup procedure.
 
+### Published Mindbody automation limit
+
+Mindbody's published Public API exposes client records and business
+`ClientRelationships`, but no password/account-claim flag, consumer-account
+owner/dependent list, or “Manage Family Account” status. A successful
+`sendpasswordresetemail` request proves only that Mindbody accepted the request.
+Likewise, `client.updated` and merge webhooks are reevaluation signals, not
+family-completion proof.
+
+Two supported decision paths follow from that limit:
+
+1. **Native-email path:** write `parent_claim_pending` after both original
+   Client IDs are persisted; staff verifies `parent_claimed`,
+   `child_link_pending`, and `family_complete` in Mindbody.
+2. **OAuth option:** after consumer consent, call Client Complete Info with the
+   `consumer-identity-token` and advance to `parent_claimed` only if the returned
+   Client ID exactly matches the stored parent ID and expected site. This still
+   cannot prove the child is manageable; `family_complete` remains staff-attested.
+
+Never advance from a shared email, email delivery/open/click, account-email
+preference, relationship row, generic profile modification time, password-reset
+success, or merge event alone. See Mindbody's
+[client schema](https://developers.mindbodyonline.com/ui/documentation/public-api#/http/models/structures/client-with-suspension-info),
+[password-reset endpoint](https://developers.mindbodyonline.com/ui/documentation/public-api#/http/api-endpoints/client/send-password-reset-email),
+and [webhook documentation](https://developers.mindbodyonline.com/WebhooksDocumentation).
+
 ### 4. Record only verified per-site values
 
 After the preceding checks pass, add that club's:
@@ -95,19 +121,20 @@ Keep the club disabled until the acceptance suite below passes.
 
 ## HubSpot workflow inventory
 
-The HubSpot connection in this audit could read CRM contacts/deals, but it did not expose Marketing Email or workflow access and needs reauthorization before a definitive live inventory or any live change. The table therefore distinguishes the one verified safe state from source-controlled records.
+The production private-app token was read directly on July 17 and has live CRM schema, Marketing Email, and Automation API access. The optional Codex HubSpot connector still asks for reauthorization for those write surfaces, but that no longer limits this inventory. Portal `4832170` currently contains 137 workflows and 5,519 marketing-email assets; the table below is the filtered kids-trial set.
 
-Reauthorization requires the app to request `crm.objects.contacts.read/write`, `crm.objects.deals.read/write`, `marketing-email`, and `automation`, followed by **Settings → Integrations → Connected Apps → [connector] → Re-authenticate** in HubSpot. The OAuth return must finish; changing scopes alone does not update existing tokens. See the [access handoff](./access-authorization-handoff.md) for the owner/admin split and verification steps.
+The live audit also found the main redundancy: the booking app upserts its Contact and creates its own Deal, then used to submit legacy form `3e966ac4-872e-49ec-9b93-1f114fa6d39b`. That form event enrolls both the old account-creation guide and location Deal-creation workflows. This branch now skips the legacy form by default; `HUBSPOT_SUBMIT_LEGACY_TRIAL_FORM=true` is an explicit compatibility escape hatch and must remain false for the Squarespace cutover.
 
 | Communication / workflow | Asset IDs | Current evidence | Required change before multi-site use |
 |---|---|---|---|
-| Existing form-submission nurture | Existing Phase 1 workflow; ID not recorded here | **Recorded:** Forms API submission still enrolls it | Decide whether this is the sole “request received” message; remove overlapping acknowledgements |
-| Staff new-request notification | No live workflow ID verified | **Specified, live state unknown:** trigger `court16_booking_status=pending_staff` and `court16_intent=kid_trial` | Route by `court16_location_slug` to one accountable club queue/owner and set an SLA |
-| Parent trial confirmation | Workflow `1820575928`; email `212773423758` | **Recorded:** Ridge Hill trigger/config; current on/off and action graph not reverified | Clone or branch by canonical club only after per-site merge data and sender are tested |
-| Parent Mindbody account nudge | Workflow `1820551993`; email `212772629316` | **Verified safe state:** workflow **OFF**. Revised copy is an unpublished draft; the older published revision remains. Email was reported `isTransactional=false` | Add a real family-status gate; review subscription classification; publish approved draft; test suppression before enabling |
-| 24-hour reminder | Workflow `1820562947`; email `212773969554` | **Recorded:** Ridge Hill-only shell; live state/wiring not reverified | Use `Deal.class_date - 24h`, re-check Scheduled status immediately before send, and prevent a duplicate Mindbody reminder |
-| Trial denied | Workflow `1820568681`; emails `213263710007`, `213269367704`, `213269367707`, `213263710012`, `213263710015` | **Recorded:** five-reason fan-out; live branch and publication state not reverified. Legacy `212773969562` should remain unwired | Verify branch labels against the live picklist and route by club; test every reason plus default |
-| Manual-review / failed alert | No live workflow ID verified | **Specified, live state unknown** | Consolidate into one internal workflow with club owner, failure reason, correlation ID, and retry link |
+| Legacy step-by-step Mindbody account creation | Workflow `1735576602`; six published emails `201846047028`, `201818042541`, `201847007517`, `201559543656`, `201818042284`, `210974631011` | **Verified ON:** any completion of the legacy trial form branches by six locations and sends “Welcome! Please Create Your Profile to Book Your Kids Trial.” No Allston branch exists | Preserve for the current legacy form only. Exclude the new API-created-account path before cutover so parents do not receive the obsolete 11-step instructions |
+| Legacy location Deal creation | Brooklyn `67896418`; LIC `177727332`; FiDi `395103245`; Fishtown `1734544004`; Ridge Hill `1734818196`; Newton `1790080829` | **Verified ON:** all six enroll from the same legacy form and create trial Deals, while the booking app already creates a correlated Deal directly | Do not let the new app emit the legacy form event; otherwise duplicate Deal creation remains possible. Do not disable these while the old form is still production intake |
+| Staff new-request notification | Workflow `1835369220` | **Verified OFF** on July 17, revision `5`; pending-staff trigger and one internal-email action retained | Add `court16_intent=kid_trial`, branch recipients by club, verify owners, then test off before any activation |
+| Parent trial confirmation | Workflow `1820575928`; email `212773423758` | **Verified OFF** on July 17, revision `6`; Ridge Hill-only confirmed/status trigger; email is published automated and non-transactional | Review classification and sender; branch by canonical club only after merge data and duplicate-message audit pass |
+| Parent Mindbody account nudge | Trusted workflow `1853127851`; superseded shell `1820551993`; email `212772629316` | **Verified OFF:** new Contact workflow revision `1` enrolls Ridge Hill kids trials only in `parent_claim_pending`, waits 60 minutes, re-checks, and sends only if still pending. Old Deal shell remains off. Email is published automated and non-transactional | Review copy/classification; test every stop branch and completed-family suppression before enabling |
+| 24-hour reminder | Workflow `1820562947`; email `212773969554` | **Verified OFF**, revision `6`; Ridge Hill Scheduled stage, `class_date - 24h`, then the stated email | Re-check status immediately before send and prevent a duplicate Mindbody reminder; branch/clone per verified pipeline |
+| Trial denied | Workflow `1820568681`; four wired emails plus unwired `213263710015` default candidate | **Verified OFF** on July 17, revision `11`; Ridge Hill-only failed/status trigger; four exact failure branches, but no default branch | Add safe default/manual review, verify picklist labels, route by club, and test every reason off |
+| Manual-review / failed alert | No dedicated live workflow verified | **Not built** | Consolidate into one internal workflow with club owner, failure reason, correlation ID, and only supported staff links |
 
 ### Recommended single-owner communication design
 
@@ -132,10 +159,10 @@ The application owns orchestration and IDs, not customer email. HubSpot owns Cou
 4. **Per-site intake can still differ.** The kids-trial route now collects a real household address and separate parent/child Mindbody gender values instead of writing the studio address or a hard-coded value. Ridge Hill's current readback does not require an emergency contact, so the route sends none. Re-probe required fields and the active gender catalog before enabling another club; never add placeholders to satisfy a different site's configuration.
 5. **Unverified relationship mapping.** `-6` Parent/Guardian and `-4` Pays For were observed at Ridge Hill only. They are not global constants for rollout purposes.
 6. **Paid-program dependency.** A child needs the correct $0 Service before `AddClientToClass`; missing/wrong Service IDs can cause `ClassRequiresPayment` or attach the wrong pricing.
-7. **Allston CRM routing is absent.** No verified pipeline/stages or exact `preferred_location` option exists in current configuration. Do not fall back to Brooklyn/default.
+7. **Allston CRM routing is incomplete.** The exact live `preferred_location` value is now `Allston - Massachusetts`, but no verified pipeline or Requested/Scheduled stages exist. Do not fall back to Brooklyn/default.
 8. **Family completion is not automated end to end.** Shared email + Parent/Guardian relationship do not create the consumer family view. The parent claim/Add Member and staff Connect steps still require stateful follow-up.
-9. **HubSpot has no trustworthy claim-status gate.** Opens/clicks do not prove claim, OTP, Add Member, or child link completion. Keep workflow `1820551993` off until a verified state feeds the branch.
-10. **HubSpot live automation access is incomplete.** Reauthorize the connector before treating source-controlled workflow notes as live truth or applying changes.
+9. **HubSpot has a family-status field but no trustworthy completion feed.** The live dropdown and initial pending write exist; opens/clicks still do not prove claim, OTP, Add Member, or child link completion. Keep trusted workflow `1853127851` off until its later-state evidence and suppression tests pass.
+10. **Legacy HubSpot form workflows overlap the new app.** The old account guide and six Deal-creation workflows are ON. They remain necessary for the current form, so isolate the new API path instead of bulk-disabling production automation.
 11. **Production test records are durable.** There is no safe API-delete path; every write test needs unique tags, named owners, and a cleanup list approved by staff.
 12. **Irreversible actions need a distributed lock.** This branch prevents email scanners from mutating on GET and rejects duplicate staff POSTs within one running server instance. A durable cross-instance idempotency key/lock is still required before horizontally scaled production traffic.
 
@@ -158,6 +185,14 @@ The application owns orchestration and IDs, not customer email. HubSpot owns Cou
 - Changed staff confirm/reassign links so GET only renders an explicit confirmation form; only POST mutates. Confirm, reassign, and deny share one same-instance correlation lock to absorb ordinary double clicks and cross-action races while the distributed-lock requirement remains open.
 - Added best-effort IP/email signup throttling. A distributed edge/WAF limit is still required for production-scale abuse protection.
 - Disabled adult payment offers until each displayed price is reconciled to the live Mindbody SKU; payment return now also requires signed state and an exact recent ClientService match.
+- Disabled legacy HubSpot form submission by default for both kids-trial and adult-intro routes. Direct Contact upsert + correlated Deal creation remain the durable intake path; the old form event can be restored only with explicit `HUBSPOT_SUBMIT_LEGACY_TRIAL_FORM=true`.
+
+## Live HubSpot safety changes made on July 17
+
+- Created Contact dropdown `court16_family_account_status` with `parent_claim_pending`, `parent_claimed`, `child_link_pending`, `family_complete`, and `manual_review`.
+- Corrected the live descriptions for the per-occurrence class ID, seven location slugs, 72-hour signed staff URLs, legacy Deal deny URL, and denial-reason routing. No Contact or Deal values were changed.
+- Turned OFF the five pre-existing Cedarwind workflows (`1820551993`, `1820562947`, `1820575928`, `1820568681`, `1835369220`) and created trusted-status workflow `1853127851` OFF. The six legacy form/Deal workflows and global step-by-step workflow were not changed.
+- Verified 14 all-time Contacts with `court16_intent=kid_trial` and 13 Deals carrying a Court 16 correlation ID; they appear to be Ridge Hill test fixtures. No records were deleted or edited.
 
 ## Phased rollout and acceptance tests
 
@@ -165,9 +200,9 @@ The application owns orchestration and IDs, not customer email. HubSpot owns Cou
 
 - Ibtissam approves the single-owner email map, family-account state model, and per-club staff owner.
 - Mindbody grants the six missing site authorizations.
-- HubSpot marketing/workflow access is reauthorized for audit; all changes remain draft/off.
+- HubSpot direct API inventory is complete; all Cedarwind workflows remain off. Reauthorize the optional connector separately only if Ibtissam wants edits through that connected app.
 
-**Exit:** every club has named owners and the five read-only Mindbody preflights return `200`.
+**Exit:** every club has named owners and the six read-only Mindbody preflights return `200`.
 
 ### Phase 1 — configure one club at a time
 
@@ -181,7 +216,7 @@ The application owns orchestration and IDs, not customer email. HubSpot owns Cou
 - Create/verify the club's Deal pipeline and exact enum value.
 - Route staff tasks to one club owner.
 - Branch approved emails using canonical `court16_location_slug` values.
-- Add family states at minimum: `parent_claim_pending`, `parent_claimed`, `child_link_pending`, `family_complete`, `manual_review`.
+- Use the existing family states: `parent_claim_pending`, `parent_claimed`, `child_link_pending`, `family_complete`, `manual_review`.
 - Keep workflows off; test with HubSpot's workflow test function.
 
 **Exit:** each test Deal lands in the correct club pipeline, only the intended owner is notified, and claimed/complete families are suppressed from the claim nudge.
@@ -215,9 +250,9 @@ Use Ridge Hill as the control, then enable one newly authorized club for a small
 3. **Family-state source:** decide who records each state, how it reaches HubSpot, and the SLA for staff to nudge/Connect the child.
 4. **Completion definition:** approve “original child Client ID shows Manage Family Account and appears under the parent's Family” as the only completion signal.
 5. **Required intake data:** collect real required fields in the form or approve a documented staff-completion process; do not silently expand placeholders.
-6. **Allston CRM setup:** provide the exact HubSpot pipeline, Requested/Scheduled stage IDs, `preferred_location` enum value, public launch status, and owning inbox. Unknown values must remain disabled.
+6. **Allston CRM setup:** provide the exact HubSpot pipeline, Requested/Scheduled stage IDs, public launch status, and owning inbox. The live `preferred_location` value is already verified as `Allston - Massachusetts`; unknown routing values must remain disabled.
 7. **Per-club routing:** name the single accountable staff recipient/queue and backup for each location.
 8. **Test-data cleanup:** choose who may merge/deactivate duplicates in Mindbody and how test Client IDs are logged. No automated deletion is assumed.
 9. **Rollout order:** select the first newly authorized pilot club after Ridge Hill and approve the five-family acceptance threshold.
 
-Until those decisions and the per-site tests are complete, the safe production state is: **Ridge Hill control path only; six additional clubs disabled; HubSpot account-nudge workflow off.**
+Until those decisions and the per-site tests are complete, the safe state is: **no Squarespace cutover; Ridge Hill as the authorized test control only; six additional clubs disabled; all Cedarwind workflows off; legacy form workflows unchanged.**

@@ -1,27 +1,25 @@
 # HubSpot Contact Properties — Court 16 Track 1
 
-The Track 1 app submits to the existing Court 16 trial form
-(`3e966ac4-872e-49ec-9b93-1f114fa6d39b`, portal `4832170`) via the Forms
-API v3 Integration endpoint. The form already writes most of what we need
-to the Contact. This doc lists **additional** Contact custom properties we
-need Ibtissam to create so the app can carry its state machine + signed
-staff URLs on each Contact.
+The Track 1 app now upserts the Contact directly and creates its own correlated
+Deal. Legacy form `3e966ac4-872e-49ec-9b93-1f114fa6d39b` remains in portal
+`4832170`, but new-path submission is disabled by default because its event
+fires the obsolete account-creation guide and duplicate Deal workflows. This
+doc lists the Contact fields used by the direct CRM path.
 
-The Forms API accepts any field name that maps to a valid Contact property
-— even fields that don't appear on the form's UI. That means we don't have
-to edit the form itself, only add contact properties.
+The optional legacy compatibility switch is
+`HUBSPOT_SUBMIT_LEGACY_TRIAL_FORM=true`; do not set it for the new booking flow.
 
 ---
 
-## Form fields (already exist — no action needed)
+## Shared Contact fields (already exist — no action needed)
 
-The form writes these to the Contact as part of each submission. Listed
-here for reference so you know what ships "for free":
+The app writes these through its direct Contact upsert. They are also fields on
+the legacy form, but that form event is skipped by default:
 
 | Internal name | Type | Notes |
 |---|---|---|
 | `firstname`, `lastname`, `email`, `phone` | Standard | |
-| `preferred_location` | Dropdown | Existing portal property; verify its options against the seven known club records before rollout |
+| `preferred_location` | Dropdown | Live options verified July 17 for seven clubs, including `Allston - Massachusetts`; pipeline readiness is separate |
 | `child_name` | Single-line | Child 1 first name |
 | `child_1___last_name` | Single-line | Child 1 last name |
 | `childage` | Dropdown | `"2.5 - 3 yo"` … `"15 and older"` |
@@ -33,9 +31,10 @@ here for reference so you know what ships "for free":
 | `any_question_just_let_us_know` | Multi-line | Optional free text |
 | `child_2___*` | Various | Legacy form fields; the current public Track 1 API accepts exactly one child |
 
-If Ibtissam edits any of the dropdown options on the form, update
-`lib/trial-reporting.ts` to match (the app validates submissions against
-these exact vocabularies).
+If Ibtissam edits any matching HubSpot dropdown options, update
+`lib/trial-reporting.ts` to match (the app validates writes against these exact
+vocabularies). Form-specific validation matters only when legacy compatibility
+is explicitly enabled.
 
 ---
 
@@ -67,16 +66,20 @@ That's 16 kids-trial Contact properties written by the current implementation.
 The adult-intro path additionally uses `court16_offer_key`; keep that property
 when auditing the complete shared Contact schema.
 
-### Proposed family-status property — do not automate from inference
+### Live family-status property — do not automate completion from inference
 
-Workflow `1820551993` also needs one trustworthy property before activation:
+Trusted-status workflow `1853127851` uses this property; the superseded
+Deal-based shell `1820551993` remains off:
 
 | Internal name | Label | Type | Options | Safety rule |
 |---|---|---|---|---|
 | `court16_family_account_status` | Court 16 family account status | Dropdown | `parent_claim_pending`, `parent_claimed`, `child_link_pending`, `family_complete`, `manual_review` | Opens, clicks, and email delivery must never advance this field. Update only from a verified Mindbody readback or an explicit staff completion action tied to the original child Client ID. |
 
-The property contract is documented, but the current application does not yet
-have a reliable Mindbody claim/family-state readback. Keep the nudge workflow off.
+The dropdown was created in live portal `4832170` on 2026-07-17. The application
+may write `parent_claim_pending` only after it has verified successful new parent
+and child creation with the inline Parent/Guardian relationship. It still does
+not have a reliable Mindbody claim/family-link completion readback, so it must
+not infer later states. Keep the nudge workflow off.
 
 ### Private App scopes
 
@@ -103,14 +106,15 @@ curl -sS "https://api.hubapi.com/crm/v3/properties/contacts?archived=false" \
 ```
 
 Compare the output with the 16 kids-trial fields above. The adult-intro path
-also needs `court16_offer_key`; the proposed family-status property is separate
-until its source of truth is implemented.
+also needs `court16_offer_key`; the family-status property is separate. Its
+initial `parent_claim_pending` write is implemented, but a trustworthy source
+for later claim/link states is not.
 
 Do not submit a trial merely to check this schema. A controlled integration
 test requires an approved tagged Ridge Hill family, a verified Mindbody target
 and eligible class occurrence, a pre-write log of the original Client IDs, and
 a named cleanup owner. After that approved test, look up the Contact in HubSpot
-and verify the app-written fields alongside the form-written ones.
+and verify the app-written fields on the Contact and correlated Deal.
 
 ---
 
@@ -124,6 +128,6 @@ and verify the app-written fields alongside the form-written ones.
   original child Client ID. Automatic existing-child resolution is not built.
   A later multi-booking design should use an associations-based object rather
   than treating the Contact as the booking ledger.
-- **Form option drift.** If someone edits the form dropdown values, the
-  app's submissions will fail validation on the HubSpot side. Keep
+- **HubSpot option drift.** If someone edits the matching dropdown values, CRM
+  writes or an explicitly re-enabled form submission can fail validation. Keep
   `lib/trial-reporting.ts` constants in lock-step.

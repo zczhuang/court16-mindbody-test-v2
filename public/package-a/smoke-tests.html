@@ -95,25 +95,25 @@
     </tr>
     <tr>
       <td class="layer">HubSpot</td>
-      <td class="item">13 Contact properties (<code>court16_*</code>) + 4 Deal properties (<code>court16_correlation_id</code>, <code>class_date</code>, <code>denial_reason</code>, <code>denial_note</code>) live in <code>court16_booking</code> group</td>
+      <td class="item">Current contract: 16 kids-trial Contact properties + the family-status dropdown, plus 4 Deal properties (<code>court16_correlation_id</code>, <code>class_date</code>, <code>denial_reason</code>, <code>denial_note</code>)</td>
       <td class="owner">Cedarwind</td>
       <td><span class="check done">✓ DONE</span></td>
     </tr>
     <tr>
       <td class="layer">HubSpot</td>
-      <td class="item">Parent Mindbody account nudge asset <code>212772629316</code> has revised draft copy; review and test before publishing. Other email assets retain their existing state.</td>
+      <td class="item">Parent Mindbody account nudge asset <code>212772629316</code> is API-visible as published automated and non-transactional; review its live revision, any UI draft, and classification before enabling a workflow.</td>
       <td class="owner">Ibtissam</td>
       <td><span class="check pending">REVIEW</span></td>
     </tr>
     <tr>
       <td class="layer">HubSpot</td>
-      <td class="item">Parent Mindbody account nudge workflow <code>1820551993</code> is intentionally <code>enabled=false</code> until the parent-claim status gate is tested. Do not bulk-enable all workflows.</td>
+      <td class="item">Trusted nudge workflow <code>1853127851</code> and superseded shell <code>1820551993</code> are both off. Test every status branch before considering the trusted workflow; do not bulk-enable workflows.</td>
       <td class="owner">Ibtissam</td>
       <td><span class="check pending">OFF</span></td>
     </tr>
     <tr>
       <td class="layer">HubSpot</td>
-      <td class="item">reCAPTCHA disabled on the Court 16 Trial form (spec 9) so the form-submit nurture path can run when MindBody is degraded <span style="font-size:11px;color:var(--muted)">(Ibtissam · confirmed off May 15)</span></td>
+      <td class="item">Historical reCAPTCHA check. The new app skips the legacy form by default; do not change reCAPTCHA for the API-created-account rollout.</td>
       <td class="owner">Ibtissam</td>
       <td><span class="check done">✓ DONE</span></td>
     </tr>
@@ -357,7 +357,7 @@
     <h3 class="test-title">Workflow test mode (parent nudge stays off)</h3>
     <span class="test-runner">Ibtissam (verify) · Cedarwind (trigger)</span>
   </div>
-  <p><strong>Historical action — blocked:</strong> do not create a fresh family from this page. Workflow <code>1820551993</code> remains off until a trustworthy family-status source and suppression branch exist.</p>
+  <p><strong>Historical action — blocked:</strong> do not create a fresh family from this page. Superseded workflow <code>1820551993</code> remains off. Trusted workflow <code>1853127851</code> now has a pending-status recheck and remains off until every branch is proven with staff-approved evidence.</p>
   <div class="expect">
     <strong>Expect</strong>
     <ul class="verify-list">

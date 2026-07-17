@@ -45,17 +45,18 @@
   <strong>Current authority</strong>
   Use <a href="./06-password-setup-email.html">spec 06</a> for the account-email decision and
   <a href="./10-family-account-staff-guide.html">spec 10</a> for staff family completion. Do not publish or enable assets in bulk.
-  HubSpot writes require connector reauthorization, and workflow <code>1820551993</code> must remain off until a trustworthy
-  family-status gate suppresses claimed or completed parents.
+  The production private-app API inventory is complete. Trusted nudge workflow <code>1853127851</code> now has the pending-state
+  branch and is off; the superseded shell <code>1820551993</code> and every other Cedarwind workflow are also off. The optional
+  connector still needs reauthorization only for connector-driven writes.
 </section>
 
 <section class="tldr">
   <h2 style="margin-top: 0;">Safe review order</h2>
   <ol style="margin: 0;">
-    <li><strong>Reauthorize first.</strong> Confirm CRM write, Marketing Email, and Workflow access before changing an asset.</li>
-    <li><strong>Open and inventory</strong> the current emails/workflows. Preserve their live action graphs; do not assume this historical sheet is the latest revision.</li>
+    <li><strong>Use the live inventory.</strong> CRM schema, Marketing Email, and Workflow assets were read directly on July 17; use spec 06 for current state.</li>
+    <li><strong>Reauthorize the optional connector</strong> only if edits will be made through that connected app. Preserve the live action graphs.</li>
     <li><strong>Keep drafts and workflows off</strong> while reviewing. Use HubSpot workflow-test mode with an existing staff-approved Ridge Hill fixture; do not create a new family from this sheet. Any later write test also needs an eligible occurrence, verified Mindbody target, original Client-ID log, and named cleanup owner.</li>
-    <li><strong>Never enable the parent Mindbody nudge</strong> until the claim/family-status source and suppression branch are proven.</li>
+    <li><strong>Keep the parent Mindbody nudge off</strong> until workflow <code>1853127851</code> passes pending-send and all stop-branch tests with verified state evidence.</li>
   </ol>
 </section>
 
@@ -76,8 +77,8 @@
     </tr>
     <tr>
       <td>2. Parent Mindbody account nudge</td>
-      <td>[DRAFT · OFF] Parent Mindbody account nudge · 1h after Requested Trial</td>
-      <td>RH Deal → Requested Trial · only while claim is pending</td>
+      <td>Published automated email asset · trusted workflow <code>1853127851</code> OFF</td>
+      <td>RH Contact + <code>kid_trial</code> + <code>parent_claim_pending</code> → wait 1h → re-check pending</td>
     </tr>
     <tr>
       <td>3. 24h reminder</td>
@@ -222,14 +223,14 @@ The Court 16 team&lt;/p&gt;
 
 &lt;p&gt;&lt;small&gt;Reference: {{ contact.court16_correlation_id }}&lt;/small&gt;&lt;/p&gt;</div>
 
-<div class="info"><strong>Merge tokens used</strong>{{ contact.firstname }}, {{ contact.child_name }}, {{ contact.preferred_location }}, {{ contact.court16_correlation_id }}. All four exist on the Contact (firstname is standard; child_name + preferred_location come from the form; correlation_id is set by the booking app).</div>
+<div class="info"><strong>Merge tokens used</strong>{{ contact.firstname }}, {{ contact.child_name }}, {{ contact.preferred_location }}, {{ contact.court16_correlation_id }}. All four exist on the Contact; the booking app now writes them through the direct CRM upsert.</div>
 
 <hr style="margin: 36px 0; border: 0; border-top: 1px dashed var(--border);" />
 
 <h3>📧 Email 2 · Parent Mindbody account nudge</h3>
-<p><span class="field-name">HubSpot asset id 212772629316</span> · <span class="field-name">Draft: [DRAFT] Parent Mindbody account nudge — review before activation</span></p>
+<p><span class="field-name">HubSpot asset id 212772629316</span> · <span class="field-name">API-visible as published automated · workflow OFF · review before activation</span></p>
 
-<div class="info"><strong>Updated after the live family-account test</strong>Mindbody owns the secure password/claim link. This HubSpot email only tells the parent to use the separate Mindbody email. The revised copy is staged in HubSpot's draft buffer; the workflow is off. <a href="./06-password-setup-email.html">Open the short visual handoff →</a></div>
+<div class="info"><strong>Updated after the live family-account test</strong>Mindbody owns the secure password/claim link. This HubSpot email only tells the parent to use the separate Mindbody email. The API-visible asset is published automated and non-transactional; confirm any separate UI draft. Its workflow is off. <a href="./06-password-setup-email.html">Open the short visual handoff →</a></div>
 
 <div class="copy-label">Subject</div>
 <div class="copy-block">Finish setting up your Court 16 / Mindbody account</div>
@@ -379,7 +380,7 @@ The Court 16 team&lt;/p&gt;
 
 <h2>Part 2 · Historical workflow assembly reference</h2>
 
-<div class="gotcha"><strong>Keep workflows off while using this section.</strong> The steps document the May scaffold, not current authorization or launch approval. Workflow <code>1820551993</code> specifically stays off until its trusted family-status branch is proven.</div>
+<div class="gotcha"><strong>Keep workflows off while using this section.</strong> The steps document the May scaffold, not current authorization or launch approval. Deal shell <code>1820551993</code> is now superseded and stays off; use trusted-status workflow <code>1853127851</code> for off-state testing.</div>
 
 <p>For each workflow below, navigate in HubSpot:</p>
 <ul>
@@ -414,7 +415,7 @@ The Court 16 team&lt;/p&gt;
 <hr style="margin: 30px 0; border: 0; border-top: 1px dashed var(--border);" />
 
 <h3>⚙️ Workflow 2 · Parent Mindbody account nudge</h3>
-<p><span class="field-name">HubSpot id 1820551993</span> · <strong>Currently OFF, revision 6.</strong> Triggers when a Deal enters Ridge Hill's <strong>Requested Trial</strong> stage.</p>
+<p><span class="field-name">Superseded HubSpot id 1820551993</span> · <strong>Currently OFF, revision 6.</strong> This historical Deal-based shell has no trusted family-status branch; do not activate it. The current off-state replacement is <code>1853127851</code>.</p>
 
 <div class="step">
   <div class="step-head"><span class="step-num">1</span><h3 class="step-title">Review what is already built</h3></div>
@@ -422,13 +423,13 @@ The Court 16 team&lt;/p&gt;
 </div>
 
 <div class="step">
-  <div class="step-head"><span class="step-num">2</span><h3 class="step-title">Add the claim-status decision</h3></div>
-  Before the send, add an If/then branch: <code>parent_claim_pending</code> → send the nudge; <code>parent_claimed</code> or later → end. If the status is still unknown after 24 hours, create a staff task.
+  <div class="step-head"><span class="step-num">2</span><h3 class="step-title">Archived proposal · do not add this to the old shell</h3></div>
+  Replacement workflow <code>1853127851</code> already re-checks the trusted status and sends only while it is still <code>parent_claim_pending</code>; every other or unknown state stops. A separate stale-pending staff task is recommended but not built. Keep the old Deal shell unchanged and off.
 </div>
 
 <div class="step">
   <div class="step-head"><span class="step-num">3</span><h3 class="step-title">Keep off through review</h3></div>
-  Review the email draft without publishing. Use HubSpot workflow-test mode with an existing staff-approved Ridge Hill fixture; do not create a new family from this archived sheet. Keep the workflow off until the trusted status gate suppresses an already-claimed parent and the full controlled-write prerequisites are approved.
+  Review the current published revision, any separate UI draft, and its subscription classification. Use HubSpot workflow-test mode with an existing staff-approved Ridge Hill fixture; do not create a new family from this archived sheet. Keep the workflow off until the trusted status gate suppresses an already-claimed parent and the full controlled-write prerequisites are approved.
 </div>
 
 <hr style="margin: 30px 0; border: 0; border-top: 1px dashed var(--border);" />
@@ -485,12 +486,12 @@ The Court 16 team&lt;/p&gt;
 
 <div class="step">
   <div class="step-head"><span class="step-num">B</span><h3 class="step-title">Walk one trial through end-to-end</h3></div>
-  Do not run the <a href="./test-walkthrough.html">archived test walkthrough</a>. A current controlled acceptance requires the multi-site audit gates, a staff-approved tagged Ridge Hill family, verified Mindbody target and eligible occurrence, original Client-ID log, and named cleanup owner. Exercise the account nudge only through HubSpot's workflow-test function while workflow <code>1820551993</code> remains off; verify a claimed family exits without a send.
+  Do not run the <a href="./test-walkthrough.html">archived test walkthrough</a>. A current controlled acceptance requires the multi-site audit gates, a staff-approved tagged Ridge Hill family, verified Mindbody target and eligible occurrence, original Client-ID log, and named cleanup owner. Exercise trusted workflow <code>1853127851</code> only through HubSpot's workflow-test function while it remains off; verify a claimed family exits without a send.
 </div>
 
 <div class="step">
   <div class="step-head"><span class="step-num">C</span><h3 class="step-title">Audit form submission + spam protection</h3></div>
-  Do not toggle reCAPTCHA from the archived spec 09 instructions. First verify the current Forms v3 Integration behavior, embedded website forms, existing nurture enrollment, and spam-control owner; change the live form only through a separately approved test.
+  Do not toggle reCAPTCHA from the archived spec 09 instructions. The new app now skips the legacy form event by default so the old 11-step account guide and Deal workflows do not also fire. Keep <code>HUBSPOT_SUBMIT_LEGACY_TRIAL_FORM=false</code>; change the live embedded form only through a separately approved test.
 </div>
 
 <hr class="section" />
@@ -498,7 +499,7 @@ The Court 16 team&lt;/p&gt;
 <h2>Known gaps (Track 2 follow-ups)</h2>
 <ul>
   <li><strong>Class day/time/coach merge tokens in email bodies</strong>: the app already writes <code>court16_class_name</code>, <code>court16_class_day_time</code>, and <code>court16_coach_name</code> to the Contact, plus <code>class_date</code> on the Deal. Update and test the email personalization; no new app field is required.</li>
-  <li><strong>Parent-claim status readback</strong>: Workflow 2 stays off until HubSpot can distinguish <code>parent_claim_pending</code> from <code>parent_claimed</code>. Mindbody owns the secure link; there is no Court 16 CTA to localize.</li>
+  <li><strong>Parent-claim status readback</strong>: the live dropdown, the app's initial <code>parent_claim_pending</code> write, and trusted off-state workflow <code>1853127851</code> now exist. The native email path still has no published Mindbody API claim/family-completion flag. Later states require exact-parent OAuth verification or explicit staff evidence.</li>
   <li><strong>Deny does not cancel a confirmed Mindbody visit</strong>: the normal review flow denies before enrollment. For a confirmed Contact, <code>/api/staff/deny</code> returns HTTP 410 without changing denial state and directs staff to the approved Mindbody-admin cancellation process.</li>
   <li><strong>Reason picklist drift</strong>: if you change Cedarwind's deny picklist labels (the human-readable ones — "Wrong age band", "No availability", etc.), the workflow branch CONTAINS strings in workflow 1820568681 need a matching update. Worth keeping labels stable.</li>
 </ul>

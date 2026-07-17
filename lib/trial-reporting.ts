@@ -32,9 +32,9 @@ export interface HubspotTrialReportingFields {
 }
 
 /**
- * One canonical mapping for both the public Forms submission and the
- * synchronous Contact upsert. Keeping them identical means a Forms API
- * soft-failure cannot silently drop the staff-facing reporting values.
+ * One canonical mapping for the primary synchronous Contact upsert and the
+ * optional legacy Forms submission. Keeping them identical preserves the
+ * staff-facing reporting contract if compatibility is deliberately enabled.
  */
 export function buildHubspotTrialReportingFields(
   details: TrialReportingDetails,

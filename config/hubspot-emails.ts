@@ -3,12 +3,10 @@
  * workflows (Package A specs 6 + 7) and the staff-confirm denial
  * email (spec 5).
  *
- * These templates began as drafts on 2026-05-12. Their current live/draft
- * state must be checked in HubSpot rather than inferred from the asset name.
- * In particular, asset 212772629316 has an old published revision plus an
- * unpublished 2026-07-17 draft buffer. Workflow 1820551993 is disabled while
- * Ibtissam reviews that draft. The IDs themselves are stable — editing copy
- * in HubSpot doesn't change the ID.
+ * These templates began as drafts on 2026-05-12. A live API read on
+ * 2026-07-17 reports every asset below as published AUTOMATED email and
+ * `isTransactional=false`; confirm any separate UI draft before approving
+ * copy. Every Cedarwind workflow remains off. The IDs themselves are stable.
  *
  * If a template gets archived or replaced, capture the new ID here.
  */
@@ -30,9 +28,8 @@ export const TRIAL_EMAIL_TEMPLATE_IDS = {
   /** Sent to parents after staff-confirm or intro-confirm advances Deal to "Scheduled Trial". */
   confirmation: "212773423758",
   /**
-   * Draft reminder sent 1h after Requested Trial. Mindbody—not HubSpot—owns
-   * the actual password/claim link. Keep workflow 1820551993 disabled until
-   * a parent-claim status gate is implemented and tested.
+   * Reminder sent only by the trusted-status workflow, which remains off. Mindbody—not
+   * HubSpot—owns the actual password/claim link.
    */
   passwordSetup: "212772629316",
   /** Sent 24h before the scheduled class. */
@@ -57,8 +54,8 @@ export const TRIAL_EMAIL_TEMPLATE_IDS = {
  *
  * Each asset was cloned from 212773969562 on May 20 via the
  * `POST /marketing/v3/emails/clone` endpoint and customized with a
- * per-reason paragraph body. State: AUTOMATED_DRAFT, isPublished: false
- * until Ibtissam publishes from the HubSpot UI.
+ * per-reason paragraph body. The July 17 live read reports all five as
+ * published automated, non-transactional assets; the workflow is off.
  *
  * Owner: Ibtissam (HubSpot UI). She can edit each per-reason body
  * independently in the HubSpot email editor.
@@ -82,16 +79,19 @@ export type TrialEmailTemplateKey = keyof typeof TRIAL_EMAIL_TEMPLATE_IDS;
 
 /**
  * Pre-built HubSpot workflows. State is external and must be verified in
- * HubSpot before any activation. As of 2026-07-17, workflow 1820551993 is
- * revision 6, Ridge Hill only, and disabled; its action graph is already
- * Delay 60 minutes → Send email 212772629316.
+ * HubSpot before any activation. All IDs below were verified OFF on
+ * 2026-07-17.
  */
 export const PACKAGE_A_WORKFLOW_SHELLS = {
   /**
-   * Spec 6 — parent Mindbody account nudge. Keep OFF until the email draft is
-   * reviewed and the workflow can suppress parents who already claimed.
+   * Contact-based trusted-status workflow: Ridge Hill kids trial +
+   * parent_claim_pending → wait 60 minutes → re-check pending → send.
    */
-  passwordSetup: "1820551993",
+  passwordSetup: "1853127851",
+  /** Superseded Deal-based shell without a family-status branch. Keep OFF. */
+  passwordSetupLegacy: "1820551993",
+  /** Staff notification shell; current live trigger still needs intent + club routing. */
+  staffNotification: "1835369220",
   /**
    * Spec 7 — fires when Deal enters Scheduled Trial. Ibtissam adds:
    * (1) Date-based delay (class_date - 24h), (2) Send email = reminder24h asset.

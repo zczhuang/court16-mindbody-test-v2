@@ -174,14 +174,14 @@
 <hr style="margin: 40px 0; border: 0; border-top: 1px solid var(--border);" />
 
 <h2>Historical Test 5 · Workflow-test outline</h2>
-<p>Workflow <code>1820551993</code> must remain off. Do not run this outline until HubSpot is reauthorized and a trustworthy Mindbody/staff-verified family-status gate exists. See <a href="./06-password-setup-email.html">the current visual handoff</a>.</p>
+<p>HubSpot API access is working. Superseded workflow <code>1820551993</code> must remain off. Trusted workflow <code>1853127851</code> now has the pending-status recheck and also remains off until every stop branch is proven with Mindbody/staff-verified evidence. See <a href="./06-password-setup-email.html">the current visual handoff</a>.</p>
 
 <div class="step">
-  <div class="step-head"><span class="step-num">5.1</span><h3 class="step-title">Verify the workflow shells exist</h3></div>
+  <div class="step-head"><span class="step-num">5.1</span><h3 class="step-title">Verify both workflows remain off</h3></div>
   <ol>
     <li>HubSpot → <strong>Automation → Workflows</strong></li>
-    <li>Search "Parent Mindbody account nudge" — workflow <code>1820551993</code> should show <strong>Off</strong></li>
-    <li>Open it and confirm the trigger is Ridge Hill Requested Trial, with re-enrollment off</li>
+    <li>Workflow <code>1853127851</code> should show <strong>Off</strong>; it is Contact-based, Ridge Hill-only, and starts from <code>parent_claim_pending</code></li>
+    <li>Workflow <code>1820551993</code> should also show <strong>Off</strong>; it is the superseded Deal-based shell</li>
   </ol>
 </div>
 
@@ -192,7 +192,7 @@
     <li>Confirm <strong>Delay</strong> is 1 hour</li>
     <li>Confirm <strong>Send automated email</strong> references asset <code>212772629316</code></li>
     <li>Review the revised email draft: it points to the separate Mindbody email and contains no password button</li>
-    <li>Keep the workflow off until the parent-claim status gate is added</li>
+    <li>Treat this old shell as superseded; the gated replacement is workflow <code>1853127851</code></li>
   </ol>
   <p>It also proposed this outline for <strong>24h reminder</strong> (workflow id <code>1820562947</code>):</p>
   <ol>
@@ -231,7 +231,7 @@ in the current multi-site audit.</p>
 <ul>
   <li><strong>HubSpot 400 INVALID_OPTION on <code>preferred_location</code></strong> — means our location-to-dropdown map drifted (rare, fixed in 2026-05-12)</li>
   <li><strong>MindBody <code>usertoken/issue</code> 500</strong> — historical observation only; do not treat a failed token or consumer fallback as safe authorization</li>
-  <li><strong>HubSpot form-submit 400 <code>FORM_HAS_RECAPTCHA_ENABLED</code></strong> — the reCAPTCHA toggle in spec 9 still needs flipping. Deal creation still works (different API path).</li>
+  <li><strong>HubSpot form-submit 400 <code>FORM_HAS_RECAPTCHA_ENABLED</code></strong> — historical only. The new API path skips the legacy form by default; do not toggle reCAPTCHA as part of this rollout.</li>
 </ul>
 
 <footer>

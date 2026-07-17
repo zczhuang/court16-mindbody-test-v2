@@ -84,8 +84,8 @@ async function main(): Promise<void> {
 
     const hasPipeline = Boolean(pipelines[location.id]);
     const hasPreferredLocation = Boolean(preferredLocations[location.id]?.trim());
-    if (hasPipeline !== hasPreferredLocation) {
-      errors.push(`${location.id}: HubSpot pipeline and preferred_location must be configured together`);
+    if (hasPipeline && !hasPreferredLocation) {
+      errors.push(`${location.id}: HubSpot pipeline requires a preferred_location mapping`);
     }
 
     const readiness = getReadiness({

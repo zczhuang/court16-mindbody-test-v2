@@ -1,9 +1,9 @@
 // HubSpot client. Two responsibilities in Track 1:
 //
-//   1. SUBMIT the existing Court 16 trial form via Forms API v3 Integration
-//      endpoint. The form is the authoritative entry point Ibtissam already
-//      wired up — nurture sequences and lead routing attach to it. We reuse
-//      it instead of rebuilding with a custom object.
+//   1. OPTIONALLY submit the legacy Court 16 trial form via Forms API v3.
+//      The new booking path must leave this disabled because that form event
+//      enrolls old account-creation and Deal-creation workflows in addition
+//      to the app's own CRM upsert + Deal write.
 //
 //   2. Update + look up Contacts via the CRM v3 API for the staff
 //      confirm/reassign flow (flipping `court16_booking_status` on the
@@ -27,26 +27,33 @@ export interface HubspotConfig {
   apiBaseUrl: string;
   /** Forms submission host. Default https://api.hsforms.com */
   formsBaseUrl: string;
+  /** Explicit compatibility switch for the old form-triggered workflows. */
+  submitLegacyTrialForm: boolean;
 }
 
 export function loadHubspotConfig(): HubspotConfig | null {
   const token = process.env.HUBSPOT_ACCESS_TOKEN;
   const portal = process.env.HUBSPOT_PORTAL_ID;
   const form = process.env.HUBSPOT_TRIAL_FORM_GUID;
-  if (!portal || !form) {
+  const submitLegacyTrialForm = process.env.HUBSPOT_SUBMIT_LEGACY_TRIAL_FORM === "true";
+  if (!portal || (submitLegacyTrialForm && !form)) {
     if (process.env.HUBSPOT_REQUIRED === "true") {
       throw new Error(
-        "HubSpot required but HUBSPOT_PORTAL_ID / HUBSPOT_TRIAL_FORM_GUID not set",
+        "HubSpot required but HUBSPOT_PORTAL_ID or the enabled legacy form GUID is not set",
       );
     }
     return null;
   }
+  if (process.env.HUBSPOT_REQUIRED === "true" && !token) {
+    throw new Error("HubSpot required but HUBSPOT_ACCESS_TOKEN is not set");
+  }
   return {
     accessToken: token,
     portalId: portal,
-    trialFormGuid: form,
+    trialFormGuid: form ?? "",
     apiBaseUrl: process.env.HUBSPOT_API_BASE_URL ?? "https://api.hubapi.com",
     formsBaseUrl: process.env.HUBSPOT_FORMS_BASE_URL ?? "https://api.hsforms.com",
+    submitLegacyTrialForm,
   };
 }
 
@@ -57,7 +64,7 @@ export function loadHubspotConfig(): HubspotConfig | null {
 function requireAccessToken(cfg: HubspotConfig): string {
   if (!cfg.accessToken) {
     throw new Error(
-      "HUBSPOT_ACCESS_TOKEN not set — CRM reads/writes unavailable; form submit only",
+      "HUBSPOT_ACCESS_TOKEN not set — CRM reads/writes unavailable; only explicitly enabled legacy form submission can run",
     );
   }
   return cfg.accessToken;
@@ -145,9 +152,8 @@ export interface TrialFormFields {
   referrer?: string;
   any_question_just_let_us_know?: string;
 
-  // Our Track 1 state-machine properties (set up by Ibtissam as Contact
-  // custom properties per docs/hubspot-properties.md; the Forms API
-  // accepts any contact property name even when not on the form UI).
+  // Our Track 1 state-machine properties. The direct Contact upsert is the
+  // primary writer; the optional legacy Forms API accepts these names too.
   court16_correlation_id?: string;
   court16_intent?: "kid_trial" | "adult_intro";
   court16_booking_status?:
@@ -176,6 +182,12 @@ export interface TrialFormFields {
   court16_offer_key?: string;
   court16_mindbody_parent_id?: string;
   court16_mindbody_child_id?: string;
+  court16_family_account_status?:
+    | "parent_claim_pending"
+    | "parent_claimed"
+    | "child_link_pending"
+    | "family_complete"
+    | "manual_review";
   court16_staff_confirm_url?: string;
   court16_staff_reassign_url?: string;
   court16_staff_deny_url?: string;
@@ -314,12 +326,11 @@ export async function updateContact(
  * Idempotent Contact upsert keyed on email. Returns the Contact ID
  * whether the row was newly created or already existed.
  *
- * Sits alongside the public Forms v3 submit path (which fires
- * Ibtissam's nurtures) and serves a second purpose: get a Contact ID
- * back synchronously so we can associate the Deal with the right
- * Contact, AND keep the court16_* property values in sync even when
- * the form endpoint is reCAPTCHA-blocked (which still happens until
- * Ibtissam toggles it off).
+ * This is the primary intake path: it gets a Contact ID synchronously so we
+ * can associate the Deal with the right Contact and keep the court16_*
+ * property values in sync. The separate legacy Forms v3 event is disabled by
+ * default because it also enrolls obsolete account-creation and duplicate
+ * Deal workflows.
  */
 export async function upsertContactByEmail(
   cfg: HubspotConfig,

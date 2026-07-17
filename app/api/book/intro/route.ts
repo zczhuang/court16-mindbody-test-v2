@@ -595,9 +595,8 @@ function buildFormFields(args: BuildFieldsArgs) {
     // Court 16's HubSpot dropdown has portal-baked option strings — must
     // match exactly. Fall back to fullName if the location isn't mapped.
     preferred_location: getHubspotPreferredLocation(location.id) ?? location.fullName,
-    // Reuse the kids form shape for adults. Child fields stay populated so
-    // the form submit validates; staff filters on court16_intent to split
-    // flows in HubSpot workflows.
+    // Reuse the shared Contact schema for adults so current reporting and the
+    // optional legacy form remain compatible. Workflows split on intent.
     child_name: body.adult.firstName,
     child_1___last_name: body.adult.lastName,
     childage: "15 and older",
@@ -642,6 +641,17 @@ async function submitFormSafely(
   if (!hsCfg) {
     log.info("intro.hubspot.skipped", { reason: "HubSpot not configured" });
     trace.push({ step: label, status: "skipped", data: { reason: "HubSpot not configured" } });
+    return;
+  }
+  if (!hsCfg.submitLegacyTrialForm) {
+    log.info("intro.hubspot.legacy-form.skipped", {
+      reason: "HUBSPOT_SUBMIT_LEGACY_TRIAL_FORM is not true",
+    });
+    trace.push({
+      step: label,
+      status: "skipped",
+      data: { reason: "legacy HubSpot form compatibility is disabled" },
+    });
     return;
   }
   try {

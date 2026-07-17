@@ -11,8 +11,8 @@
 | System | Access that works | Access that is missing | Effect |
 |---|---|---|---|
 | Mindbody — Ridge Hill `5748154` | Staff/source token and the read-only configuration probes return `200` | No upcoming Program `61` trial occurrences were found in the 30-day window | The integration is authorized, but Ridge Hill still needs its trial schedule checked before a live request |
-| Mindbody — six rollout sites | None of the site-specific reads; staff/source and consumer probes return `403` | Owner approval for each Site ID | The six clubs remain disabled; Cedarwind cannot discover or safely configure their Program, Service, relationship, or class IDs |
-| HubSpot portal `4832170` | CRM Contact and Deal reads | CRM writes, Marketing Email, and Workflows report `REQUIRES_REAUTHORIZATION` | No email/workflow changes will be applied, published, or enabled until an admin reauthorizes the connector |
+| Mindbody — six rollout sites | Site-specific activation links were generated on July 17, 2026; source and configuration reads still return `403` | Each site's owner must open its private link and approve Cedarwind | The six clubs remain disabled; Cedarwind cannot discover or safely configure their Program, Service, relationship, or class IDs until approval |
+| HubSpot portal `4832170` | CRM Contact/Deal read-write, Marketing Email, properties, and Workflows | No access blocker | The trusted family-status property and a new nudge workflow were saved; every Cedarwind workflow remains off |
 
 ## Action 1 — authorize the six Mindbody sites
 
@@ -31,9 +31,9 @@ Repeat these steps for every row:
 
 ### Cedarwind
 
-1. In the Mindbody Developer Portal, open **Account → Site activation**.
-2. Enter one Site ID and generate its activation link/code.
-3. Send the **activation link** to the owner/admin for that exact club. The link is preferred because the owner signs in directly; never send login credentials.
+1. Open the private, git-ignored activation handoff at `.private/mindbody-site-activation-links-2026-07-17.md`.
+2. Send only the matching **activation link** to the owner/admin for that exact club through an approved secure channel. The link is preferred because the owner signs in directly; never send login credentials.
+3. Do not paste the activation links or codes into GitHub, public handoff pages, HubSpot records, or ordinary group email.
 
 ### Court 16 owner/admin
 
@@ -69,39 +69,19 @@ This is a **read-only preflight**, not launch approval. Each club still needs it
 
 For live booking, the staff identity also needs the permissions used by the chosen flow. In particular, staff-authenticated unpaid enrollment needs **Make Unpaid Reservation**. If the parent is passed as `PayerClientId`, the site must have the correct **Pays for** relationship before checkout.
 
-## Action 2 — reauthorize the HubSpot connector
+## HubSpot access — resolved; review remains
 
-The app provider must first request the required scopes. An admin cannot grant permissions the app does not ask for.
+The production private-app token now has the access required for this implementation. On July 17, 2026, Cedarwind verified Contact and Deal read-write access, inspected Marketing Email assets, updated the family-status property description, turned the three previously active Cedarwind workflows off, and saved a new family-status-gated nudge workflow as off.
 
-Minimum scopes for the current implementation and draft review:
+Current review state:
 
-- `crm.objects.contacts.read`
-- `crm.objects.contacts.write`
-- `crm.objects.deals.read`
-- `crm.objects.deals.write`
-- `marketing-email`
-- `automation`
+- new off workflow `1853127851` waits 60 minutes, re-checks `court16_family_account_status`, and sends only when the value is still `parent_claim_pending`;
+- legacy Deal shell `1820551993` remains off and unchanged;
+- confirmation `1820575928`, denial `1820568681`, reminder `1820562947`, and staff notification `1835369220` are off;
+- the older global form-triggered workflow `1735576602` is still live in the portal, so the application now skips that legacy form submission by default; and
+- no contact/deal record values were changed during the access verification.
 
-### HubSpot Super Admin
-
-1. Open **Settings → Integrations → Connected Apps**.
-2. Select the Cedarwind/Codex connector used for this project.
-3. Under **App access and permissions → Available after Re-authentication**, choose **Re-authenticate**.
-4. Approve with a Super Admin, or a user who has App Marketplace Access plus every requested permission.
-5. Complete the OAuth return to the connector. Changing the app's settings without completing this flow does not update the existing tokens.
-
-If the connection is a static-token app rather than OAuth, use its **Reinstall URL** after the requested scopes are updated.
-
-### Cedarwind verifies, without publishing
-
-1. Confirm the connector reports Contact/Deal read and write, Marketing Email, and Workflow access.
-2. Perform one CRM read and one reversible draft/non-destructive write.
-3. Re-open the draft email and workflow inventory; do not publish an email or turn on a workflow.
-4. Keep the parent account-nudge workflow off until it has a trustworthy family-status suppression gate.
-
-### HubSpot success check
-
-The handoff is complete when Cedarwind can read the current assets and save a draft/off change, while the live workflows remain unchanged. Workflow access requires the applicable HubSpot Professional or Enterprise subscription. Workflow updates are full replacements, so the current action graph must be read and preserved before any update.
+Ibtissam should review the email copy, timing, status contract, and recipient ownership before anyone turns on a Cedarwind workflow. Workflow updates are full replacements, so the current action graph must be read and preserved before any later edit.
 
 ## What Ibtissam receives after access
 
