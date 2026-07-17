@@ -426,6 +426,7 @@ function TrialInner() {
           kids={DEFAULT_KIDS}
           locationId={location.id}
           locationName={location.fullName}
+          genderOptions={TRIAL_CONFIG[location.id]?.mindbodyGenderOptions ?? []}
           onSubmit={handleTrialSubmit}
           onCancel={() => {
             setShowFormModal(false);

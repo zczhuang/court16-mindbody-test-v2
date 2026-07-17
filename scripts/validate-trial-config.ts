@@ -16,6 +16,7 @@ type TrialConfig = {
   maxTrialsPerClass: number;
   trialServiceId?: number;
   trialServiceName?: string;
+  mindbodyGenderOptions?: readonly string[];
   parentGuardianRelationship?: {
     Id: number;
     RelationshipName1: string;

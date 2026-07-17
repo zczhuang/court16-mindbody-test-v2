@@ -1,3 +1,6 @@
+import type { MindbodyProfileDetails } from "./trial-intake";
+import type { TrialReportingDetails } from "./trial-reporting";
+
 /** MindBody class object — subset of fields we use from the API response */
 export interface MindBodyClass {
   ClassScheduleId: number;
@@ -66,10 +69,10 @@ export interface TrialClass {
 export interface ChildInfo {
   firstName: string;
   /** Required by the API (Ibtissam review Jun 11): real MindBody profile needs it. */
-  lastName?: string;
+  lastName: string;
   age: number;
   /** ISO "YYYY-MM-DD". Required by the API; age is derived server-side. */
-  birthDate?: string;
+  birthDate: string;
 }
 
 /** Parent-facing outcome returned by POST /api/book/trial. */
@@ -79,7 +82,7 @@ export type TrialSubmissionStatus =
   | "duplicate_email_softwall";
 
 /** Trial request form submission */
-export interface TrialRequest {
+export interface TrialRequest extends MindbodyProfileDetails, TrialReportingDetails {
   parentFirstName: string;
   /** Required — needed for MindBody client record + downstream comms. */
   parentLastName: string;

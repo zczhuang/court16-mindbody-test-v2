@@ -48,8 +48,9 @@ Do not continue until these tests pass for that Site ID:
 1. `POST /usertoken/issue` for the source-staff identity returns `200`.
 2. Read `GET /client/requiredclientfields`; save the actual required-field list.
 3. Read `GET /site/relationships`; save the site's exact Parent/Guardian and, if used, Pays For descriptors and IDs.
-4. Read `GET /class/classes` for the launch window; confirm the source can see the intended trial occurrences.
-5. Read `GET /sale/services`; identify the intended $0 kids-trial Service.
+4. Read `GET /site/genders`; save the active values configured by that club. Configure the form from that per-site list, then include every offered value in the controlled launch-write matrix; the read-only audit does not prove `AddClient` acceptance by itself.
+5. Read `GET /class/classes` for the launch window; confirm the source can see the intended trial occurrences.
+6. Read `GET /sale/services`; identify the intended $0 kids-trial Service.
 
 A consumer-mode `403` does not justify bypassing source authorization. Do not attempt live writes while any preflight read is blocked.
 
@@ -128,7 +129,7 @@ The application owns orchestration and IDs, not customer email. HubSpot owns Cou
 1. **Six sites are unauthorized.** Source and consumer read paths both return `403`; retrying consumer mode cannot make them launch-ready.
 2. **Unknown per-site IDs.** Program, Service, relationship, required-field, and class inventory values are unknown outside Ridge Hill. Hard-coding Ridge Hill IDs across sites would corrupt relationships or fail checkout/enrollment.
 3. **Unsafe calendar fallback was present and is now blocked in this branch.** Previously, a site without `kidTrialProgramId` fell back to a broad “children” filter that could expose regular classes. The current branch adds an explicit `trialBookingEnabled` gate and requires both Program and Service IDs before either calendar retrieval or client creation. Keep every non-verified club disabled.
-4. **Unsafe intake placeholders.** The current route can use the studio address, a hard-coded gender, and placeholder emergency-contact data to satisfy Ridge Hill required fields. Do not expand that behavior until each site's requirements are known; collect required customer data or obtain an approved staff-completion policy.
+4. **Per-site intake can still differ.** The kids-trial route now collects a real household address and separate parent/child Mindbody gender values instead of writing the studio address or a hard-coded value. Ridge Hill's current readback does not require an emergency contact, so the route sends none. Re-probe required fields and the active gender catalog before enabling another club; never add placeholders to satisfy a different site's configuration.
 5. **Unverified relationship mapping.** `-6` Parent/Guardian and `-4` Pays For were observed at Ridge Hill only. They are not global constants for rollout purposes.
 6. **Paid-program dependency.** A child needs the correct $0 Service before `AddClientToClass`; missing/wrong Service IDs can cause `ClassRequiresPayment` or attach the wrong pricing.
 7. **Allston CRM routing is absent.** No verified pipeline/stages or exact `preferred_location` option exists in current configuration. Do not fall back to Brooklyn/default.
@@ -141,6 +142,9 @@ The application owns orchestration and IDs, not customer email. HubSpot owns Cou
 ## Safety changes implemented in this branch
 
 - Added all seven Site IDs to the shared location registry, with only Ridge Hill marked `trialBookingEnabled`.
+- Replaced the kids-trial studio-address and hard-coded-gender placeholders with explicit household address plus parent/child Mindbody gender intake; these private fields are written only to Mindbody, not HubSpot.
+- Replaced the fabricated HubSpot defaults (`New to Tennis` and `Other`) with required customer selections for playing level and lead source. Optional school remains explicit as `Not provided` when blank.
+- Added per-site Mindbody gender options to the readiness contract. The public form and server use only the enabled club's configured list, and the live audit fails an enabled club if any configured value is absent from its active Mindbody catalog.
 - Added server-side readiness checks to both the kids calendar and booking submission routes; a disabled or incompletely configured club returns `trial_location_not_ready` before any Mindbody or HubSpot write.
 - Made the readiness gate require the club's exact verified Parent/Guardian relationship descriptor as well as Program, Service, HubSpot pipeline, and `preferred_location`; the audit fails if the configured relationship is not present in the live site catalog.
 - Removed the effective unfiltered kids-calendar fallback for public trial requests by requiring a verified Program and $0 Service.

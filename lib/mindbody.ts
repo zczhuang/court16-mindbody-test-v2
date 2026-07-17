@@ -378,9 +378,9 @@ async function authedFetch<T>(
      *
      * Consumer-mode AddClient on real sites must satisfy the SITE's
      * `RequiredClientFields` config (probe via GET /client/requiredclientfields).
-     * For RH that means: AddressLine1, City, State, PostalCode, ReferredBy,
-     * BirthDate, MobilePhone, Email, Gender, plus all 4
-     * EmergencyContactInfo* subfields.
+     * The current RH readback returns AddressLine1, City, State, PostalCode,
+     * BirthDate, MobilePhone, Email, and Gender. Re-probe every site rather
+     * than copying this list into a new club's intake policy.
      */
     consumerMode?: boolean;
   },
@@ -538,6 +538,7 @@ export interface AddClientInput {
   BirthDate?: string; // ISO "YYYY-MM-DD"
   MobilePhone?: string;
   AddressLine1?: string;
+  AddressLine2?: string;
   City?: string;
   State?: string;
   PostalCode?: string;

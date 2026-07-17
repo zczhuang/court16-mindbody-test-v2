@@ -52,19 +52,20 @@ Repeat these steps for every row:
    npm run audit:mindbody-sites
    ```
 
-4. Record each site's own required fields, Parent/Guardian and Pays For relationships, kids-trial Program, exact `$0` Service, location, and available trial classes. Never copy Ridge Hill IDs to another site.
+4. Record each site's own required fields, active gender options, Parent/Guardian and Pays For relationships, kids-trial Program, exact `$0` Service, location, and available trial classes. Never copy Ridge Hill IDs or profile options to another site.
 
 ### Mindbody success check
 
-Authorization is complete only when the source token and these five reads return `200` for the exact Site ID:
+Authorization is complete only when the source token and these six reads return `200` for the exact Site ID:
 
 - `GET /client/requiredclientfields`
 - `GET /site/relationships`
+- `GET /site/genders`
 - `GET /site/programs`
 - `GET /class/classes`
 - `GET /sale/services`
 
-This is a **read-only preflight**, not launch approval. Each club still needs its `$0` Service price/program/location applicability, Comp checkout, required fields, class capacity, native email settings, staff permissions, and a clean parent/child end-to-end test verified.
+This is a **read-only preflight**, not launch approval. Each club still needs its `$0` Service price/program/location applicability, Comp checkout, required fields, class capacity, native email settings, staff permissions, and a clean parent/child end-to-end test verified. The controlled write matrix must exercise every gender value offered by that club's public form; catalog presence alone is not treated as write proof.
 
 For live booking, the staff identity also needs the permissions used by the chosen flow. In particular, staff-authenticated unpaid enrollment needs **Make Unpaid Reservation**. If the parent is passed as `PayerClientId`, the site must have the correct **Pays for** relationship before checkout.
 

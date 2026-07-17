@@ -12,12 +12,9 @@ export interface Location {
   city: string;
   state: string;
   /**
-   * 5-digit ZIP. Used as the default `PostalCode` on MindBody AddClient
-   * when the booking form doesn't collect the parent's home address —
-   * MindBody's required-fields config on real sites mandates one
-   * (site 5748154 returns MissingRequiredFields without it). The current
-   * route uses the studio address as a temporary placeholder; this is not
-   * accurate household data and needs an approved intake/completion policy.
+   * Club ZIP used for display and club-level routing. The kids-trial flow
+   * collects the family's real household address and must never substitute
+   * this value into a parent or child profile.
    */
   postalCode: string;
   /**

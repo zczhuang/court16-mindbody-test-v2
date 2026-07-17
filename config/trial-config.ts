@@ -6,6 +6,8 @@
  * the schedule allowlist applies only when ENFORCE_TRIAL_ELIGIBILITY is true.
  */
 
+import type { MindbodyStandardGender } from "@/lib/trial-intake";
+
 export interface LocationTrialConfig {
   trialEligibleClassScheduleIds: number[];
   maxTrialsPerClass: number;
@@ -28,6 +30,12 @@ export interface LocationTrialConfig {
     RelationshipName1: string;
     RelationshipName2: string;
   };
+  /**
+   * Active values returned by this site's GET /site/genders catalog and
+   * allowed by the kids-trial form. Keep the club disabled until this list
+   * has been read from that exact Site ID and exercised in its launch test.
+   */
+  mindbodyGenderOptions?: readonly MindbodyStandardGender[];
 }
 
 export const TRIAL_CONFIG: Record<string, LocationTrialConfig> = {
@@ -49,6 +57,8 @@ export const TRIAL_CONFIG: Record<string, LocationTrialConfig> = {
       RelationshipName1: "Parent/Guardian",
       RelationshipName2: "Child",
     },
+    // Active Ridge Hill catalog values observed via GET /site/genders.
+    mindbodyGenderOptions: ["Female", "Male", "Undisclosed"],
   },
   fishtown: { trialEligibleClassScheduleIds: [], maxTrialsPerClass: 2 },
   newton: { trialEligibleClassScheduleIds: [], maxTrialsPerClass: 2 },

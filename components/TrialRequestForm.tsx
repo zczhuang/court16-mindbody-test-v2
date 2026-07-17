@@ -1,26 +1,40 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { TrialClass, TrialRequest } from "@/lib/trial-types";
 import type { ChildEntry } from "@/components/AgeSelector";
 import { ageFromDob } from "@/lib/class-utils";
+import {
+  MAX_KIDS_TRIAL_AGE,
+  MIN_KIDS_TRIAL_AGE,
+  US_STATE_AND_TERRITORY_CODES,
+  isValidIsoDate,
+  type MindbodyStandardGender,
+} from "@/lib/trial-intake";
+import {
+  CHILD_PLAYING_LEVELS,
+  LEAD_SOURCES,
+  type ChildPlayingLevel,
+  type LeadSource,
+} from "@/lib/trial-reporting";
 
 interface Props {
   trialClass: TrialClass;
   kids: ChildEntry[];
   locationId: string;
   locationName: string;
+  genderOptions: readonly MindbodyStandardGender[];
   onSubmit: (request: TrialRequest) => Promise<void>;
   onCancel: () => void;
 }
 
-const MIN_TRIAL_AGE = 3;
-const MAX_TRIAL_AGE = 17;
+type FormStep = "family" | "mindbody";
 
 export default function TrialRequestForm({
   trialClass,
   locationId,
   locationName,
+  genderOptions,
   onSubmit,
   onCancel,
 }: Props) {
@@ -29,16 +43,49 @@ export default function TrialRequestForm({
   const [parentEmail, setParentEmail] = useState("");
   const [parentPhone, setParentPhone] = useState("");
   const [parentBirthDate, setParentBirthDate] = useState("");
+  const [parentGender, setParentGender] = useState<MindbodyStandardGender | "">("");
   const [childFirstName, setChildFirstName] = useState("");
   const [childLastName, setChildLastName] = useState("");
   const [childBirthDate, setChildBirthDate] = useState("");
+  const [childGender, setChildGender] = useState<MindbodyStandardGender | "">("");
+  const [childPlayingLevel, setChildPlayingLevel] = useState<ChildPlayingLevel | "">("");
+  const [childSchool, setChildSchool] = useState("");
+  const [leadSource, setLeadSource] = useState<LeadSource | "">("");
+  const [householdAddress1, setHouseholdAddress1] = useState("");
+  const [householdAddress2, setHouseholdAddress2] = useState("");
+  const [householdCity, setHouseholdCity] = useState("");
+  const [householdState, setHouseholdState] = useState("");
+  const [householdPostalCode, setHouseholdPostalCode] = useState("");
   const [notes, setNotes] = useState("");
+  const [formStep, setFormStep] = useState<FormStep>("family");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const dialogCardRef = useRef<HTMLDivElement>(null);
+  const formBodyRef = useRef<HTMLFormElement>(null);
+  const formTitleRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape" && !submitting) onCancel();
+      if (e.key !== "Tab") return;
+
+      const focusable = Array.from(
+        dialogCardRef.current?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      ).filter((element) => element.offsetParent !== null);
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const activeIndex = focusable.indexOf(document.activeElement as HTMLElement);
+      if (e.shiftKey && activeIndex <= 0) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (activeIndex === -1 || document.activeElement === last)) {
+        e.preventDefault();
+        first.focus();
+      }
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
@@ -52,19 +99,63 @@ export default function TrialRequestForm({
     };
   }, []);
 
+  useEffect(() => {
+    // Each panel has a different height. Reset the internal scroll position
+    // and announce the new heading so keyboard and screen-reader users land
+    // at the start instead of inheriting the prior panel's scroll offset.
+    formBodyRef.current?.scrollTo({ top: 0, behavior: "auto" });
+    formTitleRef.current?.focus({ preventScroll: true });
+  }, [formStep]);
+
   const derivedAge = childBirthDate ? ageFromDob(childBirthDate) : NaN;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!childBirthDate || Number.isNaN(derivedAge)) {
+
+    // Revalidate the first panel in React as well as with native form
+    // constraints. Those inputs are unmounted on panel two, so a server
+    // response must not be the first time the family learns one is invalid.
+    if (!parentFirstName.trim() || !parentLastName.trim()) {
+      setError("Enter the parent or guardian's first and last name.");
+      return;
+    }
+    if (!/^\S+@\S+\.\S+$/.test(parentEmail.trim())) {
+      setError("Enter a valid parent or guardian email address.");
+      return;
+    }
+    if (parentPhone.replace(/\D/g, "").length < 7) {
+      setError("Enter a valid parent or guardian mobile phone number.");
+      return;
+    }
+    if (!isValidIsoDate(parentBirthDate) || ageFromDob(parentBirthDate) < 18) {
+      setError("Enter the date of birth of an adult parent or guardian (18+).");
+      return;
+    }
+    if (!childFirstName.trim() || !childLastName.trim()) {
+      setError("Enter the child's first and last name.");
+      return;
+    }
+    if (!isValidIsoDate(childBirthDate) || Number.isNaN(derivedAge)) {
       setError("Child's date of birth is required.");
       return;
     }
-    if (derivedAge < MIN_TRIAL_AGE || derivedAge > MAX_TRIAL_AGE) {
+    if (derivedAge < MIN_KIDS_TRIAL_AGE || derivedAge > MAX_KIDS_TRIAL_AGE) {
       setError(
-        `Trials are for kids ages ${MIN_TRIAL_AGE}–${MAX_TRIAL_AGE} (this date of birth makes your child ${derivedAge}).`,
+        `Trials are for kids ages ${MIN_KIDS_TRIAL_AGE}–${MAX_KIDS_TRIAL_AGE} (this date of birth makes your child ${derivedAge}).`,
       );
+      return;
+    }
+    if (!childPlayingLevel || !leadSource) {
+      setError("Select the child's tennis experience and how you heard about Court 16.");
+      return;
+    }
+    if (formStep === "family") {
+      setFormStep("mindbody");
+      return;
+    }
+    if (!parentGender || !childGender) {
+      setError("Select the Mindbody gender field for both the parent and child.");
       return;
     }
     setSubmitting(true);
@@ -76,10 +167,20 @@ export default function TrialRequestForm({
         parentEmail,
         parentPhone,
         parentBirthDate,
+        parentGender,
         childFirstName,
         childLastName,
         childAge: derivedAge,
         childBirthDate,
+        childGender,
+        childPlayingLevel,
+        childSchool: childSchool || undefined,
+        leadSource,
+        householdAddress1,
+        householdAddress2: householdAddress2 || undefined,
+        householdCity,
+        householdState,
+        householdPostalCode,
         children: [
           {
             firstName: childFirstName,
@@ -120,14 +221,21 @@ export default function TrialRequestForm({
         if (e.target === e.currentTarget && !submitting) onCancel();
       }}
     >
-      <div className="trf-card">
+      <div ref={dialogCardRef} className="trf-card">
         <div className="trf-head">
           <div>
             <div className="eyebrow" style={{ marginBottom: 4 }}>
-              Step 3 of 3 · Parent details
+              Final details · {formStep === "family" ? "1 of 2" : "2 of 2"}
             </div>
-            <h3 id="trial-form-title" className="trf-title">
-              Tell us about your player.
+            <h3
+              ref={formTitleRef}
+              id="trial-form-title"
+              className="trf-title"
+              tabIndex={-1}
+            >
+              {formStep === "family"
+                ? "Tell us about your player."
+                : "Create accurate Mindbody profiles."}
             </h3>
             <div className="trf-meta">
               <strong>{trialClass.name}</strong>
@@ -152,138 +260,341 @@ export default function TrialRequestForm({
           </button>
         </div>
 
-        <form id="trial-request-form" onSubmit={handleSubmit} className="trf-body">
-          <div className="trf-account-note">
-            <strong>We skip the 11-step Mindbody signup.</strong>
-            <span>
-              If we do not find an existing family record that needs review, this request
-              creates the parent and child profiles. Mindbody may then email the parent a
-              secure link to claim the parent account.
-            </span>
-          </div>
-          <div className="trf-section">
-            <div className="eyebrow">Parent or guardian</div>
-            <div className="trf-grid">
-              <Field label="First name *">
-                <input
-                  type="text"
-                  required
-                  value={parentFirstName}
-                  onChange={(e) => setParentFirstName(e.target.value)}
-                  placeholder="First name"
-                  className="trf-input"
-                />
-              </Field>
-              <Field label="Last name *">
-                <input
-                  type="text"
-                  required
-                  value={parentLastName}
-                  onChange={(e) => setParentLastName(e.target.value)}
-                  placeholder="Last name"
-                  className="trf-input"
-                />
-              </Field>
-            </div>
-            <Field
-              label="Email *"
-              hint="If a new parent account is created, Mindbody sends the account-claim email here."
-            >
-              <input
-                type="email"
-                required
-                value={parentEmail}
-                onChange={(e) => setParentEmail(e.target.value)}
-                placeholder="you@email.com"
-                className="trf-input"
-              />
-            </Field>
-            <div className="trf-grid">
-              <Field label="Mobile phone *" hint="Staff calls to confirm within a few hours.">
-                <input
-                  type="tel"
-                  required
-                  value={parentPhone}
-                  onChange={(e) => setParentPhone(e.target.value)}
-                  placeholder="(212) 555-0100"
-                  className="trf-input"
-                />
-              </Field>
-              <Field label="Your date of birth *" hint="Required to create the parent Mindbody profile.">
-                <input
-                  type="date"
-                  required
-                  value={parentBirthDate}
-                  onChange={(e) => setParentBirthDate(e.target.value)}
-                  className="trf-input"
-                />
-              </Field>
-            </div>
-          </div>
+        <form
+          ref={formBodyRef}
+          id="trial-request-form"
+          onSubmit={handleSubmit}
+          className="trf-body"
+        >
+          {formStep === "family" ? (
+            <>
+              <div className="trf-account-note">
+                <strong>We skip the 11-step Mindbody signup.</strong>
+                <span>
+                  Court 16 collects the essentials here, creates the parent and child
+                  profiles when safe, and lets Mindbody send its secure account-claim link.
+                </span>
+              </div>
+              <div className="trf-section">
+                <div className="eyebrow">Parent or guardian</div>
+                <div className="trf-grid">
+                  <Field label="First name *">
+                    <input
+                      type="text"
+                      required
+                      autoComplete="given-name"
+                      value={parentFirstName}
+                      onChange={(e) => setParentFirstName(e.target.value)}
+                      placeholder="First name"
+                      className="trf-input"
+                    />
+                  </Field>
+                  <Field label="Last name *">
+                    <input
+                      type="text"
+                      required
+                      autoComplete="family-name"
+                      value={parentLastName}
+                      onChange={(e) => setParentLastName(e.target.value)}
+                      placeholder="Last name"
+                      className="trf-input"
+                    />
+                  </Field>
+                </div>
+                <Field
+                  label="Email *"
+                  hint="If a new parent account is created, Mindbody sends the account-claim email here."
+                >
+                  <input
+                    type="email"
+                    required
+                    autoComplete="email"
+                    value={parentEmail}
+                    onChange={(e) => setParentEmail(e.target.value)}
+                    placeholder="you@email.com"
+                    className="trf-input"
+                  />
+                </Field>
+                <div className="trf-grid">
+                  <Field label="Mobile phone *" hint="Staff calls to confirm within a few hours.">
+                    <input
+                      type="tel"
+                      required
+                      autoComplete="tel"
+                      value={parentPhone}
+                      onChange={(e) => setParentPhone(e.target.value)}
+                      placeholder="(212) 555-0100"
+                      className="trf-input"
+                    />
+                  </Field>
+                  <Field label="Your date of birth *" hint="Required to create the parent Mindbody profile.">
+                    <input
+                      type="date"
+                      required
+                      autoComplete="bday"
+                      value={parentBirthDate}
+                      onChange={(e) => setParentBirthDate(e.target.value)}
+                      className="trf-input"
+                    />
+                  </Field>
+                </div>
+              </div>
 
-          <div className="trf-section">
-            <div className="eyebrow">Child · no separate login</div>
-            <div className="trf-grid">
-              <Field label="First name *">
-                <input
-                  type="text"
-                  required
-                  value={childFirstName}
-                  onChange={(e) => setChildFirstName(e.target.value)}
-                  placeholder="Child's first name"
-                  className="trf-input"
-                />
-              </Field>
-              <Field label="Last name *">
-                <input
-                  type="text"
-                  required
-                  value={childLastName}
-                  onChange={(e) => setChildLastName(e.target.value)}
-                  placeholder="Child's last name"
-                  className="trf-input"
-                />
-              </Field>
-            </div>
-            <Field
-              label="Child's date of birth *"
-              hint={
-                !Number.isNaN(derivedAge)
-                  ? `Age ${derivedAge} — we'll match the right class level.`
-                  : "Used for age matching and the child's Mindbody profile."
-              }
-            >
-              <input
-                type="date"
-                required
-                value={childBirthDate}
-                onChange={(e) => setChildBirthDate(e.target.value)}
-                className="trf-input"
-              />
-            </Field>
-            <Field label="Anything we should know? (optional)">
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={2}
-                placeholder="Allergies, experience level, special requests…"
-                className="trf-input"
-                style={{ resize: "vertical", minHeight: 60 }}
-              />
-            </Field>
-            <div className="trf-family-note">
-              Use the same parent email for the family. Your child does not need a password.
-              Court 16 staff can help link the existing child profile after you claim the
-              parent account.
-            </div>
-          </div>
+              <div className="trf-section">
+                <div className="eyebrow">Child · no separate login</div>
+                <div className="trf-grid">
+                  <Field label="First name *">
+                    <input
+                      type="text"
+                      required
+                      value={childFirstName}
+                      onChange={(e) => setChildFirstName(e.target.value)}
+                      placeholder="Child's first name"
+                      className="trf-input"
+                    />
+                  </Field>
+                  <Field label="Last name *">
+                    <input
+                      type="text"
+                      required
+                      value={childLastName}
+                      onChange={(e) => setChildLastName(e.target.value)}
+                      placeholder="Child's last name"
+                      className="trf-input"
+                    />
+                  </Field>
+                </div>
+                <Field
+                  label="Child's date of birth *"
+                  hint={
+                    !Number.isNaN(derivedAge)
+                      ? `Age ${derivedAge} — we'll match the right class level.`
+                      : "Used for age matching and the child's Mindbody profile."
+                  }
+                >
+                  <input
+                    type="date"
+                    required
+                    value={childBirthDate}
+                    onChange={(e) => setChildBirthDate(e.target.value)}
+                    className="trf-input"
+                  />
+                </Field>
+                <div className="trf-grid">
+                  <Field label="Tennis experience *">
+                    <select
+                      required
+                      value={childPlayingLevel}
+                      onChange={(event) =>
+                        setChildPlayingLevel(event.target.value as ChildPlayingLevel)
+                      }
+                      className="trf-input"
+                    >
+                      <option value="" disabled>
+                        Select
+                      </option>
+                      {CHILD_PLAYING_LEVELS.map((level) => (
+                        <option key={level} value={level}>
+                          {level}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="School (optional)">
+                    <input
+                      type="text"
+                      value={childSchool}
+                      onChange={(e) => setChildSchool(e.target.value)}
+                      className="trf-input"
+                    />
+                  </Field>
+                </div>
+                <Field label="How did you hear about Court 16? *">
+                  <select
+                    required
+                    value={leadSource}
+                    onChange={(event) => setLeadSource(event.target.value as LeadSource)}
+                    className="trf-input"
+                  >
+                    <option value="" disabled>
+                      Select
+                    </option>
+                    {LEAD_SOURCES.map((source) => (
+                      <option key={source} value={source}>
+                        {source}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Anything we should know? (optional)">
+                  <textarea
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                    rows={2}
+                    placeholder="Allergies, experience level, special requests…"
+                    className="trf-input"
+                    style={{ resize: "vertical", minHeight: 60 }}
+                  />
+                </Field>
+                <div className="trf-family-note">
+                  The parent email is also the child's reachable family email. Your child
+                  does not need a password; staff can help link the existing child after
+                  the parent claims the account.
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="trf-account-note">
+                <strong>No made-up profile data.</strong>
+                <span>
+                  Mindbody requires the details below only when we create new profiles.
+                  We use one household address for both profiles; if we find an existing
+                  family, we do not overwrite it. These private fields are never copied
+                  into HubSpot.
+                </span>
+              </div>
 
-          {error && <div className="trf-error">{error}</div>}
+              <div className="trf-section">
+                <div className="eyebrow">Mindbody required field</div>
+                <div className="trf-grid">
+                  <Field
+                    label="Parent gender in Mindbody *"
+                    hint={`Options configured by this club in Mindbody: ${genderOptions.join(", ")}.`}
+                  >
+                    <select
+                      required
+                      value={parentGender}
+                      onChange={(event) =>
+                        setParentGender(event.target.value as MindbodyStandardGender)
+                      }
+                      className="trf-input"
+                    >
+                      <option value="" disabled>
+                        Select
+                      </option>
+                      {genderOptions.map((gender) => (
+                        <option key={gender} value={gender}>
+                          {gender}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field
+                    label="Child gender in Mindbody *"
+                    hint="Saved on the child's Mindbody reporting record."
+                  >
+                    <select
+                      required
+                      value={childGender}
+                      onChange={(event) =>
+                        setChildGender(event.target.value as MindbodyStandardGender)
+                      }
+                      className="trf-input"
+                    >
+                      <option value="" disabled>
+                        Select
+                      </option>
+                      {genderOptions.map((gender) => (
+                        <option key={gender} value={gender}>
+                          {gender}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                </div>
+              </div>
+
+              <div className="trf-section">
+                <div className="eyebrow">Household address</div>
+                <Field label="Street address *">
+                  <input
+                    type="text"
+                    required
+                    autoComplete="address-line1"
+                    value={householdAddress1}
+                    onChange={(e) => setHouseholdAddress1(e.target.value)}
+                    placeholder="123 Main Street"
+                    className="trf-input"
+                  />
+                </Field>
+                <Field label="Apartment, suite, etc. (optional)">
+                  <input
+                    type="text"
+                    autoComplete="address-line2"
+                    value={householdAddress2}
+                    onChange={(e) => setHouseholdAddress2(e.target.value)}
+                    placeholder="Apt 4B"
+                    className="trf-input"
+                  />
+                </Field>
+                <div className="trf-address-grid">
+                  <Field label="City *">
+                    <input
+                      type="text"
+                      required
+                      autoComplete="address-level2"
+                      value={householdCity}
+                      onChange={(e) => setHouseholdCity(e.target.value)}
+                      className="trf-input"
+                    />
+                  </Field>
+                  <Field label="State *">
+                    <select
+                      required
+                      autoComplete="address-level1"
+                      value={householdState}
+                      onChange={(event) => setHouseholdState(event.target.value)}
+                      className="trf-input"
+                    >
+                      <option value="" disabled>
+                        Select
+                      </option>
+                      {US_STATE_AND_TERRITORY_CODES.map((stateCode) => (
+                        <option key={stateCode} value={stateCode}>
+                          {stateCode}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="ZIP code *">
+                    <input
+                      type="text"
+                      required
+                      autoComplete="postal-code"
+                      inputMode="numeric"
+                      pattern="[0-9]{5}(-[0-9]{4})?"
+                      value={householdPostalCode}
+                      onChange={(e) => setHouseholdPostalCode(e.target.value)}
+                      placeholder="10001"
+                      className="trf-input"
+                    />
+                  </Field>
+                </div>
+              </div>
+
+            </>
+          )}
+
+          {error && (
+            <div className="trf-error" role="alert">
+              {error}
+            </div>
+          )}
         </form>
 
         <div className="trf-foot">
-          <button type="button" onClick={onCancel} className="btn ghost" disabled={submitting}>
-            ← Back
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              if (formStep === "mindbody") setFormStep("family");
+              else onCancel();
+            }}
+            className="btn ghost"
+            disabled={submitting}
+          >
+            ← {formStep === "mindbody" ? "Player details" : "Back"}
           </button>
           <button
             type="submit"
@@ -291,7 +602,11 @@ export default function TrialRequestForm({
             disabled={submitting}
             className="btn primary"
           >
-            {submitting ? "Sending…" : "Send trial request"}
+            {submitting
+              ? "Sending…"
+              : formStep === "family"
+                ? "Continue"
+                : "Send trial request"}
             <span aria-hidden="true">→</span>
           </button>
         </div>
@@ -402,6 +717,16 @@ export default function TrialRequestForm({
           display: grid;
           grid-template-columns: 1fr;
           gap: 10px;
+        }
+        .trf-address-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr);
+          gap: 10px;
+        }
+        @media (min-width: 520px) {
+          .trf-address-grid {
+            grid-template-columns: minmax(0, 2fr) minmax(76px, 0.7fr) minmax(110px, 1fr);
+          }
         }
         @media (min-width: 520px) {
           .trf-grid {

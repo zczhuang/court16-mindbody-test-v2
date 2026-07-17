@@ -19,6 +19,7 @@ type LocationConfig = {
 type LocationTrialConfig = {
   trialServiceId?: number;
   trialServiceName?: string;
+  mindbodyGenderOptions?: readonly string[];
   parentGuardianRelationship?: {
     Id: number;
     RelationshipName1: string;
@@ -59,6 +60,7 @@ type JsonObject = Record<string, unknown>;
 const READ_ENDPOINTS = {
   requiredClientFields: "/client/requiredclientfields",
   relationships: "/site/relationships",
+  genders: "/site/genders",
   programs: "/site/programs",
   classes: "/class/classes",
   services: "/sale/services",
@@ -74,6 +76,8 @@ const AUDIT_SCOPE = {
     "source_token",
     "required_client_fields_read",
     "relationship_catalog_read",
+    "gender_catalog_read",
+    "configured_gender_option_presence",
     "program_id_presence",
     "service_id_and_name_presence",
     "upcoming_program_class_presence",
@@ -270,8 +274,29 @@ async function auditLocation(
   const startDate = `${today.toISOString().slice(0, 10)}T00:00:00`;
   const endDate = `${end.toISOString().slice(0, 10)}T23:59:59`;
 
-  const [requiredFieldsResult, relationshipsResult, programsResult, classesResult, servicesResult] =
+  const [
+    gendersResult,
+    requiredFieldsResult,
+    relationshipsResult,
+    programsResult,
+    classesResult,
+    servicesResult,
+  ] =
     await Promise.all([
+      runProbe(async () => {
+        const body = await getReadEndpoint(
+          apiKey,
+          location.siteId,
+          READ_ENDPOINTS.genders,
+          {},
+          token,
+        );
+        const activeOptions = asArray(body.GenderOptions).filter((option) => {
+          if (!option || typeof option !== "object" || Array.isArray(option)) return false;
+          return (option as Record<string, unknown>).IsActive !== false;
+        });
+        return normalizeNamedRecords(activeOptions);
+      }),
       runProbe(async () => {
         const body = await getReadEndpoint(
           apiKey,
@@ -335,11 +360,13 @@ async function auditLocation(
   const configuredServiceId = trialConfig?.trialServiceId;
   const configuredServiceName = trialConfig?.trialServiceName;
   const configuredRelationship = trialConfig?.parentGuardianRelationship;
+  const configuredGenderOptions = trialConfig?.mindbodyGenderOptions ?? [];
   const programs = programsResult.value ?? [];
   const services = servicesResult.value ?? [];
   const classes = classesResult.value ?? [];
   const requiredFields = requiredFieldNames(requiredFieldsResult.value ?? []);
   const familyRelationships = familyRelationshipCandidates(relationshipsResult.value ?? []);
+  const availableGenders = gendersResult.value ?? [];
   const programCandidates = programs
     .filter(
       (program) =>
@@ -378,9 +405,14 @@ async function auditLocation(
         relationship.relationshipName1 === configuredRelationship.RelationshipName1 &&
         relationship.relationshipName2 === configuredRelationship.RelationshipName2,
     );
+  const availableGenderNames = new Set(availableGenders.map((gender) => gender.Name));
+  const configuredGendersFound =
+    configuredGenderOptions.length > 0 &&
+    configuredGenderOptions.every((gender) => availableGenderNames.has(gender));
   const probeStatuses = [
     requiredFieldsResult.status,
     relationshipsResult.status,
+    gendersResult.status,
     programsResult.status,
     classesResult.status,
     servicesResult.status,
@@ -392,6 +424,7 @@ async function auditLocation(
       !configuredProgramFound ||
       !configuredServiceFound ||
       !configuredRelationshipFound ||
+      !configuredGendersFound ||
       trialClassCount === 0);
 
   return {
@@ -407,6 +440,7 @@ async function auditLocation(
     probes: {
       requiredClientFields: withCount(requiredFieldsResult.status, requiredFieldsResult.value),
       relationships: withCount(relationshipsResult.status, relationshipsResult.value),
+      genders: withCount(gendersResult.status, gendersResult.value),
       programs: withCount(programsResult.status, programsResult.value),
       classes: {
         ...withCount(classesResult.status, classesResult.value),
@@ -422,10 +456,13 @@ async function auditLocation(
       serviceFound: configuredServiceFound,
       parentGuardianRelationship: configuredRelationship ?? null,
       parentGuardianRelationshipFound: configuredRelationshipFound,
+      genderOptions: configuredGenderOptions,
+      genderOptionsFound: configuredGendersFound,
     },
     candidateKidsTrialPrograms: programCandidates,
     candidateKidsTrialServices: serviceCandidates,
     requiredClientFields: requiredFields,
+    availableGenders: availableGenders.map(toCandidate),
     candidateFamilyRelationships: familyRelationships,
   };
 }

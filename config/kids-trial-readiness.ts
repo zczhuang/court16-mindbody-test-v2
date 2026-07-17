@@ -9,6 +9,7 @@ export type KidsTrialReadinessRequirement =
   | "mindbody_service_id"
   | "mindbody_service_name"
   | "mindbody_parent_guardian_relationship"
+  | "mindbody_gender_options"
   | "hubspot_pipeline"
   | "hubspot_preferred_location";
 
@@ -16,6 +17,7 @@ type ReadyTrialConfig = LocationTrialConfig & {
   trialServiceId: number;
   trialServiceName: string;
   parentGuardianRelationship: NonNullable<LocationTrialConfig["parentGuardianRelationship"]>;
+  mindbodyGenderOptions: NonNullable<LocationTrialConfig["mindbodyGenderOptions"]>;
 };
 
 export type KidsTrialReadiness =
@@ -61,6 +63,12 @@ function hasExactParentGuardianRelationship(
   );
 }
 
+function hasMindbodyGenderOptions(
+  options: LocationTrialConfig["mindbodyGenderOptions"],
+): options is NonNullable<LocationTrialConfig["mindbodyGenderOptions"]> {
+  return Boolean(options && options.length > 0 && new Set(options).size === options.length);
+}
+
 function hasExactPipeline(pipeline: DealPipelineConfig | null): pipeline is DealPipelineConfig {
   return Boolean(
     pipeline &&
@@ -91,6 +99,9 @@ export function getKidsTrialReadiness({
   if (!hasExactParentGuardianRelationship(trialConfig?.parentGuardianRelationship)) {
     missing.push("mindbody_parent_guardian_relationship");
   }
+  if (!hasMindbodyGenderOptions(trialConfig?.mindbodyGenderOptions)) {
+    missing.push("mindbody_gender_options");
+  }
   if (!hasExactPipeline(pipeline)) missing.push("hubspot_pipeline");
   if (!hasText(preferredLocation)) missing.push("hubspot_preferred_location");
 
@@ -105,6 +116,7 @@ export function getKidsTrialReadiness({
       trialServiceId: trialConfig!.trialServiceId!,
       trialServiceName: trialConfig!.trialServiceName!,
       parentGuardianRelationship: trialConfig!.parentGuardianRelationship!,
+      mindbodyGenderOptions: trialConfig!.mindbodyGenderOptions!,
     },
     pipeline: pipeline!,
     preferredLocation: preferredLocation!,

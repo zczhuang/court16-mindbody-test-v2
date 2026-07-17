@@ -33,19 +33,24 @@ import { getKidsTrialReadiness } from "@/config/kids-trial-readiness";
 import type { MindBodyClass, TrialRequest } from "@/lib/trial-types";
 import { consumeSignupRateLimit } from "@/lib/request-rate-limit";
 import { tryAcquireLocalActionLock } from "@/lib/action-lock";
+import {
+  MAX_KIDS_TRIAL_AGE,
+  MIN_KIDS_TRIAL_AGE,
+  buildMindbodyHouseholdAddress,
+  isValidIsoDate,
+  normalizeMindbodyProfileDetails,
+  validateMindbodyProfileDetails,
+  validateSingleTrialChildPayload,
+} from "@/lib/trial-intake";
+import {
+  buildHubspotTrialReportingFields,
+  validateTrialReportingDetails,
+} from "@/lib/trial-reporting";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const WAIVER_VERSION = "v1.0";
-
-// HubSpot's form has required fields we don't collect in the slim UI.
-// Fill silently; staff completes at the trial.
-const HUBSPOT_DEFAULTS = {
-  child_1___playing_level: "New to Tennis",
-  school: "—",
-  lead_source: "Other",
-} as const;
 
 /** Map an integer age to the closest HubSpot `childage` band value. */
 function ageToBand(age: number): string {
@@ -78,6 +83,7 @@ export async function POST(req: Request) {
   if (errors.length > 0) {
     return NextResponse.json({ ok: false, correlationId, errors }, { status: 400 });
   }
+  body = normalizeValidatedRequest(body);
 
   const rateLimit = consumeSignupRateLimit(req, "kid-trial", body.parentEmail);
   if (!rateLimit.ok) {
@@ -142,6 +148,16 @@ export async function POST(req: Request) {
     );
   }
   const { preferredLocation, programId, trialConfig } = trialReadiness;
+  const siteProfileErrors = validateMindbodyProfileDetails(
+    body,
+    trialConfig.mindbodyGenderOptions,
+  );
+  if (siteProfileErrors.length > 0) {
+    return NextResponse.json(
+      { ok: false, correlationId, errors: siteProfileErrors },
+      { status: 400 },
+    );
+  }
 
   let mbCfg;
   try {
@@ -169,19 +185,15 @@ export async function POST(req: Request) {
   const baseUrl = process.env.APP_BASE_URL ?? `http://localhost:3000`;
   const hsContext = sanitizeHsContext(body.hsContext);
 
-  // For Track 1 we process the first child only; multi-child is Track 2.
-  const primaryKid = body.children[0] ?? {
-    firstName: body.childFirstName,
-    lastName: body.childLastName,
-    age: body.childAge,
-    birthDate: body.childBirthDate,
-  };
+  // Track 1 accepts exactly one validated child; multi-child is Track 2.
+  const primaryKid = body.children[0];
   // validate() guarantees these — real values per Ibtissam's review (Jun 11):
   // no more "-" last name or Jan-1 synthesized DOB on the MindBody record.
-  const childLastName = primaryKid.lastName ?? body.childLastName ?? "";
-  const childDob = primaryKid.birthDate ?? body.childBirthDate ?? "";
+  const childLastName = primaryKid.lastName;
+  const childDob = primaryKid.birthDate;
   const childAge = ageFromDob(childDob);
   const ageBand = ageToBand(childAge);
+  const mindbodyProfile = normalizeMindbodyProfileDetails(body);
 
   // Booking window: reject requests beyond today + TRIAL_MAX_ADVANCE_DAYS
   // (server-side authority — the calendar UI/API only hide far-out slots).
@@ -422,6 +434,7 @@ export async function POST(req: Request) {
           lastname: body.parentLastName,
           phone: body.parentPhone,
           preferred_location: preferredLocation,
+          ...buildHubspotTrialReportingFields(body),
         },
         classStartsAt: classStartsAtUtc,
         dealName: `${primaryKid.firstName} ${childLastName} - ${body.parentEmail}`,
@@ -478,23 +491,10 @@ export async function POST(req: Request) {
     let child: Awaited<ReturnType<typeof addClient>> | null = null;
     if (!mbDegraded) {
       try {
-        // Defaults that satisfy site 5748154's RequiredClientFields config
-        // in Consumer Mode (probe via GET /client/requiredclientfields).
-        // The form doesn't collect home address / gender / emergency contact
-        // yet — staff updates these at the trial intake. Studio address is
-        // used as the address placeholder so the client at least geocodes
-        // to a reasonable spot.
-        const addressDefaults = {
-          AddressLine1: location.address,
-          City: location.city,
-          State: location.state,
-          PostalCode: location.postalCode,
-        };
-        // Gender: site 5748154 only accepts the built-in options
-        // ("Male" / "Female") in consumer mode — custom genders return
-        // InvalidPermissionConfiguration. Default to "Female" so the
-        // booking goes through; staff updates at first visit.
-        const GENDER_PLACEHOLDER = "Female";
+        // Mindbody requires these fields at Ridge Hill. The Court 16 form
+        // collects the household values explicitly so neither profile is
+        // created with the club address or a guessed demographic value.
+        const householdAddress = buildMindbodyHouseholdAddress(mindbodyProfile);
 
         parent = await addClient(mbCfg, log, {
           FirstName: body.parentFirstName,
@@ -503,16 +503,8 @@ export async function POST(req: Request) {
           MobilePhone: body.parentPhone,
           BirthDate: body.parentBirthDate,
           ReferredBy: "Online",
-          Gender: GENDER_PLACEHOLDER,
-          ...addressDefaults,
-          // Self-as-emergency-contact placeholder. Trial staff collects
-          // the real emergency contact at intake. Required by RH config
-          // (all 4 EmergencyContactInfo* subfields must be present or
-          // MindBody flags the bundle as missing).
-          EmergencyContactInfoName: `${body.parentFirstName} ${body.parentLastName}`,
-          EmergencyContactInfoPhone: body.parentPhone,
-          EmergencyContactInfoEmail: body.parentEmail,
-          EmergencyContactInfoRelationship: "Self (placeholder)",
+          Gender: mindbodyProfile.parentGender,
+          ...householdAddress,
           // Opt new Client into MindBody's transactional emails so the
           // "Add Court 16 to your Mindbody account" auto-link email actually
           // fires. MindBody defaults SendAccountEmails to false if omitted,
@@ -542,13 +534,8 @@ export async function POST(req: Request) {
           BirthDate: childDob,
           MobilePhone: body.parentPhone, // parent's phone is the kid's contact
           ReferredBy: "Online",
-          Gender: GENDER_PLACEHOLDER,
-          ...addressDefaults,
-          // Emergency contact is the parent — semantically correct for kids.
-          EmergencyContactInfoName: `${body.parentFirstName} ${body.parentLastName}`,
-          EmergencyContactInfoPhone: body.parentPhone,
-          EmergencyContactInfoEmail: body.parentEmail,
-          EmergencyContactInfoRelationship: "Parent",
+          Gender: mindbodyProfile.childGender,
+          ...householdAddress,
           // Inline Parent/Guardian → Child relationship: links this child
           // (current AddClient) to the parent (RelatedClientId). This is the
           // correct familial link in MindBody's catalog; -4 "Pays For" was a
@@ -688,6 +675,7 @@ interface BuildFieldsArgs {
 }
 function buildFormFields(args: BuildFieldsArgs) {
   const { correlationId, body, primaryKid, childDob, ageBand, location, status, parentMbId, childMbId, baseUrl } = args;
+  const reportingFields = buildHubspotTrialReportingFields(body);
 
   return {
     firstname: body.parentFirstName,
@@ -704,9 +692,7 @@ function buildFormFields(args: BuildFieldsArgs) {
     // Single un-suffixed field; HubSpot form rejects the 3-part split with
     // "Required field 'child_date_of_birth' is missing" (caught by smoke #2).
     child_date_of_birth: childDob,
-    child_1___playing_level: HUBSPOT_DEFAULTS.child_1___playing_level,
-    school: HUBSPOT_DEFAULTS.school,
-    lead_source: HUBSPOT_DEFAULTS.lead_source,
+    ...reportingFields,
     any_question_just_let_us_know: body.notes,
 
     court16_correlation_id: correlationId,
@@ -736,11 +722,10 @@ function buildFormFields(args: BuildFieldsArgs) {
 }
 
 /**
- * Subset of buildFormFields output that maps cleanly to HubSpot Contact
- * CRM properties (vs. form-specific fields like `child_name` that only
- * exist on the form, not the Contact). Used by createDealSafely below
- * to upsert the Contact in parallel with the form submit — gives us a
- * synchronous Contact ID for the Deal association.
+ * Subset of buildFormFields output that maps to verified HubSpot Contact
+ * CRM properties. Used by createDealSafely below to upsert the Contact in
+ * parallel with the form submit — gives us a synchronous Contact ID for
+ * the Deal association and preserves reporting if the Forms API soft-fails.
  */
 function contactPropertiesFromFields(fields: ReturnType<typeof buildFormFields>): Record<string, string | undefined> {
   return {
@@ -755,6 +740,9 @@ function contactPropertiesFromFields(fields: ReturnType<typeof buildFormFields>)
     // notification email showed a blank Child line).
     child_name: fields.child_name,
     child_1___last_name: fields.child_1___last_name,
+    child_1___playing_level: fields.child_1___playing_level,
+    school: fields.school,
+    lead_source: fields.lead_source,
     court16_correlation_id: fields.court16_correlation_id,
     court16_intent: fields.court16_intent,
     court16_booking_status: fields.court16_booking_status,
@@ -903,40 +891,62 @@ function sanitizeHsContext(
 function validate(body: TrialRequest | undefined): string[] {
   if (!body) return ["Body is required"];
   const errors: string[] = [];
-  if (!body.parentFirstName) errors.push("parentFirstName is required");
-  if (!body.parentLastName) errors.push("parentLastName is required");
-  if (!/^\S+@\S+\.\S+$/.test(body.parentEmail ?? "")) errors.push("parentEmail is invalid");
-  if (!body.parentPhone || body.parentPhone.replace(/\D/g, "").length < 7)
+  if (typeof body.parentFirstName !== "string" || body.parentFirstName.trim().length === 0) {
+    errors.push("parentFirstName is required");
+  }
+  if (typeof body.parentLastName !== "string" || body.parentLastName.trim().length === 0) {
+    errors.push("parentLastName is required");
+  }
+  if (typeof body.parentEmail !== "string" || !/^\S+@\S+\.\S+$/.test(body.parentEmail)) {
+    errors.push("parentEmail is invalid");
+  }
+  if (
+    typeof body.parentPhone !== "string" ||
+    body.parentPhone.replace(/\D/g, "").length < 7
+  ) {
     errors.push("parentPhone is required");
+  }
+  errors.push(...validateMindbodyProfileDetails(body));
+  errors.push(...validateTrialReportingDetails(body));
 
   // Adult DOB is required (Ibtissam review Jun 11) and must belong to an
   // adult — keeps the MindBody parent record real, no placeholder fallback.
-  if (!body.parentBirthDate || !/^\d{4}-\d{2}-\d{2}$/.test(body.parentBirthDate)) {
+  if (!isValidIsoDate(body.parentBirthDate)) {
     errors.push('parentBirthDate is required ("YYYY-MM-DD")');
   } else if (ageFromDob(body.parentBirthDate) < 18) {
     errors.push("parentBirthDate must be an adult's date of birth (18+)");
   }
 
-  if (!body.childFirstName && (!body.children || body.children.length === 0))
-    errors.push("childFirstName or children[] is required");
-
-  // Child last name + DOB required (Ibtissam review Jun 11) — they drive
-  // the real MindBody profile, the HubSpot form fields, and the deal name.
-  const primaryLastName = body.children?.[0]?.lastName ?? body.childLastName;
-  if (!primaryLastName) errors.push("child lastName is required");
-  const primaryDob = body.children?.[0]?.birthDate ?? body.childBirthDate;
-  if (!primaryDob || !/^\d{4}-\d{2}-\d{2}$/.test(primaryDob)) {
-    errors.push('child birthDate is required ("YYYY-MM-DD")');
-  } else {
-    const age = ageFromDob(primaryDob);
-    if (age < 0 || age > 17) errors.push(`child birthDate gives age ${age} — trials are for kids under 18`);
+  const rawChildren = (body as unknown as { children?: unknown }).children;
+  const childPayloadErrors = validateSingleTrialChildPayload(rawChildren);
+  errors.push(...childPayloadErrors);
+  if (childPayloadErrors.length === 0) {
+    const child = (rawChildren as Array<Record<string, unknown>>)[0];
+    const age = ageFromDob(child.birthDate as string);
+    if (age < MIN_KIDS_TRIAL_AGE || age > MAX_KIDS_TRIAL_AGE) {
+      errors.push(
+        `children[0].birthDate gives age ${age} — trials are for kids ages ${MIN_KIDS_TRIAL_AGE}–${MAX_KIDS_TRIAL_AGE}`,
+      );
+    }
   }
 
-  if (!body.locationId) errors.push("locationId is required");
-  if (typeof body.classScheduleId !== "number") errors.push("classScheduleId must be a number");
-  if (typeof body.classId !== "number") errors.push("classId must be a number");
+  if (typeof body.locationId !== "string" || body.locationId.trim().length === 0) {
+    errors.push("locationId is required");
+  }
+  if (!Number.isInteger(body.classScheduleId)) {
+    errors.push("classScheduleId must be an integer");
+  }
+  if (!Number.isInteger(body.classId)) errors.push("classId must be an integer");
+  if (typeof body.className !== "string" || body.className.trim().length === 0) {
+    errors.push("className is required");
+  }
   // Required for the booking-window check and HubSpot Deal class_date.
-  if (!body.classStartsAt) errors.push("classStartsAt is required");
+  if (typeof body.classStartsAt !== "string" || body.classStartsAt.trim().length === 0) {
+    errors.push("classStartsAt is required");
+  }
+  if (body.notes != null && typeof body.notes !== "string") {
+    errors.push("notes must be a string");
+  }
 
   // Age-range check: reject bookings where a child's age falls outside the
   // class's eligible band. Range is parsed from the class title itself
@@ -944,7 +954,12 @@ function validate(body: TrialRequest | undefined): string[] {
   // Permissive — skipped when the title doesn't include a parseable range.
   // Ages derive from DOB when present (the source of truth post-Jun-11);
   // the client-sent integer age is the fallback for older payloads.
-  errors.push(...validateClassAge(body, body.className));
+  errors.push(
+    ...validateClassAge(
+      body,
+      typeof body.className === "string" ? body.className : undefined,
+    ),
+  );
 
   return errors;
 }
@@ -953,10 +968,16 @@ function validateClassAge(body: TrialRequest, className: string | undefined): st
   const errors: string[] = [];
   const range = className ? parseAgeRangeFromTitle(className) : null;
   if (range) {
-    const ages = (body.children ?? []).map((c) =>
-      c.birthDate && /^\d{4}-\d{2}-\d{2}$/.test(c.birthDate) ? ageFromDob(c.birthDate) : c.age,
-    );
-    if (ages.length === 0 && body.childAge) ages.push(body.childAge);
+    const children = Array.isArray(body.children) ? body.children : [];
+    const ages = children.flatMap((value: unknown) => {
+      if (!value || typeof value !== "object" || Array.isArray(value)) return [];
+      const child = value as Record<string, unknown>;
+      if (isValidIsoDate(child.birthDate)) return [ageFromDob(child.birthDate)];
+      return typeof child.age === "number" && Number.isFinite(child.age) ? [child.age] : [];
+    });
+    if (ages.length === 0 && typeof body.childAge === "number" && Number.isFinite(body.childAge)) {
+      ages.push(body.childAge);
+    }
     for (const age of ages) {
       if (age < range.ageMin || age > range.ageMax) {
         errors.push(
@@ -966,6 +987,27 @@ function validateClassAge(body: TrialRequest, className: string | undefined): st
     }
   }
   return errors;
+}
+
+function normalizeValidatedRequest(body: TrialRequest): TrialRequest {
+  const child = body.children[0];
+  const birthDate = child.birthDate;
+  const age = ageFromDob(birthDate);
+  const firstName = child.firstName.trim();
+  const lastName = child.lastName.trim();
+
+  return {
+    ...body,
+    parentFirstName: body.parentFirstName.trim(),
+    parentLastName: body.parentLastName.trim(),
+    parentEmail: body.parentEmail.trim(),
+    parentPhone: body.parentPhone.trim(),
+    childFirstName: firstName,
+    childLastName: lastName,
+    childBirthDate: birthDate,
+    childAge: age,
+    children: [{ firstName, lastName, birthDate, age }],
+  };
 }
 
 function serialize(e: unknown): unknown {
