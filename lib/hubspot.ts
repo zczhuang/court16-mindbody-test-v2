@@ -179,7 +179,6 @@ export interface TrialFormFields {
   court16_staff_confirm_url?: string;
   court16_staff_reassign_url?: string;
   court16_staff_deny_url?: string;
-  court16_admin_retry_url?: string;
   court16_failure_reason?: string;
 }
 
@@ -253,6 +252,7 @@ export async function findContactByCorrelationId(
         "court16_correlation_id",
         "court16_intent",
         "court16_booking_status",
+        "court16_failure_reason",
         "court16_class_id",
         "court16_location_slug",
         "court16_class_name",

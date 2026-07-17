@@ -15,8 +15,9 @@ import {
 } from "@/lib/hubspot";
 import { createLogger, makeCorrelationId } from "@/lib/logger";
 import { getLocationById } from "@/config/locations";
-import { getOffer } from "@/config/adult-config";
+import { getOffer, isAdultOfferReadyAtLocation } from "@/config/adult-config";
 import { getDealPipeline } from "@/config/hubspot-deals";
+import { InvalidTokenError, verifyToken } from "@/lib/staff-tokens";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,15 +34,39 @@ export const dynamic = "force-dynamic";
  * success. Safe to refresh the return URL.
  */
 export async function POST(req: Request) {
-  const correlationId = (await req.json().catch(() => ({})))?.correlationId ?? null;
-  if (!correlationId) {
+  const body = (await req.json().catch(() => ({}))) as {
+    correlationId?: string;
+    confirmationToken?: string;
+  };
+  const correlationId = body.correlationId ?? null;
+  if (!correlationId || !body.confirmationToken) {
     const cid = makeCorrelationId();
     return NextResponse.json(
-      { ok: false, correlationId: cid, error: "correlationId is required" },
+      { ok: false, correlationId: cid, error: "secure confirmation state is required" },
       { status: 400 },
     );
   }
   const log = createLogger(correlationId);
+
+  let confirmationState: ReturnType<typeof verifyToken>;
+  try {
+    confirmationState = verifyToken(body.confirmationToken);
+  } catch (e) {
+    const reason = e instanceof InvalidTokenError ? e.reason : "unknown";
+    return NextResponse.json(
+      { ok: false, correlationId, error: `invalid confirmation state (${reason})` },
+      { status: 401 },
+    );
+  }
+  if (
+    confirmationState.action !== "intro_payment_confirm" ||
+    confirmationState.correlationId !== correlationId
+  ) {
+    return NextResponse.json(
+      { ok: false, correlationId, error: "confirmation state does not match this booking" },
+      { status: 401 },
+    );
+  }
 
   const hsCfg = loadHubspotConfig();
   if (!hsCfg) {
@@ -79,25 +104,40 @@ export async function POST(req: Request) {
       { status: 404 },
     );
   }
+  if (contact.properties.court16_intent !== "adult_intro") {
+    return NextResponse.json(
+      { ok: false, correlationId, error: "booking is not an adult intro" },
+      { status: 409 },
+    );
+  }
 
   // Idempotency: already confirmed → return success without re-booking.
   if (contact.properties.court16_booking_status === "confirmed") {
     return NextResponse.json({ ok: true, correlationId, status: "confirmed", cached: true });
   }
+  if (contact.properties.court16_booking_status !== "pending_payment") {
+    return NextResponse.json(
+      { ok: false, correlationId, error: "booking is not awaiting payment confirmation" },
+      { status: 409 },
+    );
+  }
 
   const locationSlug = contact.properties.court16_location_slug;
   const location = locationSlug ? getLocationById(locationSlug) : undefined;
-  if (location) {
-    const useSandbox = process.env.MINDBODY_USE_SANDBOX_FALLBACK === "true";
-    mbCfg = { ...mbCfg, siteId: useSandbox ? mbCfg.siteId : String(location.siteId) };
+  const pipeline = location ? getDealPipeline(location.id) : null;
+  if (!location || !location.publicBookingEnabled || !pipeline) {
+    return NextResponse.json(
+      { ok: false, correlationId, error: "booking location is missing or not enabled" },
+      { status: 409 },
+    );
   }
+  const useSandbox = process.env.MINDBODY_USE_SANDBOX_FALLBACK === "true";
+  mbCfg = { ...mbCfg, siteId: useSandbox ? mbCfg.siteId : String(location.siteId) };
 
   const classId = contact.properties.court16_class_id
     ? Number(contact.properties.court16_class_id)
     : undefined;
-  const clientId =
-    contact.properties.court16_mindbody_parent_id ||
-    contact.properties.court16_mindbody_child_id;
+  const clientId = contact.properties.court16_mindbody_parent_id;
 
   if (!classId || !clientId) {
     await updateContact(hsCfg, log, contact.id, {
@@ -110,40 +150,67 @@ export async function POST(req: Request) {
     );
   }
 
-  // Verify the service purchase landed on the client.
+  const offerKey = contact.properties.court16_offer_key;
+  const offer = offerKey ? getOffer(offerKey) : undefined;
+  if (
+    !offer ||
+    offer.flow === "staff_assist" ||
+    !isAdultOfferReadyAtLocation(offer, location.id)
+  ) {
+    return NextResponse.json(
+      { ok: false, correlationId, error: "booking offer is missing or not payment-enabled" },
+      { status: 409 },
+    );
+  }
+  const expectedServiceName = offer.serviceNameByLocation?.[location.id];
+
+  // Verify the exact purchased ClientService, not merely the existence of
+  // any old credit on the account. The signed checkout state supplies the
+  // earliest acceptable purchase time for this request.
+  let purchasedClientServiceId: number;
   try {
     const services = await getClientServices(mbCfg, log, clientId);
-    if (services.length === 0 && mbCfg.writeMode !== "test") {
+    const earliestPurchaseMs = (confirmationState.iat! - 5 * 60) * 1000;
+    const matchingService = services.find((service) => {
+      const paymentMs = Date.parse(service.PaymentDate ?? "");
+      const remaining = Number(service.Remaining ?? service.Count ?? 0);
+      const expirationMs = service.ExpirationDate ? Date.parse(service.ExpirationDate) : Infinity;
+      return (
+        service.Name === expectedServiceName &&
+        Number.isFinite(paymentMs) &&
+        paymentMs >= earliestPurchaseMs &&
+        remaining > 0 &&
+        (!Number.isFinite(expirationMs) || expirationMs >= Date.now()) &&
+        service.Id != null
+      );
+    });
+    if (!matchingService || matchingService.Id == null) {
       await updateContact(hsCfg, log, contact.id, {
         court16_booking_status: "manual_review",
-        court16_failure_reason: "No services found — payment may not have completed",
+        court16_failure_reason: `Exact recent service not found: ${expectedServiceName}`,
       });
       return NextResponse.json({
         ok: true,
         correlationId,
         status: "manual_review",
         reason: "payment_not_detected",
-      });
+      }, { status: 202 });
     }
+    purchasedClientServiceId = Number(matchingService.Id);
   } catch (e) {
-    // Don't fail the flow on a verification error; just log.
     log.warn("intro.confirm.getServices.fail", { error: e instanceof Error ? e.message : e });
+    return NextResponse.json(
+      { ok: false, correlationId, error: "payment verification is temporarily unavailable" },
+      { status: 502 },
+    );
   }
-
-  // Resolve the MindBody service ID from the stored offer key + location.
-  // Threaded to AddClientToClass as ClientServiceId so the enrollment
-  // binds to the right service line. Undefined → MindBody picks first
-  // applicable pricing (existing behavior, no regression).
-  const offerKey = contact.properties.court16_offer_key;
-  const offer = offerKey ? getOffer(offerKey) : undefined;
-  const serviceId = offer && locationSlug ? offer.serviceIdByLocation[locationSlug] : undefined;
 
   // Book the class.
   try {
     await addClientToClass(mbCfg, log, {
       ClientId: clientId,
       ClassId: classId,
-      ClientServiceId: serviceId,
+      ClientServiceId: purchasedClientServiceId,
     });
   } catch (e) {
     const serialized =
@@ -163,8 +230,7 @@ export async function POST(req: Request) {
   // Advance the Deal in the Trials pipeline. Soft-failure: log + continue.
   try {
     const deal = await findDealByCorrelationId(hsCfg, log, correlationId);
-    const pipeline = locationSlug ? getDealPipeline(locationSlug) : null;
-    if (deal && pipeline) {
+    if (deal) {
       await moveDealStage(hsCfg, log, deal.id, pipeline.stages.scheduled);
       log.info("intro.confirm.dealMoved", { dealId: deal.id, stage: pipeline.stages.scheduled });
     }

@@ -20,26 +20,62 @@ interface ConfirmResult {
 
 function ConfirmedInner() {
   const params = useSearchParams();
-  const correlationId = params.get("correlationId");
+  const queryCorrelationId = params.get("correlationId");
   const preState = params.get("status");
+  const [correlationId, setCorrelationId] = useState<string | null>(queryCorrelationId);
+  const [confirmationToken, setConfirmationToken] = useState<string | null>(null);
+  const [storageChecked, setStorageChecked] = useState(false);
   const [result, setResult] = useState<ConfirmResult>({
     state:
       preState === "softwall"
         ? "softwall"
-        : correlationId
-          ? "checking"
-          : "failed",
-    correlationId: correlationId ?? "unknown",
+        : "checking",
+    correlationId: queryCorrelationId ?? "checking",
     message:
       preState === "softwall"
         ? "We already have an account for this email."
-        : !correlationId
-          ? "Missing correlation ID — can't look up your booking."
-          : undefined,
+        : undefined,
   });
 
   useEffect(() => {
-    if (!correlationId || result.state !== "checking") return;
+    if (preState === "softwall") {
+      setStorageChecked(true);
+      return;
+    }
+    let stored: { correlationId?: string; confirmationToken?: string } = {};
+    try {
+      stored = JSON.parse(sessionStorage.getItem("court16-intro-pending") ?? "{}");
+    } catch {
+      stored = {};
+    }
+    const resolvedCorrelationId = queryCorrelationId ?? stored.correlationId ?? null;
+    const resolvedToken =
+      resolvedCorrelationId && stored.correlationId === resolvedCorrelationId
+        ? stored.confirmationToken ?? null
+        : null;
+    setCorrelationId(resolvedCorrelationId);
+    setConfirmationToken(resolvedToken);
+    setStorageChecked(true);
+    if (!resolvedCorrelationId || !resolvedToken) {
+      setResult({
+        state: "failed",
+        correlationId: resolvedCorrelationId ?? "unknown",
+        message:
+          "This checkout return is missing its secure confirmation state. No enrollment was attempted.",
+      });
+    } else {
+      setResult({ state: "checking", correlationId: resolvedCorrelationId });
+    }
+  }, [preState, queryCorrelationId]);
+
+  useEffect(() => {
+    if (
+      !storageChecked ||
+      !correlationId ||
+      !confirmationToken ||
+      result.state !== "checking"
+    )
+      return;
     let cancelled = false;
     const controller = new AbortController();
 
@@ -48,7 +84,7 @@ function ConfirmedInner() {
         const resp = await fetch("/api/book/intro/confirm", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ correlationId }),
+          body: JSON.stringify({ correlationId, confirmationToken }),
           signal: controller.signal,
         });
         const data = await resp.json().catch(() => ({}));
@@ -71,6 +107,9 @@ function ConfirmedInner() {
               ? "manual_review"
               : "failed";
         setResult({ state: next, correlationId: correlationId! });
+        if (next === "confirmed" || next === "manual_review") {
+          sessionStorage.removeItem("court16-intro-pending");
+        }
       } catch (err) {
         if (cancelled) return;
         setResult({
@@ -86,7 +125,7 @@ function ConfirmedInner() {
       cancelled = true;
       controller.abort();
     };
-  }, [correlationId, result.state]);
+  }, [confirmationToken, correlationId, result.state, storageChecked]);
 
   return (
     <>

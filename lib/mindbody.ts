@@ -5,9 +5,9 @@
 //      are the #1 cause of "sync is broken" support tickets.
 //   2. Every write call defaults to Test=true unless MINDBODY_WRITE_MODE === "live".
 //      Even in live mode, individual callers can still opt-in to Test=true.
-//   3. The StaffUserToken is cached in-process for ~50 minutes (MindBody tokens
-//      live for ~60 minutes). In a serverless world this means each cold lambda
-//      does one token issue, not four.
+//   3. StaffUserTokens are cached per SiteId for ~50 minutes (MindBody tokens
+//      live for ~60 minutes). A token issued for one club must never be reused
+//      against another club during a multi-site serverless invocation.
 //   4. Every call gets a correlation ID in the log stream so we can trace a
 //      happy-path run end-to-end.
 //
@@ -56,12 +56,13 @@ interface CachedToken {
 }
 
 const TOKEN_TTL_MS = 50 * 60 * 1000; // MindBody tokens live ~60min, refresh at 50.
-let cachedToken: CachedToken | null = null;
+const cachedTokens = new Map<string, CachedToken>();
 
 export async function issueStaffUserToken(cfg: MindbodyConfig, log: Logger): Promise<string> {
-  if (cachedToken && cachedToken.expiresAt > Date.now()) {
-    log.debug("mindbody.token.cache-hit");
-    return cachedToken.token;
+  const cached = cachedTokens.get(cfg.siteId);
+  if (cached && cached.expiresAt > Date.now()) {
+    log.debug("mindbody.token.cache-hit", { siteId: cfg.siteId });
+    return cached.token;
   }
   log.info("mindbody.token.issue.start");
   const res = await fetch(`${cfg.baseUrl}/usertoken/issue`, {
@@ -78,8 +79,14 @@ export async function issueStaffUserToken(cfg: MindbodyConfig, log: Logger): Pro
     log.error("mindbody.token.issue.fail", { status: res.status, body });
     throw new MindbodyError("usertoken/issue failed", res.status, body);
   }
-  cachedToken = { token: body.AccessToken, expiresAt: Date.now() + TOKEN_TTL_MS };
-  log.info("mindbody.token.issue.ok", { tokenPrefix: body.AccessToken.slice(0, 8) });
+  cachedTokens.set(cfg.siteId, {
+    token: body.AccessToken,
+    expiresAt: Date.now() + TOKEN_TTL_MS,
+  });
+  log.info("mindbody.token.issue.ok", {
+    siteId: cfg.siteId,
+    tokenPrefix: body.AccessToken.slice(0, 8),
+  });
   return body.AccessToken;
 }
 
@@ -751,7 +758,7 @@ export async function getClasses(
 export interface AddClientToClassInput {
   ClientId: string | number;
   ClassId: number;
-  /** Pricing option / service id. Optional — MindBody will pick the first applicable pricing if omitted. */
+  /** ClientService instance ID from GET /client/clientservices. */
   ClientServiceId?: number;
   /** If true, waitlist if class is full instead of erroring. */
   SendEmail?: boolean;
@@ -892,8 +899,16 @@ export function isAlreadyBookedError(err: unknown): boolean {
   return body?.Error?.Code === "ClientIsAlreadyBooked";
 }
 
+export function isClassRequiresPaymentError(err: unknown): boolean {
+  if (!(err instanceof MindbodyError)) return false;
+  const body = (err as unknown as { body?: { Error?: { Code?: string } } }).body;
+  return body?.Error?.Code === "ClassRequiresPayment";
+}
+
 export interface ClientService {
   Id?: number;
+  /** Sale Service / pricing-option ID that produced this client-owned instance. */
+  ProductId?: number;
   Count?: number;
   Remaining?: number;
   Name?: string;
@@ -918,12 +933,47 @@ export async function getClientServices(
   log: Logger,
   clientId: string | number,
 ): Promise<ClientService[]> {
-  const res = await authedFetch<GetClientServicesResponse>(cfg, log, {
-    method: "GET",
+  const res = await staffFetch<GetClientServicesResponse>(cfg, log, {
     path: "/client/clientservices",
     query: { ClientId: String(clientId), Limit: 50 },
   });
   return res.ClientServices ?? [];
+}
+
+export interface ClientVisit {
+  Id?: number;
+  ClassId?: number;
+  ClassScheduleId?: number;
+  ProductId?: number;
+  ServiceId?: number;
+  ServiceName?: string;
+  StartDateTime?: string;
+  AppointmentStatus?: string;
+  Status?: string;
+  LateCancelled?: boolean;
+  [k: string]: unknown;
+}
+
+interface GetClientVisitsResponse {
+  Visits?: ClientVisit[];
+}
+
+/** Read a client's class visits without changing enrollment state. */
+export async function getClientVisits(
+  cfg: MindbodyConfig,
+  log: Logger,
+  input: { clientId: string | number; startDate: string; endDate: string },
+): Promise<ClientVisit[]> {
+  const res = await staffFetch<GetClientVisitsResponse>(cfg, log, {
+    path: "/client/clientvisits",
+    query: {
+      ClientId: String(input.clientId),
+      StartDate: input.startDate,
+      EndDate: input.endDate,
+      Limit: 200,
+    },
+  });
+  return res.Visits ?? [];
 }
 
 /**
@@ -1008,4 +1058,23 @@ export function checkCallerToken(req: Request): { ok: true } | { ok: false; stat
     return { ok: false, status: 401, reason: "Missing or invalid Bearer token (set TEST_API_TOKEN)" };
   }
   return { ok: true };
+}
+
+/**
+ * Strict variant for diagnostic endpoints that expose client data or perform
+ * direct Mindbody writes. These routes are disabled unless TEST_API_TOKEN is
+ * explicitly configured; public booking routes continue to use the optional
+ * caller-token behavior above.
+ */
+export function checkDiagnosticToken(
+  req: Request,
+): { ok: true } | { ok: false; status: number; reason: string } {
+  if (!process.env.TEST_API_TOKEN) {
+    return {
+      ok: false,
+      status: 503,
+      reason: "Diagnostic endpoint disabled (TEST_API_TOKEN is not configured)",
+    };
+  }
+  return checkCallerToken(req);
 }

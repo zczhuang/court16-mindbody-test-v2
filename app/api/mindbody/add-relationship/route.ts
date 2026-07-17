@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { addClientRelationship, checkCallerToken, loadConfigFromEnv, MindbodyError } from "@/lib/mindbody";
+import { addClientRelationship, checkDiagnosticToken, loadConfigFromEnv, MindbodyError } from "@/lib/mindbody";
 import { createLogger, makeCorrelationId } from "@/lib/logger";
 
 export const runtime = "nodejs";
@@ -9,7 +9,7 @@ export async function POST(req: Request) {
   const correlationId = makeCorrelationId();
   const log = createLogger(correlationId);
 
-  const auth = checkCallerToken(req);
+  const auth = checkDiagnosticToken(req);
   if (!auth.ok) {
     return NextResponse.json({ ok: false, correlationId, error: auth.reason }, { status: auth.status });
   }

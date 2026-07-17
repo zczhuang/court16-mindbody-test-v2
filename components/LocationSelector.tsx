@@ -5,72 +5,77 @@ import { LOCATIONS, type Location } from "@/config/locations";
 interface Props {
   selectedId: string | null;
   onSelect: (location: Location) => void;
+  /** Use the stricter kids-trial readiness gate instead of general booking readiness. */
+  trialOnly?: boolean;
   /** Hide the built-in eyebrow + title + subtitle (used when a parent page provides its own). */
   suppressHead?: boolean;
 }
 
-export default function LocationSelector({ selectedId, onSelect, suppressHead }: Props) {
+export default function LocationSelector({
+  selectedId,
+  onSelect,
+  trialOnly = false,
+  suppressHead,
+}: Props) {
   return (
     <section className="loc-section">
       {!suppressHead && (
         <div className="section-head">
-          <div className="eyebrow">Step 1 of 2</div>
-          <h1 className="section-title">Choose your club</h1>
+          <div className="eyebrow">Step 1 of 3</div>
+          <h2 className="section-title">Start with your club.</h2>
           <p className="section-sub">
-            Six clubs across NY, PA &amp; MA. Pick the one nearest you — we&apos;ll show only the
-            classes at that location.
+            Choose any club marked Online. The remaining clubs will become selectable as
+            soon as their kids trial setup is verified.
           </p>
         </div>
       )}
 
       <div className="loc-grid">
         {LOCATIONS.map((loc) => {
-          const on = selectedId === loc.id;
+          const enabled = trialOnly
+            ? loc.publicBookingEnabled && loc.trialBookingEnabled
+            : loc.publicBookingEnabled;
+          const on = enabled && selectedId === loc.id;
+          const unavailableReason = trialOnly
+            ? loc.trialUnavailableReason
+            : "Opening details are being finalized.";
           return (
             <button
               key={loc.id}
               type="button"
               onClick={() => onSelect(loc)}
               aria-pressed={on}
-              className={`loc-card ${on ? "on" : ""}`}
+              disabled={!enabled}
+              aria-label={
+                enabled
+                  ? `Choose ${loc.name}`
+                  : trialOnly
+                    ? `${loc.name}: online trial setup in progress`
+                    : `${loc.name}: public booking is not open yet`
+              }
+              className={`loc-card ${on ? "on" : ""} ${!enabled ? "is-unavailable" : ""}`}
             >
               <div className="loc-top">
                 <span className="state-chip">{loc.state}</span>
-                <span className="loc-check" aria-hidden="true">
-                  {on ? (
-                    <svg viewBox="0 0 20 20" width="20" height="20">
-                      <circle cx="10" cy="10" r="10" fill="#1a1a1a" />
-                      <path
-                        d="M5.5 10.5l3 3 6-7"
-                        fill="none"
-                        stroke="#FFE033"
-                        strokeWidth="2.4"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  ) : (
-                    <svg viewBox="0 0 20 20" width="20" height="20">
-                      <circle cx="10" cy="10" r="9.5" fill="none" stroke="#e5e5e5" />
-                    </svg>
-                  )}
+                <span className="loc-status" aria-hidden="true">
+                  {enabled ? (on ? "Selected" : "Online") : "Setup in progress"}
                 </span>
               </div>
               <div className="loc-name">{loc.name}</div>
               <div className="loc-addr">{shortAddress(loc)}</div>
+              {!enabled && unavailableReason && (
+                <div className="loc-unavailable-reason">{unavailableReason}</div>
+              )}
               <div className="loc-foot">
                 <span className="loc-go">
-                  {on ? "Selected" : "Choose this club"}
-                  <svg viewBox="0 0 16 16" width="14" height="14">
-                    <path
-                      d="M2 8h11M9 4l4 4-4 4"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
+                  {enabled
+                    ? on
+                      ? "Selected"
+                      : trialOnly
+                        ? "See trial classes"
+                        : "Choose this club"
+                    : "Online booking soon"}
+                  {enabled && <span aria-hidden="true">→</span>}
                 </span>
               </div>
             </button>

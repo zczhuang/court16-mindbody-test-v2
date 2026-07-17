@@ -28,8 +28,10 @@ export interface DealPipelineConfig {
 }
 
 /**
- * Keyed by `Location.id` in `config/locations.ts`. Every location in
- * LOCATIONS has an entry here.
+ * Keyed by `Location.id` in `config/locations.ts`. A location must remain
+ * disabled until it has an explicit entry; never route a missing club to a
+ * different pipeline by default. Allston is intentionally absent pending
+ * verified pipeline and stage IDs.
  */
 export const DEAL_PIPELINES: Record<string, DealPipelineConfig> = {
   brooklyn: {

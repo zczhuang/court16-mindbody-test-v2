@@ -7,6 +7,8 @@ export interface MindBodyClass {
   EndDateTime: string;
   MaxCapacity: number;
   TotalBooked: number;
+  WebCapacity?: number;
+  WebBooked?: number;
   IsCanceled: boolean;
   IsAvailable: boolean;
   Staff: {
@@ -69,6 +71,12 @@ export interface ChildInfo {
   /** ISO "YYYY-MM-DD". Required by the API; age is derived server-side. */
   birthDate?: string;
 }
+
+/** Parent-facing outcome returned by POST /api/book/trial. */
+export type TrialSubmissionStatus =
+  | "pending_staff"
+  | "manual_review"
+  | "duplicate_email_softwall";
 
 /** Trial request form submission */
 export interface TrialRequest {

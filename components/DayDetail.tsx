@@ -22,20 +22,10 @@ export default function DayDetail({ classes, date, selectedClassId, onPick }: Pr
   if (!date) {
     return (
       <div className="detail empty-state">
-        <div className="illus" aria-hidden="true">
-          <svg viewBox="0 0 80 80" width="72" height="72">
-            <rect x="8" y="16" width="64" height="56" rx="6" fill="#fff" stroke="#1a1a1a" strokeWidth="2" />
-            <rect x="8" y="16" width="64" height="14" fill="#FFE033" stroke="#1a1a1a" strokeWidth="2" />
-            <line x1="24" y1="10" x2="24" y2="22" stroke="#1a1a1a" strokeWidth="3" strokeLinecap="round" />
-            <line x1="56" y1="10" x2="56" y2="22" stroke="#1a1a1a" strokeWidth="3" strokeLinecap="round" />
-            <circle cx="40" cy="50" r="10" fill="#FFE033" stroke="#1a1a1a" strokeWidth="2" />
-            <path d="M31 50 Q40 44 49 50" fill="none" stroke="#1a1a1a" strokeWidth="1.2" />
-            <path d="M31 50 Q40 56 49 50" fill="none" stroke="#1a1a1a" strokeWidth="1.2" />
-          </svg>
-        </div>
+        <div className="empty-ball" aria-hidden="true" />
         <div className="es-title">Pick a day to see classes</div>
         <div className="es-sub">
-          Tap any green-chipped day on the calendar to browse available trial slots.
+          Choose any highlighted day on the calendar to see the trial classes.
         </div>
       </div>
     );
@@ -45,7 +35,7 @@ export default function DayDetail({ classes, date, selectedClassId, onPick }: Pr
     return (
       <div className="detail empty-state">
         <div className="es-title">No trials on this day</div>
-        <div className="es-sub">Try another day — most clubs have weekend openings.</div>
+        <div className="es-sub">Try another highlighted day for available trial classes.</div>
       </div>
     );
   }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   addClient,
+  authedMindbodyGet,
   buildAdultCartUrl,
   checkCallerToken,
   getClientsByEmail,
@@ -10,18 +11,26 @@ import {
 } from "@/lib/mindbody";
 import {
   createTrialDeal,
+  findContactByEmail,
   HubspotError,
   loadHubspotConfig,
   submitTrialForm,
   upsertContactByEmail,
 } from "@/lib/hubspot";
-import { buildStaffUrl } from "@/lib/staff-tokens";
+import { buildStaffUrl, signToken } from "@/lib/staff-tokens";
 import { classifyIntent } from "@/lib/intent";
 import { createLogger, makeCorrelationId } from "@/lib/logger";
 import { formatClassDayTime, siteLocalToUtcIso } from "@/lib/class-utils";
 import { getLocationById } from "@/config/locations";
-import { getOffer } from "@/config/adult-config";
+import {
+  getOffer,
+  isAdultOfferReadyAtLocation,
+  isAdultProgram,
+} from "@/config/adult-config";
 import { getDealPipeline, getHubspotPreferredLocation } from "@/config/hubspot-deals";
+import { consumeSignupRateLimit } from "@/lib/request-rate-limit";
+import type { MindBodyClass } from "@/lib/trial-types";
+import { tryAcquireLocalActionLock } from "@/lib/action-lock";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -74,11 +83,55 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, correlationId, errors }, { status: 400 });
   }
 
+  const rateLimit = consumeSignupRateLimit(req, "adult-intro", body.adult.email);
+  if (!rateLimit.ok) {
+    return NextResponse.json(
+      {
+        ok: false,
+        correlationId,
+        code: "rate_limited",
+        error: "Too many requests. Please wait before trying again.",
+      },
+      {
+        status: 429,
+        headers: { "Retry-After": String(rateLimit.retryAfterSeconds ?? 60) },
+      },
+    );
+  }
+
+  const releaseSignupLock = tryAcquireLocalActionLock(
+    `adult-intro:${body.adult.email.trim().toLowerCase()}`,
+  );
+  if (!releaseSignupLock) {
+    return NextResponse.json(
+      {
+        ok: false,
+        correlationId,
+        code: "request_in_progress",
+        error: "An intro request for this email is already being processed. Please wait.",
+      },
+      { status: 409 },
+    );
+  }
+
+  try {
+
   const location = getLocationById(body.locationId);
   if (!location) {
     return NextResponse.json(
       { ok: false, correlationId, error: `unknown locationId: ${body.locationId}` },
       { status: 400 },
+    );
+  }
+  if (!location.publicBookingEnabled) {
+    return NextResponse.json(
+      {
+        ok: false,
+        correlationId,
+        code: "location_not_ready",
+        error: "Online booking is not yet available for this club.",
+      },
+      { status: 409 },
     );
   }
 
@@ -87,6 +140,17 @@ export async function POST(req: Request) {
     return NextResponse.json(
       { ok: false, correlationId, error: `unknown offerKey: ${body.offerKey}` },
       { status: 400 },
+    );
+  }
+  if (!isAdultOfferReadyAtLocation(offer, location.id)) {
+    return NextResponse.json(
+      {
+        ok: false,
+        correlationId,
+        code: "offer_location_not_ready",
+        error: "That offer's checkout is not yet available for this club.",
+      },
+      { status: 409 },
     );
   }
 
@@ -108,12 +172,84 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, correlationId, error: msg }, { status: 500 });
   }
   const hsCfg = loadHubspotConfig();
+  if (!hsCfg) {
+    return NextResponse.json(
+      {
+        ok: false,
+        correlationId,
+        code: "hubspot_not_configured",
+        error: "Intro requests are temporarily unavailable. Please contact Court 16.",
+      },
+      { status: 503 },
+    );
+  }
   const baseUrl = process.env.APP_BASE_URL ?? "http://localhost:3000";
   const hsContext = sanitizeHsContext(body.hsContext);
 
+  try {
+    const classDate = body.classStartsAt!.slice(0, 10);
+    const result = await authedMindbodyGet<{ Classes?: MindBodyClass[] }>(log, {
+      siteIdOverride: mbCfg.siteId,
+      path: "/class/classes",
+      query: {
+        StartDateTime: `${classDate}T00:00:00`,
+        EndDateTime: `${classDate}T23:59:59`,
+        Limit: 200,
+      },
+      staffMode: true,
+    });
+    const liveClass = (result.Classes ?? []).find(
+      (candidate) =>
+        Number(candidate.Id) === body.classId &&
+        Number(candidate.ClassScheduleId) === body.classScheduleId,
+    );
+    const spotsRemaining = liveClass
+      ? typeof liveClass.WebCapacity === "number"
+        ? Number(liveClass.WebCapacity) - Number(liveClass.WebBooked ?? 0)
+        : Number(liveClass.MaxCapacity) - Number(liveClass.TotalBooked)
+      : 0;
+    if (
+      !liveClass ||
+      liveClass.StartDateTime !== body.classStartsAt ||
+      liveClass.IsCanceled ||
+      !liveClass.IsAvailable ||
+      spotsRemaining <= 0 ||
+      !isAdultProgram(liveClass.ClassDescription?.Program?.Name)
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          correlationId,
+          code: "intro_class_not_available",
+          error: "That adult class is no longer available. Please refresh and choose another time.",
+        },
+        { status: 409 },
+      );
+    }
+    body = {
+      ...body,
+      className: liveClass.ClassDescription?.Name || liveClass.ClassName || body.className,
+      classStartsAt: liveClass.StartDateTime,
+      coachName:
+        liveClass.Staff?.DisplayName ||
+        [liveClass.Staff?.FirstName, liveClass.Staff?.LastName].filter(Boolean).join(" ") ||
+        body.coachName,
+    };
+  } catch (e) {
+    log.error("intro.class.verify-failed", { error: serialize(e) });
+    return NextResponse.json(
+      {
+        ok: false,
+        correlationId,
+        code: "intro_class_verification_failed",
+        error: "We could not safely verify that class. Please try again shortly.",
+      },
+      { status: 502 },
+    );
+  }
+
   log.info("intro.start", {
     writeMode: mbCfg.writeMode,
-    adultEmail: body.adult.email,
     location: location.id,
     offer: offer.key,
     classScheduleId: body.classScheduleId,
@@ -128,6 +264,66 @@ export async function POST(req: Request) {
   let mbDegraded = false;
 
   try {
+    let hubspotContact: Awaited<ReturnType<typeof findContactByEmail>>;
+    try {
+      hubspotContact = await findContactByEmail(hsCfg, log, body.adult.email, [
+        "court16_booking_status",
+        "court16_correlation_id",
+      ]);
+    } catch (e) {
+      log.error("intro.hubspot-contact-lookup.fail", { error: serialize(e) });
+      return NextResponse.json(
+        {
+          ok: false,
+          correlationId,
+          code: "hubspot_lookup_failed",
+          error: "We could not safely start this request. Please try again shortly.",
+        },
+        { status: 502 },
+      );
+    }
+    const activeStatuses = new Set([
+      "pending_staff",
+      "manual_review",
+      "duplicate_email_softwall",
+      "pending_payment",
+      "pending_staff_assist",
+    ]);
+    const activeStatus = hubspotContact?.properties.court16_booking_status;
+    if (activeStatus && activeStatuses.has(activeStatus)) {
+      return NextResponse.json(
+        {
+          ok: false,
+          correlationId,
+          code: "active_booking_request_exists",
+          error:
+            "A trial or intro request is already active for this email. Court 16 staff will follow up; please do not submit another request.",
+        },
+        { status: 409 },
+      );
+    }
+
+    const intakeDealCreated = await createDealSafely(
+      hsCfg,
+      log,
+      {
+        email: body.adult.email,
+        correlationId,
+        locationId: location.id,
+        contactProperties: {
+          firstname: body.adult.firstName,
+          lastname: body.adult.lastName,
+          phone: body.adult.phone,
+          preferred_location: getHubspotPreferredLocation(location.id) ?? location.fullName,
+        },
+        classStartsAt: classStartsAtUtc,
+        dealName: `Adult intro · ${offer.displayName} · ${location.fullName}`,
+        amount: offer.priceUsd,
+      },
+      trace,
+    );
+    if (!intakeDealCreated) return introWorkItemFailure(correlationId);
+
     let existing: Awaited<ReturnType<typeof getClientsByEmail>>;
     try {
       existing = await getClientsByEmail(mbCfg, log, body.adult.email);
@@ -161,7 +357,7 @@ export async function POST(req: Request) {
         baseUrl,
       });
       await submitFormSafely(hsCfg, log, fields, trace, "hubspot.submitTrialForm (softwall)", hsContext);
-      await createDealSafely(
+      const synced = await createDealSafely(
         hsCfg,
         log,
         {
@@ -175,7 +371,8 @@ export async function POST(req: Request) {
         },
         trace,
       );
-      return NextResponse.json({ ok: true, correlationId, status: "duplicate_email_softwall", trace });
+      if (!synced) return introDurableManualReview(correlationId);
+      return NextResponse.json({ ok: true, correlationId, status: "duplicate_email_softwall" });
     }
 
     let adult: Awaited<ReturnType<typeof addClient>> | null = null;
@@ -232,11 +429,11 @@ export async function POST(req: Request) {
         offer,
         location,
         status: "manual_review",
-        adultMbId: undefined,
+        adultMbId: adult?.Id != null ? String(adult.Id) : undefined,
         baseUrl,
       });
       await submitFormSafely(hsCfg, log, fields, trace, "hubspot.submitTrialForm (manual_review)", hsContext);
-      await createDealSafely(
+      const synced = await createDealSafely(
         hsCfg,
         log,
         {
@@ -250,15 +447,13 @@ export async function POST(req: Request) {
         },
         trace,
       );
+      if (!synced) return introDurableManualReview(correlationId);
       log.info("intro.done", { trace: trace.map((t) => ({ step: t.step, status: t.status })), degraded: true });
       return NextResponse.json({
         ok: true,
         correlationId,
-        writeMode: mbCfg.writeMode,
         status: "manual_review",
-        adultId: null,
         cartUrl: null,
-        trace,
       });
     }
 
@@ -278,7 +473,7 @@ export async function POST(req: Request) {
         baseUrl,
       });
       await submitFormSafely(hsCfg, log, fields, trace, "hubspot.submitTrialForm (staff_assist)", hsContext);
-      await createDealSafely(
+      const synced = await createDealSafely(
         hsCfg,
         log,
         {
@@ -292,6 +487,7 @@ export async function POST(req: Request) {
         },
         trace,
       );
+      if (!synced) return introDurableManualReview(correlationId);
 
       log.info("intro.done", {
         trace: trace.map((t) => ({ step: t.step, status: t.status })),
@@ -301,18 +497,15 @@ export async function POST(req: Request) {
       return NextResponse.json({
         ok: true,
         correlationId,
-        writeMode: mbCfg.writeMode,
         status: "pending_staff_assist",
-        adultId: adult.Id ?? null,
         cartUrl: null,
-        trace,
       });
     }
 
     // Payment flow (default): cart URL redirect, booked on payment confirm.
     // Per-location service ID when configured, else MindBody's cart shows
     // the service picker.
-    const serviceId = offer.serviceIdByLocation[location.id] ?? 0;
+    const serviceId = offer.serviceIdByLocation[location.id]!;
     const cartUrl = buildAdultCartUrl({
       siteId: mbCfg.siteId,
       serviceId,
@@ -330,7 +523,7 @@ export async function POST(req: Request) {
       baseUrl,
     });
     await submitFormSafely(hsCfg, log, fields, trace, "hubspot.submitTrialForm", hsContext);
-    await createDealSafely(
+    const synced = await createDealSafely(
       hsCfg,
       log,
       {
@@ -343,24 +536,35 @@ export async function POST(req: Request) {
       },
       trace,
     );
+    if (!synced) return introDurableManualReview(correlationId);
 
     log.info("intro.done", { trace: trace.map((t) => ({ step: t.step, status: t.status })) });
 
     return NextResponse.json({
       ok: true,
       correlationId,
-      writeMode: mbCfg.writeMode,
       status: "pending_payment",
-      adultId: adult.Id ?? null,
       cartUrl,
-      trace,
+      confirmationToken: signToken({
+        action: "intro_payment_confirm",
+        correlationId,
+        ttlHours: 6,
+      }),
     });
   } catch (e) {
     log.error("intro.fail", { error: serialize(e) });
     return NextResponse.json(
-      { ok: false, correlationId, trace, error: serialize(e) },
+      {
+        ok: false,
+        correlationId,
+        code: "intro_request_failed",
+        error: "We could not complete this request safely. Please contact Court 16.",
+      },
       { status: e instanceof MindbodyError ? 502 : 500 },
     );
+  }
+  } finally {
+    releaseSignupLock();
   }
 }
 
@@ -424,7 +628,6 @@ function buildFormFields(args: BuildFieldsArgs) {
     court16_staff_confirm_url: buildStaffUrl({ action: "confirm", correlationId, baseUrl }),
     court16_staff_reassign_url: buildStaffUrl({ action: "reassign", correlationId, baseUrl }),
     court16_staff_deny_url: buildStaffUrl({ action: "deny", correlationId, baseUrl }),
-    court16_admin_retry_url: buildStaffUrl({ action: "retry", correlationId, baseUrl }),
   };
 }
 
@@ -488,7 +691,6 @@ function contactPropertiesFromFields(fields: ReturnType<typeof buildFormFields>)
     court16_staff_confirm_url: fields.court16_staff_confirm_url,
     court16_staff_reassign_url: fields.court16_staff_reassign_url,
     court16_staff_deny_url: fields.court16_staff_deny_url,
-    court16_admin_retry_url: fields.court16_admin_retry_url,
   };
 }
 
@@ -511,10 +713,10 @@ async function createDealSafely(
     classStartsAt?: string;
   },
   trace: Array<{ step: string; status: "ok" | "skipped" | "error"; data?: unknown; error?: unknown }>,
-): Promise<void> {
+): Promise<boolean> {
   if (!hsCfg) {
     trace.push({ step: "hubspot.createTrialDeal", status: "skipped", data: { reason: "HubSpot not configured" } });
-    return;
+    return false;
   }
   const pipeline = getDealPipeline(args.locationId);
   if (!pipeline) {
@@ -523,7 +725,7 @@ async function createDealSafely(
       status: "skipped",
       data: { reason: `no pipeline mapped for location ${args.locationId}` },
     });
-    return;
+    return false;
   }
   try {
     const contact = await upsertContactByEmail(hsCfg, log, args.email, args.contactProperties);
@@ -541,10 +743,39 @@ async function createDealSafely(
       status: "ok",
       data: { contactId: contact.id, dealId: deal.id, cached: deal.cached, pipeline: pipeline.pipelineId },
     });
+    return true;
   } catch (e) {
     log.warn("intro.deal.fail", { error: serialize(e) });
     trace.push({ step: "hubspot.createTrialDeal", status: "error", error: serialize(e) });
+    return false;
   }
+}
+
+function introWorkItemFailure(correlationId: string) {
+  return NextResponse.json(
+    {
+      ok: false,
+      correlationId,
+      code: "hubspot_work_item_failed",
+      error:
+        "Your request could not be added to the staff review queue. Please try again or contact Court 16 with the request reference.",
+    },
+    { status: 502 },
+  );
+}
+
+function introDurableManualReview(correlationId: string) {
+  return NextResponse.json(
+    {
+      ok: true,
+      correlationId,
+      status: "manual_review",
+      cartUrl: null,
+      warning:
+        "Your request is in the staff queue, but account setup needs review. Do not submit again.",
+    },
+    { status: 202 },
+  );
 }
 
 function validate(body: IntroBody | undefined): string[] {
@@ -565,6 +796,7 @@ function validate(body: IntroBody | undefined): string[] {
   if (typeof body.classScheduleId !== "number")
     errors.push("classScheduleId must be a number");
   if (typeof body.classId !== "number") errors.push("classId must be a number");
+  if (!body.classStartsAt) errors.push("classStartsAt is required");
   return errors;
 }
 

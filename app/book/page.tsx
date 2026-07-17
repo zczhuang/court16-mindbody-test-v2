@@ -14,16 +14,28 @@ function BookInner() {
   const router = useRouter();
   const { location, setLocation } = useSelectedLocation();
   const urlLocation = params.get("location");
+  const urlCandidate = urlLocation ? getLocationById(urlLocation) : undefined;
+  const urlResolved = urlCandidate?.publicBookingEnabled ? urlCandidate : null;
+  const globalResolved = location?.publicBookingEnabled ? location : null;
 
   // URL param wins over global state — matches SoulCycle's deep-link
   // behavior where /studios/NYC switches regions globally.
   useEffect(() => {
-    if (!urlLocation || location?.id === urlLocation) return;
+    if (!urlLocation) {
+      if (location && !location.publicBookingEnabled) setLocation(null);
+      return;
+    }
     const loc = getLocationById(urlLocation);
-    if (loc) setLocation(loc);
+    if (loc?.publicBookingEnabled) {
+      if (location?.id !== loc.id) setLocation(loc);
+    } else if (location?.id === urlLocation) {
+      setLocation(null);
+    }
   }, [urlLocation, location, setLocation]);
 
-  const resolved = location ?? (urlLocation ? getLocationById(urlLocation) : null);
+  // An explicit URL wins. Invalid or disabled deep links show the selector
+  // instead of silently falling back to a different club from localStorage.
+  const resolved = urlLocation ? urlResolved : globalResolved;
   const qs = resolved ? `?location=${resolved.id}` : "";
 
   if (!resolved) {
@@ -70,7 +82,7 @@ function BookInner() {
           </h1>
           <p className="section-sub">
             Pick the path that fits. Kids trial is free and staff-confirmed; adult intros
-            are $58–$75 and book instantly after payment.
+            vary by club and open only after the live Mindbody price is verified.
           </p>
           {resolved && (
             <div style={{ marginTop: 14 }}>
@@ -118,7 +130,7 @@ function BookInner() {
             <PathCard
               eyebrow="For you"
               title="Adult intro"
-              description="Tennis Intro Special ($75) or Pickleball Clinic Intro ($58). Book a session and pay online."
+              description="Choose an adult offer whose live Mindbody service and price are verified for this club."
               cta="Start adult intro"
               href={`/intro${qs}`}
               accentColor="#1a1a1a"

@@ -38,11 +38,11 @@ export default function TrialRequestForm({
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onCancel();
+      if (e.key === "Escape" && !submitting) onCancel();
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [onCancel]);
+  }, [onCancel, submitting]);
 
   useEffect(() => {
     const prev = document.body.style.overflow;
@@ -100,7 +100,11 @@ export default function TrialRequestForm({
         notes: notes || undefined,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setError(
+        err instanceof Error && err.message
+          ? err.message
+          : "We couldn't send the trial request. Please try again, or call 718-875-5550 and we'll help.",
+      );
       setSubmitting(false);
     }
   }
@@ -110,21 +114,24 @@ export default function TrialRequestForm({
       role="dialog"
       aria-modal="true"
       aria-labelledby="trial-form-title"
+      aria-busy={submitting}
       className="trf-backdrop"
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onCancel();
+        if (e.target === e.currentTarget && !submitting) onCancel();
       }}
     >
       <div className="trf-card">
         <div className="trf-head">
           <div>
             <div className="eyebrow" style={{ marginBottom: 4 }}>
-              Request this trial
+              Step 3 of 3 · Parent details
             </div>
             <h3 id="trial-form-title" className="trf-title">
-              {trialClass.name}
+              Tell us about your player.
             </h3>
             <div className="trf-meta">
+              <strong>{trialClass.name}</strong>
+              <span className="sep">·</span>
               <span className="mono">
                 {trialClass.dayOfWeek}, {trialClass.time}
               </span>
@@ -139,14 +146,23 @@ export default function TrialRequestForm({
             aria-label="Close"
             className="trf-close"
             type="button"
+            disabled={submitting}
           >
             ×
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="trf-body">
+        <form id="trial-request-form" onSubmit={handleSubmit} className="trf-body">
+          <div className="trf-account-note">
+            <strong>We skip the 11-step Mindbody signup.</strong>
+            <span>
+              If we do not find an existing family record that needs review, this request
+              creates the parent and child profiles. Mindbody may then email the parent a
+              secure link to claim the parent account.
+            </span>
+          </div>
           <div className="trf-section">
-            <div className="eyebrow">Parent</div>
+            <div className="eyebrow">Parent or guardian</div>
             <div className="trf-grid">
               <Field label="First name *">
                 <input
@@ -169,7 +185,10 @@ export default function TrialRequestForm({
                 />
               </Field>
             </div>
-            <Field label="Email *">
+            <Field
+              label="Email *"
+              hint="If a new parent account is created, Mindbody sends the account-claim email here."
+            >
               <input
                 type="email"
                 required
@@ -190,7 +209,7 @@ export default function TrialRequestForm({
                   className="trf-input"
                 />
               </Field>
-              <Field label="Your date of birth *" hint="Sets up your MindBody account correctly.">
+              <Field label="Your date of birth *" hint="Required to create the parent Mindbody profile.">
                 <input
                   type="date"
                   required
@@ -203,7 +222,7 @@ export default function TrialRequestForm({
           </div>
 
           <div className="trf-section">
-            <div className="eyebrow">Child</div>
+            <div className="eyebrow">Child · no separate login</div>
             <div className="trf-grid">
               <Field label="First name *">
                 <input
@@ -231,7 +250,7 @@ export default function TrialRequestForm({
               hint={
                 !Number.isNaN(derivedAge)
                   ? `Age ${derivedAge} — we'll match the right class level.`
-                  : "Sets up their MindBody profile correctly."
+                  : "Used for age matching and the child's Mindbody profile."
               }
             >
               <input
@@ -252,32 +271,28 @@ export default function TrialRequestForm({
                 style={{ resize: "vertical", minHeight: 60 }}
               />
             </Field>
+            <div className="trf-family-note">
+              Use the same parent email for the family. Your child does not need a password.
+              Court 16 staff can help link the existing child profile after you claim the
+              parent account.
+            </div>
           </div>
 
           {error && <div className="trf-error">{error}</div>}
         </form>
 
         <div className="trf-foot">
-          <button type="button" onClick={onCancel} className="btn ghost">
+          <button type="button" onClick={onCancel} className="btn ghost" disabled={submitting}>
             ← Back
           </button>
           <button
             type="submit"
-            onClick={handleSubmit}
+            form="trial-request-form"
             disabled={submitting}
             className="btn primary"
           >
-            {submitting ? "Sending…" : "Request this trial"}
-            <svg viewBox="0 0 16 16" width="14" height="14">
-              <path
-                d="M2 8h11M9 4l4 4-4 4"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            {submitting ? "Sending…" : "Send trial request"}
+            <span aria-hidden="true">→</span>
           </button>
         </div>
       </div>
@@ -302,7 +317,7 @@ export default function TrialRequestForm({
         }
         .trf-card {
           width: 100%;
-          max-width: 560px;
+          max-width: 680px;
           background: var(--c16-paper);
           border: 2px solid var(--c16-black);
           border-radius: var(--r-2xl);
@@ -313,18 +328,18 @@ export default function TrialRequestForm({
           max-height: calc(100vh - 48px);
         }
         .trf-head {
-          padding: 22px 22px 16px;
-          border-bottom: 1px solid var(--c16-line);
+          padding: 24px 26px 20px;
+          border-bottom: 2px solid var(--c16-black);
           display: flex;
           align-items: flex-start;
           justify-content: space-between;
           gap: 12px;
-          background: #fff;
+          background: var(--c16-yellow);
         }
         .trf-title {
           font-family: var(--f-display);
           font-weight: 700;
-          font-size: 22px;
+          font-size: 30px;
           line-height: 1.2;
           letter-spacing: -0.03em;
           margin: 0 0 6px;
@@ -361,17 +376,24 @@ export default function TrialRequestForm({
           background: var(--c16-paper-2);
           color: var(--c16-black);
         }
+        .trf-close:disabled {
+          cursor: not-allowed;
+          opacity: 0.45;
+        }
         .trf-body {
-          padding: 18px 22px;
+          padding: 22px 26px;
           overflow-y: auto;
           display: flex;
           flex-direction: column;
-          gap: 16px;
+          gap: 18px;
         }
         .trf-section {
           display: flex;
           flex-direction: column;
           gap: 10px;
+          padding: 18px;
+          border: 1px solid var(--c16-line);
+          background: #fff;
         }
         .trf-section .eyebrow {
           margin-bottom: 2px;
@@ -394,8 +416,8 @@ export default function TrialRequestForm({
           font-weight: 500;
           color: var(--c16-black);
           background: #fff;
-          border: 1.5px solid var(--c16-line);
-          border-radius: var(--r-md);
+          border: 1.5px solid #bdbdb4;
+          border-radius: 8px;
           outline: none;
           transition: border-color 0.12s ease, box-shadow 0.12s ease;
         }
@@ -411,8 +433,27 @@ export default function TrialRequestForm({
           font-size: 13px;
           font-weight: 600;
         }
+        .trf-account-note,
+        .trf-family-note {
+          display: grid;
+          gap: 4px;
+          padding: 14px 16px;
+          border: 1.5px solid var(--c16-black);
+          background: var(--c16-yellow-soft);
+          font-size: 13px;
+          line-height: 1.45;
+        }
+        .trf-account-note strong {
+          font-family: var(--f-display);
+          font-size: 16px;
+        }
+        .trf-family-note {
+          border-color: var(--c16-line);
+          background: var(--c16-paper-2);
+          color: var(--c16-ink-2);
+        }
         .trf-foot {
-          padding: 14px 22px;
+          padding: 16px 26px;
           border-top: 1px solid var(--c16-line);
           background: var(--c16-paper-2);
           display: flex;

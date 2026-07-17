@@ -38,17 +38,7 @@ export default function ClassCard({ trialClass, isSelected, onSelect }: Props) {
         <span>{trialClass.coach}</span>
       </div>
       <div className="cc-go">
-        Request this trial
-        <svg viewBox="0 0 16 16" width="14" height="14">
-          <path
-            d="M2 8h11M9 4l4 4-4 4"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
+        Request this class <span aria-hidden="true">→</span>
       </div>
     </button>
   );

@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import {
   addClient,
+  authedMindbodyGet,
   checkCallerToken,
   getClientsByEmail,
   getClientsByIds,
   loadConfigFromEnv,
   MindbodyError,
-  PARENT_GUARDIAN_RELATIONSHIP,
   pickAdultClient,
 } from "@/lib/mindbody";
 import {
@@ -27,9 +27,11 @@ import {
   siteLocalToUtcIso,
 } from "@/lib/class-utils";
 import { getLocationById } from "@/config/locations";
-import { maxBookableDateStr, TRIAL_MAX_ADVANCE_DAYS } from "@/config/trial-config";
+import { maxBookableDateStr, TRIAL_CONFIG, TRIAL_MAX_ADVANCE_DAYS } from "@/config/trial-config";
 import { getDealPipeline, getHubspotPreferredLocation } from "@/config/hubspot-deals";
-import type { TrialRequest } from "@/lib/trial-types";
+import type { MindBodyClass, TrialRequest } from "@/lib/trial-types";
+import { consumeSignupRateLimit } from "@/lib/request-rate-limit";
+import { tryAcquireLocalActionLock } from "@/lib/action-lock";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -76,11 +78,79 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, correlationId, errors }, { status: 400 });
   }
 
+  const rateLimit = consumeSignupRateLimit(req, "kid-trial", body.parentEmail);
+  if (!rateLimit.ok) {
+    return NextResponse.json(
+      {
+        ok: false,
+        correlationId,
+        code: "rate_limited",
+        error: "Too many requests. Please wait before trying again.",
+      },
+      {
+        status: 429,
+        headers: { "Retry-After": String(rateLimit.retryAfterSeconds ?? 60) },
+      },
+    );
+  }
+
+  const releaseSignupLock = tryAcquireLocalActionLock(
+    `kid-trial:${body.parentEmail.trim().toLowerCase()}`,
+  );
+  if (!releaseSignupLock) {
+    return NextResponse.json(
+      {
+        ok: false,
+        correlationId,
+        code: "request_in_progress",
+        error: "A trial request for this email is already being processed. Please wait.",
+      },
+      { status: 409 },
+    );
+  }
+
+  try {
+
   const location = getLocationById(body.locationId);
   if (!location) {
     return NextResponse.json(
       { ok: false, correlationId, error: `unknown locationId: ${body.locationId}` },
       { status: 400 },
+    );
+  }
+
+  const trialConfig = TRIAL_CONFIG[location.id];
+  const pipeline = getDealPipeline(location.id);
+  const preferredLocation = getHubspotPreferredLocation(location.id);
+  if (
+    !location.publicBookingEnabled ||
+    !location.trialBookingEnabled ||
+    !location.kidTrialProgramId ||
+    !trialConfig?.trialServiceId ||
+    !trialConfig.trialServiceName ||
+    !trialConfig.parentGuardianRelationship ||
+    !pipeline ||
+    !preferredLocation
+  ) {
+    log.warn("trial.location.not-ready", {
+      locationId: location.id,
+      publicBookingEnabled: location.publicBookingEnabled,
+      trialBookingEnabled: location.trialBookingEnabled,
+      hasProgram: Boolean(location.kidTrialProgramId),
+      hasService: Boolean(trialConfig?.trialServiceId),
+      hasServiceName: Boolean(trialConfig?.trialServiceName),
+      hasParentGuardianRelationship: Boolean(trialConfig?.parentGuardianRelationship),
+      hasPipeline: Boolean(pipeline),
+      hasPreferredLocation: Boolean(preferredLocation),
+    });
+    return NextResponse.json(
+      {
+        ok: false,
+        correlationId,
+        code: "trial_location_not_ready",
+        error: "Kids trial scheduling is not yet available for this club.",
+      },
+      { status: 409 },
     );
   }
 
@@ -96,6 +166,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, correlationId, error: msg }, { status: 500 });
   }
   const hsCfg = loadHubspotConfig();
+  if (!hsCfg) {
+    return NextResponse.json(
+      {
+        ok: false,
+        correlationId,
+        code: "hubspot_not_configured",
+        error: "Trial requests are temporarily unavailable. Please contact Court 16.",
+      },
+      { status: 503 },
+    );
+  }
   const baseUrl = process.env.APP_BASE_URL ?? `http://localhost:3000`;
   const hsContext = sanitizeHsContext(body.hsContext);
 
@@ -129,6 +210,97 @@ export async function POST(req: Request) {
     }
   }
 
+  // Re-read the selected occurrence directly from Mindbody before creating
+  // any client or HubSpot record. Browser-supplied IDs are only a selection
+  // hint; without this check a hand-crafted request could target a regular
+  // class, another program, a cancelled occurrence, or a full class.
+  try {
+    const classDate = body.classStartsAt!.slice(0, 10);
+    const result = await authedMindbodyGet<{ Classes?: MindBodyClass[] }>(log, {
+      siteIdOverride: mbCfg.siteId,
+      path: "/class/classes",
+      query: {
+        StartDateTime: `${classDate}T00:00:00`,
+        EndDateTime: `${classDate}T23:59:59`,
+        ProgramIds: String(location.kidTrialProgramId),
+        Limit: 200,
+      },
+      staffMode: true,
+    });
+    const liveClass = (result.Classes ?? []).find(
+      (candidate) =>
+        Number(candidate.Id) === body.classId &&
+        Number(candidate.ClassScheduleId) === body.classScheduleId,
+    );
+    const liveProgramId = Number(liveClass?.ClassDescription?.Program?.Id);
+    const spotsRemaining = liveClass
+      ? typeof liveClass.WebCapacity === "number"
+        ? Number(liveClass.WebCapacity) - Number(liveClass.WebBooked ?? 0)
+        : Number(liveClass.MaxCapacity) - Number(liveClass.TotalBooked)
+      : 0;
+    if (
+      !liveClass ||
+      liveProgramId !== location.kidTrialProgramId ||
+      liveClass.StartDateTime !== body.classStartsAt ||
+      liveClass.IsCanceled ||
+      !liveClass.IsAvailable ||
+      spotsRemaining <= 0
+    ) {
+      log.warn("trial.class.not-available", {
+        locationId: location.id,
+        classId: body.classId,
+        classScheduleId: body.classScheduleId,
+        found: Boolean(liveClass),
+        programMatches: liveProgramId === location.kidTrialProgramId,
+        startMatches: liveClass?.StartDateTime === body.classStartsAt,
+        canceled: liveClass?.IsCanceled ?? null,
+        available: liveClass?.IsAvailable ?? null,
+        spotsRemaining,
+      });
+      return NextResponse.json(
+        {
+          ok: false,
+          correlationId,
+          code: "trial_class_not_available",
+          error: "That trial class is no longer available. Please refresh and choose another time.",
+        },
+        { status: 409 },
+      );
+    }
+
+    const canonicalClassName =
+      liveClass.ClassDescription?.Name || liveClass.ClassName || body.className;
+    const canonicalAgeErrors = validateClassAge(body, canonicalClassName);
+    if (canonicalAgeErrors.length > 0) {
+      return NextResponse.json(
+        { ok: false, correlationId, errors: canonicalAgeErrors },
+        { status: 400 },
+      );
+    }
+    // Use only Mindbody-owned occurrence metadata in HubSpot/logging. The
+    // client continues to provide parent/child form data, never class facts.
+    body = {
+      ...body,
+      className: canonicalClassName,
+      classStartsAt: liveClass.StartDateTime,
+      coachName:
+        liveClass.Staff?.DisplayName ||
+        [liveClass.Staff?.FirstName, liveClass.Staff?.LastName].filter(Boolean).join(" ") ||
+        body.coachName,
+    };
+  } catch (e) {
+    log.error("trial.class.verify-failed", { error: serialize(e) });
+    return NextResponse.json(
+      {
+        ok: false,
+        correlationId,
+        code: "trial_class_verification_failed",
+        error: "We could not safely verify that trial class. Please try again shortly.",
+      },
+      { status: 502 },
+    );
+  }
+
   // MindBody returns `StartDateTime` as site-local wall-clock without a TZ
   // suffix. Convert to absolute UTC ISO here so HubSpot Deal `class_date`
   // (and downstream the 24h-reminder workflow) fire at the right instant.
@@ -139,8 +311,6 @@ export async function POST(req: Request) {
 
   log.info("trial.start", {
     writeMode: mbCfg.writeMode,
-    parentEmail: body.parentEmail,
-    childName: primaryKid.firstName,
     location: location.id,
     classScheduleId: body.classScheduleId,
   });
@@ -166,7 +336,34 @@ export async function POST(req: Request) {
         const contact = await findContactByEmail(hsCfg, log, body.parentEmail, [
           "court16_mindbody_parent_id",
           "court16_mindbody_child_id",
+          "court16_booking_status",
+          "court16_correlation_id",
         ]);
+        const activeStatuses = new Set([
+          "pending_staff",
+          "manual_review",
+          "duplicate_email_softwall",
+          "pending_payment",
+          "pending_staff_assist",
+        ]);
+        const activeStatus = contact?.properties?.court16_booking_status;
+        if (activeStatus && activeStatuses.has(activeStatus)) {
+          log.warn("trial.active-request.exists", {
+            contactId: contact.id,
+            activeStatus,
+            activeCorrelationId: contact.properties.court16_correlation_id ?? null,
+          });
+          return NextResponse.json(
+            {
+              ok: false,
+              correlationId,
+              code: "active_trial_request_exists",
+              error:
+                "A trial or intro request is already active for this email. Court 16 staff will follow up; please do not submit another request.",
+            },
+            { status: 409 },
+          );
+        }
         const knownIds = [
           contact?.properties?.court16_mindbody_parent_id,
           contact?.properties?.court16_mindbody_child_id,
@@ -187,9 +384,19 @@ export async function POST(req: Request) {
           });
         }
       } catch (e) {
-        // Guard is best-effort: HubSpot being down must not block bookings.
-        log.warn("trial.idguard.fail", { error: serialize(e) });
+        // Duplicate detection is a write-safety boundary. If HubSpot or the
+        // stored-ID verification read fails, stop before creating records.
+        log.error("trial.idguard.fail", { error: serialize(e) });
         trace.push({ step: "idFirstGuard", status: "error", error: serialize(e) });
+        return NextResponse.json(
+          {
+            ok: false,
+            correlationId,
+            code: "duplicate_check_failed",
+            error: "We could not safely check for an existing family account. Please try again shortly.",
+          },
+          { status: 502 },
+        );
       }
     }
 
@@ -210,6 +417,30 @@ export async function POST(req: Request) {
         trace.push({ step: "getClientsByEmail", status: "error", error: serialize(e) });
       }
     }
+
+    // Establish a durable, per-booking HubSpot Deal before any AddClient
+    // write. If HubSpot is unavailable, stop here so the parent can retry
+    // without leaving orphan Mindbody records or triggering claim emails.
+    const intakeDealCreated = await createDealSafely(
+      hsCfg,
+      log,
+      {
+        email: body.parentEmail,
+        correlationId,
+        locationId: location.id,
+        contactProperties: {
+          firstname: body.parentFirstName,
+          lastname: body.parentLastName,
+          phone: body.parentPhone,
+          preferred_location: preferredLocation,
+        },
+        classStartsAt: classStartsAtUtc,
+        dealName: `${primaryKid.firstName} ${childLastName} - ${body.parentEmail}`,
+        amount: 0,
+      },
+      trace,
+    );
+    if (!intakeDealCreated) return hubspotWorkItemFailure(correlationId);
 
     const intent = classifyIntent({
       bookingFor: "kid",
@@ -234,7 +465,7 @@ export async function POST(req: Request) {
         baseUrl,
       });
       await submitFormSafely(hsCfg, log, fields, trace, "hubspot.submitTrialForm (softwall)", hsContext);
-      await createDealSafely(
+      const dealCreated = await createDealSafely(
         hsCfg,
         log,
         {
@@ -248,7 +479,8 @@ export async function POST(req: Request) {
         },
         trace,
       );
-      return NextResponse.json({ ok: true, correlationId, status: "duplicate_email_softwall", trace });
+      if (!dealCreated) return durableManualReviewResponse(correlationId);
+      return NextResponse.json({ ok: true, correlationId, status: "duplicate_email_softwall" });
     }
 
     // If getClientsByEmail already failed above, skip straight to the
@@ -336,8 +568,8 @@ export async function POST(req: Request) {
           ClientRelationships: [
             {
               RelatedClientId: String(parent!.Id),
-              RelationshipName: PARENT_GUARDIAN_RELATIONSHIP.RelationshipName2, // "Child"
-              Relationship: { ...PARENT_GUARDIAN_RELATIONSHIP },
+              RelationshipName: trialConfig.parentGuardianRelationship.RelationshipName2,
+              Relationship: { ...trialConfig.parentGuardianRelationship },
             },
           ],
         });
@@ -365,12 +597,12 @@ export async function POST(req: Request) {
         ageBand,
         location,
         status: "manual_review",
-        parentMbId: undefined,
-        childMbId: undefined,
+        parentMbId: parent?.Id != null ? String(parent.Id) : undefined,
+        childMbId: child?.Id != null ? String(child.Id) : undefined,
         baseUrl,
       });
       await submitFormSafely(hsCfg, log, fields, trace, "hubspot.submitTrialForm (manual_review)", hsContext);
-      await createDealSafely(
+      const dealCreated = await createDealSafely(
         hsCfg,
         log,
         {
@@ -384,14 +616,11 @@ export async function POST(req: Request) {
         },
         trace,
       );
+      if (!dealCreated) return durableManualReviewResponse(correlationId);
       return NextResponse.json({
         ok: true,
         correlationId,
-        writeMode: mbCfg.writeMode,
         status: "manual_review",
-        parentId: null,
-        childId: null,
-        trace,
       });
     }
 
@@ -414,7 +643,7 @@ export async function POST(req: Request) {
       baseUrl,
     });
     await submitFormSafely(hsCfg, log, fields, trace, "hubspot.submitTrialForm", hsContext);
-    await createDealSafely(
+    const dealCreated = await createDealSafely(
       hsCfg,
       log,
       {
@@ -430,24 +659,29 @@ export async function POST(req: Request) {
       },
       trace,
     );
+    if (!dealCreated) return durableManualReviewResponse(correlationId);
 
     log.info("trial.done", { trace: trace.map((t) => ({ step: t.step, status: t.status })) });
 
     return NextResponse.json({
       ok: true,
       correlationId,
-      writeMode: mbCfg.writeMode,
       status: "pending_staff",
-      parentId: parent.Id ?? null,
-      childId: child.Id ?? null,
-      trace,
     });
   } catch (e) {
     log.error("trial.fail", { error: serialize(e) });
     return NextResponse.json(
-      { ok: false, correlationId, trace, error: serialize(e) },
+      {
+        ok: false,
+        correlationId,
+        code: "trial_request_failed",
+        error: "We could not complete this request safely. Please try again or contact Court 16.",
+      },
       { status: e instanceof MindbodyError ? 502 : 500 },
     );
+  }
+  } finally {
+    releaseSignupLock();
   }
 }
 
@@ -509,7 +743,6 @@ function buildFormFields(args: BuildFieldsArgs) {
     court16_staff_confirm_url: buildStaffUrl({ action: "confirm", correlationId, baseUrl }),
     court16_staff_reassign_url: buildStaffUrl({ action: "reassign", correlationId, baseUrl }),
     court16_staff_deny_url: buildStaffUrl({ action: "deny", correlationId, baseUrl }),
-    court16_admin_retry_url: buildStaffUrl({ action: "retry", correlationId, baseUrl }),
   };
 }
 
@@ -548,7 +781,6 @@ function contactPropertiesFromFields(fields: ReturnType<typeof buildFormFields>)
     court16_staff_confirm_url: fields.court16_staff_confirm_url,
     court16_staff_reassign_url: fields.court16_staff_reassign_url,
     court16_staff_deny_url: fields.court16_staff_deny_url,
-    court16_admin_retry_url: fields.court16_admin_retry_url,
   };
 }
 
@@ -571,10 +803,10 @@ async function createDealSafely(
     classStartsAt?: string;
   },
   trace: Array<{ step: string; status: "ok" | "skipped" | "error"; data?: unknown; error?: unknown }>,
-): Promise<void> {
+): Promise<boolean> {
   if (!hsCfg) {
     trace.push({ step: "hubspot.createTrialDeal", status: "skipped", data: { reason: "HubSpot not configured" } });
-    return;
+    return false;
   }
   const pipeline = getDealPipeline(args.locationId);
   if (!pipeline) {
@@ -583,7 +815,7 @@ async function createDealSafely(
       status: "skipped",
       data: { reason: `no pipeline mapped for location ${args.locationId}` },
     });
-    return;
+    return false;
   }
   try {
     const contact = await upsertContactByEmail(hsCfg, log, args.email, args.contactProperties);
@@ -606,10 +838,38 @@ async function createDealSafely(
         pipeline: pipeline.pipelineId,
       },
     });
+    return true;
   } catch (e) {
     log.warn("trial.deal.fail", { error: serialize(e) });
     trace.push({ step: "hubspot.createTrialDeal", status: "error", error: serialize(e) });
+    return false;
   }
+}
+
+function hubspotWorkItemFailure(correlationId: string) {
+  return NextResponse.json(
+    {
+      ok: false,
+      correlationId,
+      code: "hubspot_work_item_failed",
+      error:
+        "Your request could not be added to the staff review queue. Please try again or contact Court 16 with the request reference.",
+    },
+    { status: 502 },
+  );
+}
+
+function durableManualReviewResponse(correlationId: string) {
+  return NextResponse.json(
+    {
+      ok: true,
+      correlationId,
+      status: "manual_review",
+      warning:
+        "Your request is in the staff queue, but account setup needs review. Do not submit again; contact Court 16 with this request reference if you need help.",
+    },
+    { status: 202 },
+  );
 }
 
 async function submitFormSafely(
@@ -695,7 +955,14 @@ function validate(body: TrialRequest | undefined): string[] {
   // Permissive — skipped when the title doesn't include a parseable range.
   // Ages derive from DOB when present (the source of truth post-Jun-11);
   // the client-sent integer age is the fallback for older payloads.
-  const range = body.className ? parseAgeRangeFromTitle(body.className) : null;
+  errors.push(...validateClassAge(body, body.className));
+
+  return errors;
+}
+
+function validateClassAge(body: TrialRequest, className: string | undefined): string[] {
+  const errors: string[] = [];
+  const range = className ? parseAgeRangeFromTitle(className) : null;
   if (range) {
     const ages = (body.children ?? []).map((c) =>
       c.birthDate && /^\d{4}-\d{2}-\d{2}$/.test(c.birthDate) ? ageFromDob(c.birthDate) : c.age,
@@ -704,12 +971,11 @@ function validate(body: TrialRequest | undefined): string[] {
     for (const age of ages) {
       if (age < range.ageMin || age > range.ageMax) {
         errors.push(
-          `child age ${age} is outside eligible range ${range.ageMin}–${range.ageMax} for "${body.className}"`,
+          `child age ${age} is outside eligible range ${range.ageMin}–${range.ageMax} for "${className}"`,
         );
       }
     }
   }
-
   return errors;
 }
 

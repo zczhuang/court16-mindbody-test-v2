@@ -29,9 +29,22 @@ export interface AdultOffer {
   flow?: "payment" | "staff_assist";
   /** MindBody service / pricing option ID, keyed by location slug. */
   serviceIdByLocation: Record<string, number | undefined>;
+  /** Exact ClientService.Name expected after checkout, keyed by location. */
+  serviceNameByLocation?: Record<string, string | undefined>;
+  /** True only after the displayed price is reconciled to the live Mindbody checkout price. */
+  checkoutVerifiedByLocation?: Record<string, boolean | undefined>;
 }
 
 const EMPTY_SERVICE_MAP: Record<string, number | undefined> = {
+  brooklyn: undefined,
+  lic: undefined,
+  fidi: undefined,
+  ridgehill: undefined,
+  fishtown: undefined,
+  newton: undefined,
+};
+
+const EMPTY_SERVICE_NAME_MAP: Record<string, string | undefined> = {
   brooklyn: undefined,
   lic: undefined,
   fidi: undefined,
@@ -50,6 +63,10 @@ export const ADULT_OFFERS: AdultOffer[] = [
     // (discovered via /sale/services May 15 — note RH lists this at $68
     // not $75; pricing mismatch flagged for Anthony in issue tracker).
     serviceIdByLocation: { ...EMPTY_SERVICE_MAP, ridgehill: 100236 },
+    serviceNameByLocation: {
+      ...EMPTY_SERVICE_NAME_MAP,
+      ridgehill: "Tennis Intro Special: 1 Class + 1 Free",
+    },
   },
   {
     key: "pickleball-intro-58",
@@ -58,6 +75,10 @@ export const ADULT_OFFERS: AdultOffer[] = [
     subtitle: "One 45-minute pickleball clinic — all levels welcome.",
     // MindBody RH service: "Pickleball Clinic Intro Special: 1 Clinic + 1 Free" $48
     serviceIdByLocation: { ...EMPTY_SERVICE_MAP, ridgehill: 100107 },
+    serviceNameByLocation: {
+      ...EMPTY_SERVICE_NAME_MAP,
+      ridgehill: "Pickleball Clinic Intro Special: 1 Clinic + 1 Free",
+    },
   },
   {
     key: "tennis-private-ball-machine",
@@ -67,6 +88,10 @@ export const ADULT_OFFERS: AdultOffer[] = [
     // MindBody RH service: "Ball Machine Private Intro Session | 45min" $94
     // — significantly higher than our $45 listing. Anthony to reconcile.
     serviceIdByLocation: { ...EMPTY_SERVICE_MAP, ridgehill: 100061 },
+    serviceNameByLocation: {
+      ...EMPTY_SERVICE_NAME_MAP,
+      ridgehill: "Ball Machine Private Intro Session | 45min",
+    },
   },
   {
     key: "pickleball-bogo",
@@ -81,6 +106,16 @@ export const ADULT_OFFERS: AdultOffer[] = [
 
 export function getOffer(key: string): AdultOffer | undefined {
   return ADULT_OFFERS.find((o) => o.key === key);
+}
+
+/** Payment offers are selectable only after both ID and exact receipt name are verified. */
+export function isAdultOfferReadyAtLocation(offer: AdultOffer, locationId: string): boolean {
+  return (
+    offer.flow === "staff_assist" ||
+    (offer.serviceIdByLocation[locationId] != null &&
+      Boolean(offer.serviceNameByLocation?.[locationId]) &&
+      offer.checkoutVerifiedByLocation?.[locationId] === true)
+  );
 }
 
 /**

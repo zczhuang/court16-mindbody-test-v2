@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>10 · Family Account Staff Guide · Court 16 × Cedarwind</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./styles.css" />
+<style>
+  :root { --danger: #a12828; --danger-soft: #f9e3e3; --ink-soft: #24211d; }
+  .hero-rule {
+    display: grid;
+    grid-template-columns: 78px 1fr;
+    gap: 18px;
+    align-items: center;
+    margin: 22px 0 28px;
+    padding: 20px 22px;
+    background: var(--black);
+    color: #fff;
+    border-radius: 12px;
+  }
+  .hero-rule .mark {
+    display: grid;
+    width: 72px;
+    height: 72px;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--yellow);
+    color: var(--black);
+    font: 700 12px/1.1 'Geist Mono', monospace;
+    text-align: center;
+  }
+  .hero-rule strong { display: block; margin-bottom: 3px; font-size: 17px; }
+  .hero-rule p { margin: 0; color: #e9e5dc; font-size: 13.5px; }
+  .state-flow {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin: 14px 0 22px;
+  }
+  .state-chip {
+    position: relative;
+    padding: 13px 14px 14px;
+    border: 1px solid var(--border);
+    border-top: 4px solid var(--yellow);
+    border-radius: 9px;
+    background: #fff;
+  }
+  .state-chip::after {
+    content: "→";
+    position: absolute;
+    top: 50%;
+    right: -10px;
+    z-index: 1;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--bg);
+    color: var(--muted);
+    font-weight: 700;
+    line-height: 17px;
+    text-align: center;
+  }
+  .state-chip:last-child { border-color: var(--green); border-top-color: var(--green); background: var(--green-soft); }
+  .state-chip:last-child::after { content: none; }
+  .state-chip .eyebrow {
+    font: 600 10px/1.2 'Geist Mono', monospace;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .state-chip strong { display: block; margin: 5px 0 4px; font-size: 13px; line-height: 1.3; }
+  .state-chip span { display: block; color: var(--muted); font-size: 11.5px; line-height: 1.4; }
+  .step {
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr);
+    gap: 16px;
+    margin: 18px 0;
+    padding: 22px 24px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: #fff;
+  }
+  .step-num {
+    display: grid;
+    width: 44px;
+    height: 44px;
+    place-items: center;
+    border-radius: 50%;
+    background: var(--yellow);
+    font: 700 16px/1 'Geist Mono', monospace;
+  }
+  .step h2 { margin: 0 0 5px; font-size: 20px; }
+  .decision {
+    margin: 12px 0 16px;
+    padding: 11px 13px;
+    border-radius: 8px;
+    background: var(--yellow-soft);
+    font-size: 13px;
+  }
+  .shot {
+    position: relative;
+    overflow: hidden;
+    margin: 16px 0 8px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: #f1efe9;
+  }
+  .shot img { display: block; width: 100%; height: auto; }
+  .shot.portrait { max-width: 540px; }
+  .shot .label {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    padding: 5px 9px;
+    border-radius: 999px;
+    background: var(--black);
+    color: #fff;
+    font: 600 10px/1.2 'Geist Mono', monospace;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    box-shadow: 0 1px 8px rgba(0, 0, 0, .18);
+  }
+  .shot .label.good { background: var(--green); }
+  .caption { color: var(--muted); font-size: 12px; }
+  .script {
+    margin: 14px 0;
+    border: 1px solid #d6caa9;
+    border-radius: 9px;
+    overflow: hidden;
+  }
+  .script-head {
+    padding: 8px 12px;
+    background: #f2ead4;
+    font: 600 10.5px/1.2 'Geist Mono', monospace;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+  }
+  .script-body { padding: 14px 16px; font-size: 13.5px; line-height: 1.55; }
+  .script-body p { margin: 0; font-size: inherit; }
+  .do-list, .stop-list { margin: 10px 0 4px; padding-left: 19px; }
+  .do-list li, .stop-list li { margin: 7px 0; font-size: 13.5px; }
+  .warning {
+    padding: 14px 16px;
+    border-left: 4px solid var(--danger);
+    border-radius: 0 8px 8px 0;
+    background: var(--danger-soft);
+    color: var(--ink-soft);
+  }
+  .warning strong { color: var(--danger); }
+  .complete-box {
+    margin: 16px 0;
+    padding: 17px 18px;
+    border: 2px solid var(--green);
+    border-radius: 10px;
+    background: var(--green-soft);
+  }
+  .complete-box strong { display: block; margin-bottom: 3px; color: var(--green); }
+  .site-table td:first-child { font-family: inherit; font-size: 13px; font-weight: 600; }
+  .site-table td:last-child { font-family: 'Geist Mono', monospace; font-size: 12px; }
+  .quick-check {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin: 12px 0;
+  }
+  .quick-check div { padding: 13px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--bg); font-size: 13px; }
+  .quick-check strong { display: block; margin-bottom: 2px; }
+  .print-only { display: none; }
+  @media (max-width: 760px) {
+    .state-flow { grid-template-columns: 1fr 1fr; }
+    .state-chip::after { content: none; }
+    .step { grid-template-columns: 1fr; padding: 18px; }
+    .quick-check { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 480px) {
+    .hero-rule { grid-template-columns: 1fr; }
+    .state-flow { grid-template-columns: 1fr; }
+  }
+  @media print {
+    .wrap { max-width: none; padding: 0; }
+    .back-link, footer { display: none; }
+    .step { break-inside: avoid; }
+    .script { break-inside: avoid; }
+    .print-only { display: block; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc-head">
+  <a class="back-link" href="./index.html">Back to Package A index</a>
+  <div class="brand">Court 16 × Cedarwind · Package A · Staff SOP 10</div>
+  <h1>Complete a parent + child family account</h1>
+  <p class="subtitle">A screenshot-based decision guide for club staff. Start with the parent record, finish on the original child record, and use the ready-to-send messages at each stop.</p>
+  <div style="margin-top: 14px;"><span class="pill partial"><span class="dot"></span>Manual staff SOP · Ridge Hill test validated</span></div>
+</header>
+
+<div class="hero-rule">
+  <div class="mark">ONE<br />SUCCESS<br />GATE</div>
+  <div>
+    <strong>The original child record must show “Manage Family Account.”</strong>
+    <p>That original Mindbody child client ID remains the reporting source of truth. A shared email or a Parent/Guardian relationship alone does not mean the family account is complete.</p>
+  </div>
+</div>
+
+<h2>Use these four states</h2>
+<div class="state-flow" aria-label="Four-state family account flow">
+  <div class="state-chip">
+    <div class="eyebrow">Parent record</div>
+    <strong>Connect Mindbody Account</strong>
+    <span>Send claim nudge.</span>
+  </div>
+  <div class="state-chip">
+    <div class="eyebrow">Parent record</div>
+    <strong>Manage Family Account</strong>
+    <span>Ask parent to add child.</span>
+  </div>
+  <div class="state-chip">
+    <div class="eyebrow">Original child</div>
+    <strong>Connect Mindbody Account</strong>
+    <span>Click once; send link nudge.</span>
+  </div>
+  <div class="state-chip">
+    <div class="eyebrow">Original child</div>
+    <strong>Manage Family Account</strong>
+    <span>Complete. Log and close.</span>
+  </div>
+</div>
+
+<section class="card">
+  <h2>Step 0 · Open the correct club</h2>
+  <p>Confirm the trial's club before searching for the parent or child. The screenshots below are an <strong>illustrative Ridge Hill test</strong>. Ridge Hill is the only API integration validated so far; repeat and record this control check separately before using the SOP at another site.</p>
+  <table class="site-table">
+    <thead><tr><th>Club</th><th>Mindbody site ID</th><th>Automation status</th></tr></thead>
+    <tbody>
+      <tr><td>Allston</td><td>5754600</td><td>Authorization blocked</td></tr>
+      <tr><td>Downtown Brooklyn</td><td>135479</td><td>Authorization blocked</td></tr>
+      <tr><td>Fishtown</td><td>5742169</td><td>Authorization blocked</td></tr>
+      <tr><td>Long Island City</td><td>985499</td><td>Authorization blocked</td></tr>
+      <tr><td>Manhattan–FiDi</td><td>5728093</td><td>Authorization blocked</td></tr>
+      <tr><td>Newton</td><td>5751422</td><td>Authorization blocked</td></tr>
+      <tr><td>Ridge Hill</td><td>5748154</td><td>API test validated</td></tr>
+    </tbody>
+  </table>
+  <div class="warning"><strong>Stop if the club is wrong.</strong> Do not recreate the parent or child at another site. Escalate with the trial request, correct club, and both client IDs.</div>
+</section>
+
+<section class="step">
+  <div class="step-num">1</div>
+  <div>
+    <h2>Check the parent record</h2>
+    <p>Search the parent by email and open the parent client record. Read the link shown under <strong>Mindbody account</strong>.</p>
+    <div class="decision"><strong>If it says Connect Mindbody Account:</strong> the parent has not claimed the account. Do not click it for them. Send the claim nudge below.</div>
+
+    <div class="shot">
+      <span class="label">Mindbody email to parent</span>
+      <img src="./screenshots/family-account/01-mindbody-valid-parent-email.jpg" alt="Test Mindbody welcome email sent to the parent, with a change password link" />
+    </div>
+    <p class="caption">Ridge Hill test shown. The parent must use the secure create/change-password link in Mindbody's own welcome email. The email template wording may change; the secure Mindbody link is what matters.</p>
+
+    <div class="script">
+      <div class="script-head">Ready to send · Claim nudge</div>
+      <div class="script-body"><p>Hi [Parent first name] — Court 16 created your Mindbody account for [Club] when you requested [Child]’s trial. Please look for an email from @mindbodyonline.com with “Welcome” in the subject (check spam/promotions), click the create/change password link, and complete Mindbody’s verification. [Child] does not need a separate login. Reply DONE when finished and we’ll connect [Child] to your family.</p></div>
+    </div>
+
+    <div class="decision"><strong>If it says Manage Family Account:</strong> the parent has claimed the account. Continue to Step 2.</div>
+  </div>
+</section>
+
+<section class="step">
+  <div class="step-num">2</div>
+  <div>
+    <h2>Have the parent add the existing child to Family</h2>
+    <p>The parent signs in to <a href="https://account.mindbodyonline.com/manageAccount">Mindbody Account Management</a>, then goes to <strong>Account Info → Family → Add Member</strong>.</p>
+
+    <div class="shot portrait">
+      <span class="label">Parent sees child under Family</span>
+      <img src="./screenshots/family-account/05-parent-family-member.jpg" alt="Mindbody consumer account's Family area showing the child as a family member" />
+    </div>
+    <p class="caption">This screenshot shows the result after Add Member. It does not yet prove the original Court 16 child record is linked; staff still verifies that record in Steps 3–4.</p>
+
+    <div class="script">
+      <div class="script-head">Ready to send · Add Member</div>
+      <div class="script-body"><p>Thanks — now sign in at https://account.mindbodyonline.com/manageAccount. Under Account Info → Family, choose Add Member and add [Child full name] exactly as entered on the trial request (and DOB if prompted). Use Add Member only inside your family account; do not register [Child] again or create a separate child login. Reply ADDED when [Child] appears under Family.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="step">
+  <div class="step-num">3</div>
+  <div>
+    <h2>Open the original child record and connect once</h2>
+    <p>Return to the correct club, open the <strong>original child client ID created by the trial request</strong>, and look under <strong>Mindbody account</strong>.</p>
+
+    <div class="shot">
+      <span class="label">Original child · Click once</span>
+      <img src="./screenshots/family-account/04-staff-connect-child.jpg" alt="Original child client record showing the Connect Mindbody Account link" />
+    </div>
+    <p class="caption">If the original child says Connect Mindbody Account, click that link exactly once. Mindbody then sends the secure link; staff must not copy the link into HubSpot or send it manually.</p>
+
+    <ul class="do-list">
+      <li>Confirm the client ID matches the trial request before clicking.</li>
+      <li>Click <strong>Connect Mindbody Account</strong> one time.</li>
+      <li>Tell the parent to select the <strong>existing</strong> child in Mindbody's secure flow.</li>
+    </ul>
+
+    <div class="script">
+      <div class="script-head">Ready to send · Link nudge</div>
+      <div class="script-body"><p>Thanks — we sent one final secure Mindbody email to [email]. Open the message with “Add Court 16” or “Link your account” in the subject and select the existing family member [Child]. Please do not add another child. Reply LINKED when complete.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Relationships are a pre-check, not completion</h2>
+  <div class="shot">
+    <span class="label">Not the success gate</span>
+    <img src="./screenshots/family-account/03-parent-child-relationships.jpg" alt="Parent client record showing Parent Guardian and Pays For relationships to the child" />
+  </div>
+  <p class="caption">Parent/Guardian and Pays For relationships are useful and should point to the intended child. They do not prove the child is visible and manageable in the parent's consumer account.</p>
+</section>
+
+<section class="step">
+  <div class="step-num">4</div>
+  <div>
+    <h2>Verify the original child record is complete</h2>
+    <p>Refresh and reopen the <strong>same original child client ID</strong>. The only success state is <strong>Manage Family Account</strong>.</p>
+
+    <div class="shot">
+      <span class="label good">Complete</span>
+      <img src="./screenshots/family-account/06-child-manage-family-account.png" alt="Original child client record showing Manage Family Account" />
+    </div>
+
+    <div class="complete-box">
+      <strong>Completion gate passed</strong>
+      The original child shows Manage Family Account, the parent is the account owner, and the child appears under Family Members.
+    </div>
+
+    <div class="script">
+      <div class="script-head">Ready to send · Complete</div>
+      <div class="script-body"><p>You’re all set. [Child] is linked to your Mindbody family account, so you can manage [Child] from your parent login.</p></div>
+    </div>
+
+    <div class="script">
+      <div class="script-head">Internal log note</div>
+      <div class="script-body"><p>Family account linked | Club: [Club] | Parent: [Parent full name] | Child: [Child full name] | Child MB ID: [original child client ID] | Manage Family Account verified: [timestamp] | Staff: [name]</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Stop and escalate — do not improvise</h2>
+  <ul class="stop-list">
+    <li>The parent or child is in the wrong Court 16 site.</li>
+    <li>The account owner is not the intended parent.</li>
+    <li>The child record you found does not match the original client ID on the trial request.</li>
+    <li>A duplicate child appears, or Mindbody asks you to create a second child.</li>
+    <li>The parent replied LINKED, but the original child still says Connect Mindbody Account after refresh.</li>
+  </ul>
+  <div class="warning"><strong>Never create, merge, move, or delete records to get past an error.</strong> Never give a child a password, create a separate child login, or paste a secure Mindbody link into HubSpot. Escalate with club, parent email, parent client ID, original child client ID, the exact state shown, and a screenshot.</div>
+</section>
+
+<section class="card">
+  <h2>30-second final check</h2>
+  <div class="quick-check">
+    <div><strong>Correct site</strong>Club and site ID match the trial request.</div>
+    <div><strong>Correct owner</strong>The intended parent owns the consumer account.</div>
+    <div><strong>Original child</strong>No duplicate was created; the recorded child ID is unchanged.</div>
+    <div><strong>Visible + manageable</strong>The original child says Manage Family Account.</div>
+  </div>
+</section>
+
+<footer>
+  <div>Court 16 × Cedarwind · Family-account staff SOP · Updated July 17, 2026</div>
+  <div><a href="./06-password-setup-email.html">Email + automation handoff</a> · <a href="./index.html">Package A index</a></div>
+</footer>
+
+</div>
+</body>
+</html>

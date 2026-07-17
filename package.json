@@ -9,7 +9,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "audit:mindbody-sites": "node --env-file-if-exists=.env.local --no-warnings --experimental-strip-types scripts/audit-mindbody-sites.ts"
   },
   "dependencies": {
     "@vercel/functions": "^3.6.1",

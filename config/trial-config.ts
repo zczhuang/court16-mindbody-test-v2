@@ -10,13 +10,24 @@ export interface LocationTrialConfig {
   trialEligibleClassScheduleIds: number[];
   maxTrialsPerClass: number;
   /**
-   * MindBody service / pricing-option ID for "Complimentary Child Intro
-   * Session" at this location. Threaded to AddClientToClass as
-   * ClientServiceId so the enrollment binds to the right service line.
-   * Leave undefined until Jane captures the ID — MindBody falls back to
-   * the first applicable pricing.
+   * Mindbody sale-service / pricing-option ID used to grant the $0 trial.
+   * This is not the ClientService instance ID used by AddClientToClass;
+   * confirmation reads that instance back from /client/clientservices.
+   * Leave undefined until the exact live ID and name are verified.
    */
   trialServiceId?: number;
+  /** Exact service name returned by both /sale/services and /client/clientservices. */
+  trialServiceName?: string;
+  /**
+   * Exact Parent/Guardian relationship descriptor returned by this site's
+   * GET /site/relationships catalog. Mindbody relationship IDs are site
+   * specific, so this must be verified before trial writes are enabled.
+   */
+  parentGuardianRelationship?: {
+    Id: number;
+    RelationshipName1: string;
+    RelationshipName2: string;
+  };
 }
 
 export const TRIAL_CONFIG: Record<string, LocationTrialConfig> = {
@@ -24,13 +35,24 @@ export const TRIAL_CONFIG: Record<string, LocationTrialConfig> = {
   lic: { trialEligibleClassScheduleIds: [], maxTrialsPerClass: 2 },
   fidi: { trialEligibleClassScheduleIds: [], maxTrialsPerClass: 2 },
   // RH Kid's Trial $0 service (id 100328) is tied to Program 61. AddClientToClass
-  // for a Program 61 occurrence requires this service to be passed as
-  // ClientServiceId — without it MindBody returns `ClassRequiresPayment` (verified
-  // smoke #M3 v1, May 22). Jane Montoya created the service; surfaced via
-  // /sale/services with staffMode Bearer.
-  ridgehill: { trialEligibleClassScheduleIds: [], maxTrialsPerClass: 2, trialServiceId: 100328 },
+  // for a Program 61 occurrence requires this service credit — without it
+  // Mindbody returns `ClassRequiresPayment` (verified smoke #M3 v1, May 22).
+  // Jane Montoya created the service; surfaced via /sale/services with staff
+  // auth. Confirmation resolves the resulting ClientService instance by name.
+  ridgehill: {
+    trialEligibleClassScheduleIds: [],
+    maxTrialsPerClass: 2,
+    trialServiceId: 100328,
+    trialServiceName: "Kid's Trial",
+    parentGuardianRelationship: {
+      Id: -6,
+      RelationshipName1: "Parent/Guardian",
+      RelationshipName2: "Child",
+    },
+  },
   fishtown: { trialEligibleClassScheduleIds: [], maxTrialsPerClass: 2 },
   newton: { trialEligibleClassScheduleIds: [], maxTrialsPerClass: 2 },
+  allston: { trialEligibleClassScheduleIds: [], maxTrialsPerClass: 2 },
 };
 
 /**

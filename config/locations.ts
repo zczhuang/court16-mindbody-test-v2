@@ -28,6 +28,21 @@ export interface Location {
    */
   timezone: string;
   /**
+   * Whether the club can accept any public booking through this app.
+   * Keep false for announced clubs until their address and operational
+   * configuration are verified. API routes enforce this server-side.
+   */
+  publicBookingEnabled: boolean;
+  /**
+   * Explicit go-live gate for the kids-trial automation. A Site ID alone is
+   * not sufficient: Cedarwind source access, a dedicated Kid's Trials
+   * Program, the matching $0 service, and HubSpot routing must all be verified
+   * before this becomes true.
+   */
+  trialBookingEnabled: boolean;
+  /** Short parent-facing reason shown for a club that is not trial-ready. */
+  trialUnavailableReason?: string;
+  /**
    * Per-location Sign in destination. Falls back to the generic
    * court16.com/login when undefined. Replace with per-location URLs
    * once Squarespace has them (e.g. /login/brooklyn or a MindBody
@@ -49,11 +64,8 @@ export interface Location {
    *      trial-eligible times (e.g. Mon 3:45 PM, Sat 9 AM, etc.)
    *   5. Share the Program ID with Cedarwind → set here per location
    *
-   * If undefined, the calendar route falls back to the legacy
-   * `filterChildrenOnly` post-filter (which surfaces ALL recurring kid
-   * classes — risk: parents pick a non-trial class and the AddClientToClass
-   * call fails because the Kid's Trial SKU only grants access to Program
-   * 61 sessions). Set per-site as each location ships its own Kid's Trials.
+   * If undefined, `trialBookingEnabled` MUST remain false. The calendar route
+   * refuses the request instead of falling back to an unfiltered class list.
    */
   kidTrialProgramId?: number;
 }
@@ -104,11 +116,14 @@ export const LOCATIONS: Location[] = [
     name: "Downtown Brooklyn",
     fullName: "NY - Downtown Brooklyn",
     siteId: 135479,
-    address: "526 Atlantic Ave",
+    address: "445 Albee Square W, Suite 4-500",
     city: "Brooklyn",
     state: "NY",
-    postalCode: "11217",
+    postalCode: "11201",
     timezone: "America/New_York",
+    publicBookingEnabled: true,
+    trialBookingEnabled: false,
+    trialUnavailableReason: "Kids trial scheduling is being connected for this club.",
     loginUrl: LOGIN_URLS.brooklyn,
   },
   {
@@ -116,11 +131,14 @@ export const LOCATIONS: Location[] = [
     name: "Long Island City, Queens",
     fullName: "NY - Long Island City, Queens",
     siteId: 985499,
-    address: "4-33 Vernon Blvd",
+    address: "13-06 Queens Plaza South",
     city: "Long Island City",
     state: "NY",
     postalCode: "11101",
     timezone: "America/New_York",
+    publicBookingEnabled: true,
+    trialBookingEnabled: false,
+    trialUnavailableReason: "Kids trial scheduling is being connected for this club.",
     loginUrl: LOGIN_URLS.lic,
   },
   {
@@ -128,11 +146,14 @@ export const LOCATIONS: Location[] = [
     name: "FiDi, Manhattan",
     fullName: "NY - FiDi, Manhattan",
     siteId: 5728093,
-    address: "30 Broad St",
+    address: "28 Liberty Street, SC1",
     city: "New York",
     state: "NY",
-    postalCode: "10004",
+    postalCode: "10005",
     timezone: "America/New_York",
+    publicBookingEnabled: true,
+    trialBookingEnabled: false,
+    trialUnavailableReason: "Kids trial scheduling is being connected for this club.",
     loginUrl: LOGIN_URLS.fidi,
   },
   {
@@ -145,6 +166,8 @@ export const LOCATIONS: Location[] = [
     state: "NY",
     postalCode: "10710",
     timezone: "America/New_York",
+    publicBookingEnabled: true,
+    trialBookingEnabled: true,
     loginUrl: LOGIN_URLS.ridgehill,
     // Ibtissam created Program 61 + 4 ClassDescriptions on May 20-21:
     // Little Freshman Trial (115), Freshman/Sophomore Trial (116),
@@ -157,11 +180,14 @@ export const LOCATIONS: Location[] = [
     name: "Fishtown, Philadelphia",
     fullName: "PA - Fishtown, Philadelphia",
     siteId: 5742169,
-    address: "1241 N Front St",
+    address: "1400 N Howard Street",
     city: "Philadelphia",
     state: "PA",
     postalCode: "19122",
     timezone: "America/New_York",
+    publicBookingEnabled: true,
+    trialBookingEnabled: false,
+    trialUnavailableReason: "Kids trial scheduling is being connected for this club.",
     loginUrl: LOGIN_URLS.fishtown,
   },
   {
@@ -172,9 +198,29 @@ export const LOCATIONS: Location[] = [
     address: "300 Needham St",
     city: "Newton",
     state: "MA",
-    postalCode: "02464",
+    postalCode: "02459",
     timezone: "America/New_York",
+    publicBookingEnabled: true,
+    trialBookingEnabled: false,
+    trialUnavailableReason: "Kids trial scheduling is being connected for this club.",
     loginUrl: LOGIN_URLS.newton,
+  },
+  {
+    id: "allston",
+    name: "Allston",
+    fullName: "MA - Allston",
+    siteId: 5754600,
+    // Court 16 has announced Allston Yards, but has not yet published the
+    // club's exact street address. This record is intentionally disabled so
+    // the placeholder is never written to a Mindbody client profile.
+    address: "Allston Yards — exact address pending",
+    city: "Boston",
+    state: "MA",
+    postalCode: "02134",
+    timezone: "America/New_York",
+    publicBookingEnabled: false,
+    trialBookingEnabled: false,
+    trialUnavailableReason: "Opening details and kids trial scheduling are being finalized.",
   },
 ];
 

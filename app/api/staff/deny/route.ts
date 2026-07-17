@@ -9,6 +9,7 @@ import {
 } from "@/lib/hubspot";
 import { InvalidTokenError, verifyToken } from "@/lib/staff-tokens";
 import { createLogger } from "@/lib/logger";
+import { withLocalActionLock } from "@/lib/action-lock";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -44,12 +45,14 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const token = url.searchParams.get("token");
   if (!token) return html("Missing token", 400);
+  let payload: ReturnType<typeof verifyToken>;
   try {
-    verifyToken(token);
+    payload = verifyToken(token);
   } catch (e) {
     const reason = e instanceof InvalidTokenError ? e.reason : "unknown";
     return html(`Invalid token (${reason})`, 401);
   }
+  if (payload.action !== "deny") return html(`Wrong token action: ${payload.action}`, 400);
   return renderForm(token);
 }
 
@@ -80,6 +83,21 @@ export async function POST(req: Request) {
     return html("'Other' requires a note describing why.", 400);
   }
 
+  const result = await withLocalActionLock(
+    `staff-action:${payload.correlationId}`,
+    () => denyBooking(payload, reason, note),
+  );
+  if (!result.acquired) {
+    return html("This request is already being processed. Wait a moment and refresh HubSpot.", 409);
+  }
+  return result.value;
+}
+
+async function denyBooking(
+  payload: ReturnType<typeof verifyToken>,
+  reason: string,
+  note: string,
+) {
   const log = createLogger(payload.correlationId);
   const hsCfg = loadHubspotConfig();
   if (!hsCfg) return html("HubSpot is not configured on this deployment.", 503);

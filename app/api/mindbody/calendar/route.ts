@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authedMindbodyGet } from "@/lib/mindbody";
 import { createLogger, makeCorrelationId } from "@/lib/logger";
 import { LOCATIONS, getLocationById } from "@/config/locations";
-import { maxBookableDateStr } from "@/config/trial-config";
+import { maxBookableDateStr, TRIAL_CONFIG } from "@/config/trial-config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,10 +24,8 @@ const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
  * Program). Per Ibtissam May 21: Ridge Hill is Program 61, served by
  * the $0 SKU "Kid's Trial" (service 100328) — so the trial form should
  * only surface those curated trial occurrences, not all recurring kid
- * classes. If `kidTrialProgramId` is unset for the location, the route
- * falls back to the unfiltered behavior and the UI's `filterChildrenOnly`
- * post-filter takes over (legacy path for sites that haven't set up
- * Kid's Trials yet).
+ * classes. A kids-trial request is refused unless the location has passed
+ * the explicit go-live gate and has both a Program ID and $0 service ID.
  */
 export async function GET(request: NextRequest) {
   const correlationId = makeCorrelationId();
@@ -53,6 +51,27 @@ export async function GET(request: NextRequest) {
   }
 
   const loc = getLocationById(locationId)!;
+
+  if (intent === "kid_trial") {
+    const trialConfig = TRIAL_CONFIG[loc.id];
+    if (
+      !loc.publicBookingEnabled ||
+      !loc.trialBookingEnabled ||
+      !loc.kidTrialProgramId ||
+      !trialConfig?.trialServiceId ||
+      !trialConfig.trialServiceName ||
+      !trialConfig.parentGuardianRelationship
+    ) {
+      return NextResponse.json(
+        {
+          error: "Kids trial scheduling is not yet available for this club.",
+          code: "trial_location_not_ready",
+          locationId: loc.id,
+        },
+        { status: 409 },
+      );
+    }
+  }
 
   // Booking window (Ibtissam Jun 11): for kid trials, never return classes
   // beyond today + TRIAL_MAX_ADVANCE_DAYS — server-side authority so a
@@ -84,9 +103,7 @@ export async function GET(request: NextRequest) {
   // regular recurring kid classes (Little Freshman / Junior / etc.)
   // that aren't trial-eligible. Other intents pass through unfiltered.
   const programIds =
-    intent === "kid_trial" && loc.kidTrialProgramId
-      ? String(loc.kidTrialProgramId)
-      : undefined;
+    intent === "kid_trial" ? String(loc.kidTrialProgramId) : undefined;
 
   try {
     const result = await authedMindbodyGet<{ Classes?: unknown[] }>(log, {
