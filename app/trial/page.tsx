@@ -27,11 +27,24 @@ import {
 import {
   maxBookableDateStr,
   todayStrInTz,
+  TRIAL_CONFIG,
   TRIAL_MAX_ADVANCE_DAYS,
 } from "@/config/trial-config";
+import { getDealPipeline, getHubspotPreferredLocation } from "@/config/hubspot-deals";
+import { getKidsTrialReadiness } from "@/config/kids-trial-readiness";
 import type { ChildEntry } from "@/components/AgeSelector";
 
 type Step = "location" | "calendar" | "confirmed";
+
+function isTrialLocationReady(location: Location | undefined): location is Location {
+  if (!location) return false;
+  return getKidsTrialReadiness({
+    location,
+    trialConfig: TRIAL_CONFIG[location.id],
+    pipeline: getDealPipeline(location.id),
+    preferredLocation: getHubspotPreferredLocation(location.id),
+  }).ready;
+}
 
 function TrialInner() {
   const params = useSearchParams();
@@ -40,8 +53,7 @@ function TrialInner() {
   // A bare /trial always starts at club selection. A location deep link may
   // skip ahead only when that club's trial pipeline is verified and enabled.
   const urlResolved = urlLocation ? getLocationById(urlLocation) : undefined;
-  const preResolved =
-    urlResolved?.publicBookingEnabled && urlResolved.trialBookingEnabled ? urlResolved : null;
+  const preResolved = isTrialLocationReady(urlResolved) ? urlResolved : null;
 
   const [step, setStep] = useState<Step>(preResolved ? "calendar" : "location");
   const [location, setLocation] = useState<Location | null>(preResolved);
@@ -50,11 +62,7 @@ function TrialInner() {
   useEffect(() => {
     if (urlLocation) {
       const loc = getLocationById(urlLocation);
-      if (
-        loc?.publicBookingEnabled &&
-        loc.trialBookingEnabled &&
-        loc.id !== rememberedLocation?.id
-      )
+      if (isTrialLocationReady(loc) && loc.id !== rememberedLocation?.id)
         setGlobalLoc(loc);
     }
   }, [urlLocation, rememberedLocation, setGlobalLoc]);
@@ -90,11 +98,9 @@ function TrialInner() {
         // slots existed in the first days of the next month.
         const startDate = todayStrInTz(loc.timezone);
         const endDate = maxBookableDateStr(loc.timezone);
-        // intent=kid_trial → server-side narrows to Program 61 (Kid's Trials)
-        // at sites with kidTrialProgramId set in config/locations.ts. Falls
-        // back to legacy unfiltered + filterChildrenOnly behavior for sites
-        // that haven't created a Kid's Trials program yet (Ibtissam May 21
-        // — RH is the only one wired today).
+        // intent=kid_trial narrows server-side to this club's explicitly
+        // configured Kid's Trials Program. Incomplete clubs fail closed before
+        // Mindbody is queried; there is no unfiltered kids-class fallback.
         const resp = await fetch(
           `/api/mindbody/calendar?locationId=${loc.id}&startDate=${startDate}&endDate=${endDate}&intent=kid_trial`,
         );
@@ -102,12 +108,9 @@ function TrialInner() {
         const data = await resp.json();
         const mbClasses: MindBodyClass[] = data.classes || [];
 
-        // If the server narrowed to a kid-trial Program, the response is
-        // already restricted to trial-eligible occurrences — skip the
-        // legacy filterChildrenOnly post-filter (which only matches the
-        // generic "Children's Classes" program label and would wrongly
-        // exclude Program 61's "Kid's Trials"). For sites without a
-        // configured trial program, fall back to the legacy filter.
+        // The kids-trial endpoint always returns a Program-filtered response.
+        // Keep the legacy branch only for defensive compatibility with an old
+        // response shape; the server will not emit it for a ready club.
         const childrenClasses = data.filteredByProgramId
           ? mbClasses
           : filterChildrenOnly(mbClasses);
@@ -136,7 +139,7 @@ function TrialInner() {
   }, [location, step, fetchClasses]);
 
   function selectLoc(loc: Location) {
-    if (!loc.publicBookingEnabled || !loc.trialBookingEnabled) return;
+    if (!isTrialLocationReady(loc)) return;
     setLocation(loc);
     setGlobalLoc(loc);
   }

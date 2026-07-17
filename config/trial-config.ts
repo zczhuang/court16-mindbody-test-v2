@@ -1,9 +1,9 @@
 /**
  * Trial eligibility configuration.
  *
- * Staff updates this file to control which classes accept trial kids each season.
- * Intentionally a static config file, NOT a database table or admin UI.
- * Staff tells you which classes → you update this file → deploy.
+ * Staff can use this file to restrict which class schedules accept trial kids
+ * each season. The dedicated Mindbody Program remains the primary boundary;
+ * the schedule allowlist applies only when ENFORCE_TRIAL_ELIGIBILITY is true.
  */
 
 export interface LocationTrialConfig {
@@ -56,8 +56,9 @@ export const TRIAL_CONFIG: Record<string, LocationTrialConfig> = {
 };
 
 /**
- * Whether to use the trial eligibility config to filter classes.
- * False = show ALL children's classes (useful until staff populates IDs).
+ * Whether to apply the optional schedule-ID allowlist after the server has
+ * already restricted kids trials to the club's verified Trial Program.
+ * False does not enable an unfiltered children's-class fallback.
  */
 export const ENFORCE_TRIAL_ELIGIBILITY = false;
 

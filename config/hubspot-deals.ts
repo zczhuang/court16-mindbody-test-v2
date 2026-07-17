@@ -9,10 +9,8 @@
  * matching per-location pipeline at submit time.
  *
  * IDs below were captured live from HubSpot on 2026-05-12. If staff
- * archives or recreates a pipeline these will need re-capturing — the
- * code degrades gracefully: missing entries fall back to `default`
- * (the BK pipeline, which lives on the HubSpot default Deal pipeline
- * slot).
+ * archives or recreates a pipeline these will need re-capturing. Missing
+ * mappings fail closed; they never fall back to another club's pipeline.
  */
 
 export interface DealPipelineConfig {
@@ -82,10 +80,8 @@ export const DEAL_PIPELINES: Record<string, DealPipelineConfig> = {
 };
 
 /**
- * Look up the pipeline config for a location slug. Returns null when
- * the slug isn't recognized — callers should skip the Deal-creation
- * step rather than fail the booking entirely (form submit + MindBody
- * write are the user-visible critical path).
+ * Look up the pipeline config for a location slug. Kids-trial callers treat
+ * null as not ready and stop before any Mindbody or HubSpot write.
  */
 export function getDealPipeline(locationId: string): DealPipelineConfig | null {
   return DEAL_PIPELINES[locationId] ?? null;

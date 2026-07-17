@@ -1,6 +1,9 @@
 "use client";
 
 import { LOCATIONS, type Location } from "@/config/locations";
+import { TRIAL_CONFIG } from "@/config/trial-config";
+import { getDealPipeline, getHubspotPreferredLocation } from "@/config/hubspot-deals";
+import { getKidsTrialReadiness } from "@/config/kids-trial-readiness";
 
 interface Props {
   selectedId: string | null;
@@ -33,7 +36,12 @@ export default function LocationSelector({
       <div className="loc-grid">
         {LOCATIONS.map((loc) => {
           const enabled = trialOnly
-            ? loc.publicBookingEnabled && loc.trialBookingEnabled
+            ? getKidsTrialReadiness({
+                location: loc,
+                trialConfig: TRIAL_CONFIG[loc.id],
+                pipeline: getDealPipeline(loc.id),
+                preferredLocation: getHubspotPreferredLocation(loc.id),
+              }).ready
             : loc.publicBookingEnabled;
           const on = enabled && selectedId === loc.id;
           const unavailableReason = trialOnly

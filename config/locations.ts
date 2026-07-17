@@ -15,8 +15,9 @@ export interface Location {
    * 5-digit ZIP. Used as the default `PostalCode` on MindBody AddClient
    * when the booking form doesn't collect the parent's home address —
    * MindBody's required-fields config on real sites mandates one
-   * (site 5748154 returns MissingRequiredFields without it). Studio
-   * address is a safe placeholder; staff updates at first visit.
+   * (site 5748154 returns MissingRequiredFields without it). The current
+   * route uses the studio address as a temporary placeholder; this is not
+   * accurate household data and needs an approved intake/completion policy.
    */
   postalCode: string;
   /**

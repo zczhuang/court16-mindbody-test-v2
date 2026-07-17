@@ -67,6 +67,26 @@ const READ_ENDPOINTS = {
 const BASE_URL = process.env.MINDBODY_BASE_URL ?? "https://api.mindbodyonline.com/public/v6";
 const SOURCE_NAME = process.env.MINDBODY_SOURCE_NAME ?? "CedarWindSolutionsLLC";
 const REQUEST_TIMEOUT_MS = 20_000;
+const AUDIT_SCOPE = {
+  kind: "read_only_preflight",
+  launchApproval: false,
+  verifies: [
+    "source_token",
+    "required_client_fields_read",
+    "relationship_catalog_read",
+    "program_id_presence",
+    "service_id_and_name_presence",
+    "upcoming_program_class_presence",
+  ],
+  doesNotVerify: [
+    "service_price_program_or_location_applicability",
+    "comp_checkout",
+    "required_field_intake_policy",
+    "native_email_settings",
+    "hubspot_routing_or_workflows",
+    "parent_child_end_to_end_writes",
+  ],
+} as const;
 
 class SafeHttpError extends Error {
   readonly reason: string;
@@ -433,7 +453,17 @@ async function main(): Promise<void> {
       sourceToken: { status: "failed", reason: "missing_api_key" },
       probes: { status: "blocked", reason: "missing_api_key" },
     }));
-    console.log(JSON.stringify({ summary: { pass: 0, fail: 1, blocked: locations.length - 1 }, locations }, null, 2));
+    console.log(
+      JSON.stringify(
+        {
+          scope: AUDIT_SCOPE,
+          summary: { pass: 0, fail: 1, blocked: locations.length - 1 },
+          locations,
+        },
+        null,
+        2,
+      ),
+    );
     process.exitCode = LOCATIONS.some((location) => location.trialBookingEnabled) ? 1 : 0;
     return;
   }
@@ -455,7 +485,13 @@ async function main(): Promise<void> {
     fail: locations.filter((location) => location.overall === "fail").length,
     blocked: locations.filter((location) => location.overall === "blocked").length,
   };
-  console.log(JSON.stringify({ auditedAt: new Date().toISOString(), summary, locations }, null, 2));
+  console.log(
+    JSON.stringify(
+      { auditedAt: new Date().toISOString(), scope: AUDIT_SCOPE, summary, locations },
+      null,
+      2,
+    ),
+  );
   process.exitCode = summary.fail > 0 ? 1 : 0;
 }
 

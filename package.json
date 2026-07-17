@@ -10,6 +10,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
+    "validate:trial-config": "node --no-warnings --experimental-strip-types scripts/validate-trial-config.ts",
     "audit:mindbody-sites": "node --env-file-if-exists=.env.local --no-warnings --experimental-strip-types scripts/audit-mindbody-sites.ts"
   },
   "dependencies": {

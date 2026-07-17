@@ -5,6 +5,8 @@
 **Scope:** Allston, Downtown Brooklyn, Fishtown, Long Island City, Manhattan–FiDi, Newton, and Ridge Hill.
 **Decision rule:** do not enable a club because its Site ID is known. Enable it only after Mindbody authorization, the club's own trial configuration, HubSpot routing, and the full parent/child test all pass.
 
+The copy/paste owner and admin steps are in [the access-authorization handoff](./access-authorization-handoff.md).
+
 ## Executive status
 
 Ridge Hill is the only authorized control site. Its Mindbody source-token probe returned `200`, and its known trial configuration is Program `61` plus $0 Service `100328`. The same source-token probe returned `403` (no site access) for the other six clubs. Consumer/API-key read probes on those six clubs also returned `403`, so consumer mode is **not** a safe fallback.
@@ -39,7 +41,7 @@ The July 17 Ridge Hill readback returned required fields `AddressLine1`, `City`,
 
 ### 1. Grant API access and prove it
 
-Mindbody owner/support must authorize source `CedarWindSolutionsLLC` for the exact Site ID. Ask for both read access and the staff-level permissions needed by the existing source-staff token flow.
+The existing Public API v6 key is application-level; the six clubs do not need six new keys. Cedarwind must generate one activation link/code per Site ID, and the owner/admin for that club must approve source `CedarWindSolutionsLLC`. After activation, issue a fresh staff token for the exact Site ID and verify any staff permissions required by the chosen flow, including **Make Unpaid Reservation** when applicable.
 
 Do not continue until these tests pass for that Site ID:
 
@@ -93,6 +95,8 @@ Keep the club disabled until the acceptance suite below passes.
 ## HubSpot workflow inventory
 
 The HubSpot connection in this audit could read CRM contacts/deals, but it did not expose Marketing Email or workflow access and needs reauthorization before a definitive live inventory or any live change. The table therefore distinguishes the one verified safe state from source-controlled records.
+
+Reauthorization requires the app to request `crm.objects.contacts.read/write`, `crm.objects.deals.read/write`, `marketing-email`, and `automation`, followed by **Settings → Integrations → Connected Apps → [connector] → Re-authenticate** in HubSpot. The OAuth return must finish; changing scopes alone does not update existing tokens. See the [access handoff](./access-authorization-handoff.md) for the owner/admin split and verification steps.
 
 | Communication / workflow | Asset IDs | Current evidence | Required change before multi-site use |
 |---|---|---|---|

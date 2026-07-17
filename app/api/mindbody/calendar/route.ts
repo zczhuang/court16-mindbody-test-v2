@@ -3,6 +3,8 @@ import { authedMindbodyGet } from "@/lib/mindbody";
 import { createLogger, makeCorrelationId } from "@/lib/logger";
 import { LOCATIONS, getLocationById } from "@/config/locations";
 import { maxBookableDateStr, TRIAL_CONFIG } from "@/config/trial-config";
+import { getDealPipeline, getHubspotPreferredLocation } from "@/config/hubspot-deals";
+import { getKidsTrialReadiness } from "@/config/kids-trial-readiness";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,25 +54,29 @@ export async function GET(request: NextRequest) {
 
   const loc = getLocationById(locationId)!;
 
-  if (intent === "kid_trial") {
-    const trialConfig = TRIAL_CONFIG[loc.id];
-    if (
-      !loc.publicBookingEnabled ||
-      !loc.trialBookingEnabled ||
-      !loc.kidTrialProgramId ||
-      !trialConfig?.trialServiceId ||
-      !trialConfig.trialServiceName ||
-      !trialConfig.parentGuardianRelationship
-    ) {
-      return NextResponse.json(
-        {
-          error: "Kids trial scheduling is not yet available for this club.",
-          code: "trial_location_not_ready",
-          locationId: loc.id,
-        },
-        { status: 409 },
-      );
-    }
+  const trialReadiness =
+    intent === "kid_trial"
+      ? getKidsTrialReadiness({
+          location: loc,
+          trialConfig: TRIAL_CONFIG[loc.id],
+          pipeline: getDealPipeline(loc.id),
+          preferredLocation: getHubspotPreferredLocation(loc.id),
+        })
+      : null;
+
+  if (trialReadiness && !trialReadiness.ready) {
+    log.warn("calendar.trial-location.not-ready", {
+      locationId: loc.id,
+      missing: trialReadiness.missing,
+    });
+    return NextResponse.json(
+      {
+        error: "Kids trial scheduling is not yet available for this club.",
+        code: "trial_location_not_ready",
+        locationId: loc.id,
+      },
+      { status: 409 },
+    );
   }
 
   // Booking window (Ibtissam Jun 11): for kid trials, never return classes
@@ -102,8 +108,7 @@ export async function GET(request: NextRequest) {
   // scheduled in the location's Kid's Trials program. Drops all the
   // regular recurring kid classes (Little Freshman / Junior / etc.)
   // that aren't trial-eligible. Other intents pass through unfiltered.
-  const programIds =
-    intent === "kid_trial" ? String(loc.kidTrialProgramId) : undefined;
+  const programIds = trialReadiness?.ready ? String(trialReadiness.programId) : undefined;
 
   try {
     const result = await authedMindbodyGet<{ Classes?: unknown[] }>(log, {
@@ -119,9 +124,9 @@ export async function GET(request: NextRequest) {
       // classes that MindBody admin has flagged "hidden" (consumer mode
       // silently filters those out — empirically verified May 22 that
       // Ridge Hill Program 61 has 24 hidden trial occurrences invisible
-      // without this Bearer). Falls back to consumer mode automatically
-      // if MINDBODY_SOURCE_PASSWORD is unset, so the calendar still
-      // renders for sites that haven't flipped on staff-token access.
+      // without this Bearer). The low-level client attempts consumer mode
+      // when source credentials are unavailable, but an unauthorized site
+      // still fails; the readiness gate keeps those clubs disabled.
       staffMode: true,
     });
     // Drop cancelled occurrences server-side. MindBody keeps returning

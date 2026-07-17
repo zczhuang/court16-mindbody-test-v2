@@ -94,8 +94,8 @@ export async function issueStaffUserToken(cfg: MindbodyConfig, log: Logger): Pro
 
 /**
  * Thrown by `issueSourceStaffToken` when MINDBODY_SOURCE_PASSWORD is not set.
- * Callers (notably the calendar route's `staffMode` fall-through) catch this
- * specifically and degrade to consumer mode rather than failing the request.
+ * Callers catch this specifically and attempt consumer mode; that request can
+ * still fail when the API key is not authorized for the Site ID.
  */
 export class MindbodySourceCredsMissingError extends Error {
   constructor() {
@@ -213,9 +213,9 @@ export async function issueSourceStaffToken(
  *     stored as MINDBODY_SOURCE_PASSWORD). This Bearer carries `access: Staff`
  *     and reveals hidden classes — critical for /api/mindbody/calendar so
  *     Program 61 (Ridge Hill Kid's Trials) occurrences surface in the form's
- *     calendar. If MINDBODY_SOURCE_PASSWORD is unset, gracefully falls back
- *     to consumer mode (calendar still loads but hidden classes won't show)
- *     and emits a `mindbody.staff-mode.degraded` warn log.
+ *     calendar. If source authentication fails, it attempts consumer mode
+ *     and emits a `mindbody.staff-mode.degraded` warning; unauthorized sites
+ *     still fail the underlying request.
  *
  *   • default (neither flag) — staff-user token issued from
  *     MINDBODY_STAFF_USERNAME/PASSWORD. Legacy path, kept for the few
@@ -285,14 +285,14 @@ async function consumerFetch<T>(
  * flagged "hidden" in MindBody admin (per the v6 release notes — see
  * `issueSourceStaffToken` doc).
  *
- * Gracefully degrades to consumer mode when:
+ * Attempts consumer mode when:
  *   • MINDBODY_SOURCE_PASSWORD is unset (e.g. local dev without the password),
  *   • or /usertoken/issue rejects the source credentials (e.g. credentials
  *     rotated, network blip).
  *
- * The fall-through never throws — the calendar always loads, it just
- * loses visibility into hidden classes. Logs `mindbody.staff-mode.degraded`
- * with the reason so we can spot the regression in monitoring.
+ * The follow-up consumer request can still fail when the API key is not
+ * authorized for that Site ID. Logs `mindbody.staff-mode.degraded` before
+ * attempting the request so the loss of staff visibility is observable.
  */
 async function staffFetch<T>(
   cfg: MindbodyConfig,

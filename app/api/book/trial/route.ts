@@ -29,6 +29,7 @@ import {
 import { getLocationById } from "@/config/locations";
 import { maxBookableDateStr, TRIAL_CONFIG, TRIAL_MAX_ADVANCE_DAYS } from "@/config/trial-config";
 import { getDealPipeline, getHubspotPreferredLocation } from "@/config/hubspot-deals";
+import { getKidsTrialReadiness } from "@/config/kids-trial-readiness";
 import type { MindBodyClass, TrialRequest } from "@/lib/trial-types";
 import { consumeSignupRateLimit } from "@/lib/request-rate-limit";
 import { tryAcquireLocalActionLock } from "@/lib/action-lock";
@@ -119,29 +120,16 @@ export async function POST(req: Request) {
     );
   }
 
-  const trialConfig = TRIAL_CONFIG[location.id];
-  const pipeline = getDealPipeline(location.id);
-  const preferredLocation = getHubspotPreferredLocation(location.id);
-  if (
-    !location.publicBookingEnabled ||
-    !location.trialBookingEnabled ||
-    !location.kidTrialProgramId ||
-    !trialConfig?.trialServiceId ||
-    !trialConfig.trialServiceName ||
-    !trialConfig.parentGuardianRelationship ||
-    !pipeline ||
-    !preferredLocation
-  ) {
+  const trialReadiness = getKidsTrialReadiness({
+    location,
+    trialConfig: TRIAL_CONFIG[location.id],
+    pipeline: getDealPipeline(location.id),
+    preferredLocation: getHubspotPreferredLocation(location.id),
+  });
+  if (!trialReadiness.ready) {
     log.warn("trial.location.not-ready", {
       locationId: location.id,
-      publicBookingEnabled: location.publicBookingEnabled,
-      trialBookingEnabled: location.trialBookingEnabled,
-      hasProgram: Boolean(location.kidTrialProgramId),
-      hasService: Boolean(trialConfig?.trialServiceId),
-      hasServiceName: Boolean(trialConfig?.trialServiceName),
-      hasParentGuardianRelationship: Boolean(trialConfig?.parentGuardianRelationship),
-      hasPipeline: Boolean(pipeline),
-      hasPreferredLocation: Boolean(preferredLocation),
+      missing: trialReadiness.missing,
     });
     return NextResponse.json(
       {
@@ -153,6 +141,7 @@ export async function POST(req: Request) {
       { status: 409 },
     );
   }
+  const { preferredLocation, programId, trialConfig } = trialReadiness;
 
   let mbCfg;
   try {
@@ -222,7 +211,7 @@ export async function POST(req: Request) {
       query: {
         StartDateTime: `${classDate}T00:00:00`,
         EndDateTime: `${classDate}T23:59:59`,
-        ProgramIds: String(location.kidTrialProgramId),
+        ProgramIds: String(programId),
         Limit: 200,
       },
       staffMode: true,
@@ -240,7 +229,7 @@ export async function POST(req: Request) {
       : 0;
     if (
       !liveClass ||
-      liveProgramId !== location.kidTrialProgramId ||
+      liveProgramId !== programId ||
       liveClass.StartDateTime !== body.classStartsAt ||
       liveClass.IsCanceled ||
       !liveClass.IsAvailable ||
@@ -251,7 +240,7 @@ export async function POST(req: Request) {
         classId: body.classId,
         classScheduleId: body.classScheduleId,
         found: Boolean(liveClass),
-        programMatches: liveProgramId === location.kidTrialProgramId,
+        programMatches: liveProgramId === programId,
         startMatches: liveClass?.StartDateTime === body.classStartsAt,
         canceled: liveClass?.IsCanceled ?? null,
         available: liveClass?.IsAvailable ?? null,
