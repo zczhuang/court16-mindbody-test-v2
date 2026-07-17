@@ -15,9 +15,11 @@
 <header class="doc-head">
   <a class="back-link" href="./index.html">Back to Package A index</a>
   <div class="brand">Court 16 × Cedarwind · Package A · Spec 02</div>
-  <h1>Trials Deal pipeline</h1>
-  <p class="subtitle">Stands up a new HubSpot Deal pipeline so every booking becomes a tracked Deal rather than only a Contact property update.</p>
+  <h1>Historical Trials Deal pipeline proposal</h1>
+  <p class="subtitle">The original five-stage Package A design, retained for context. It does not describe the current per-location pipeline contract.</p>
 </header>
+
+<div class="callout warn"><strong>Archived design—do not build or change HubSpot from this page.</strong> Current per-location pipelines do not have the proposed Denied stage. The implemented Deny route leaves the Deal stage unchanged, writes <code>denial_reason</code>/<code>denial_note</code>, and updates the Contact's failure status. Compare any pipeline change with the live HubSpot inventory first.</div>
 
 <section class="summary-pkg">
   <dl>
@@ -81,7 +83,7 @@
   <p>Which Deal-level custom properties we create beyond <code>court16_correlation_id</code>. Candidates informed by the existing Contact schema (spec 01):</p>
   <ul>
     <li><code>court16_class_id</code>, <code>court16_location_slug</code>, <code>court16_class_datetime</code> — so pipeline views and workflows don't have to hop through the Contact for common reporting.</li>
-    <li><code>court16_denial_reason</code> — populated when the Deal moves to Denied. Values depend on spec 05's picklist decision.</li>
+    <li>Historical proposal: <code>court16_denial_reason</code> on a Denied stage. Current implementation instead writes Deal <code>denial_reason</code>/<code>denial_note</code> without moving the stage.</li>
   </ul>
   <p>Final list + exact internal names get agreed at kickoff.</p>
 </div>
@@ -96,7 +98,7 @@
   <p>Which workflows fire on which stage transitions is specified in:</p>
   <ul>
     <li><a href="./04-staff-confirm-moves-deal.html">Spec 04</a> (Requested Trial → Scheduled Trial)</li>
-    <li><a href="./05-deny-action.html">Spec 05</a> (→ Denied)</li>
+    <li><a href="./05-deny-action.html">Spec 05</a> (current Deny annotation + Contact failure behavior)</li>
     <li><a href="./06-password-setup-email.html">Spec 06</a> (Requested Trial enrollment)</li>
     <li><a href="./07-24h-reminder-workflow.html">Spec 07</a> (Scheduled Trial + 24h)</li>
   </ul>

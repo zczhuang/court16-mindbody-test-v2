@@ -19,6 +19,8 @@
   <p class="subtitle">A code change in the booking app so every successful form submission produces a Deal in the Trials pipeline alongside the Contact it already creates.</p>
 </header>
 
+<div class="callout warn"><strong>Historical implementation proposal—do not use as an operational runbook.</strong> The current route creates a durable HubSpot intake work item before any Mindbody AddClient call and has additional duplicate/manual-review safety paths. Use the current code and <a href="https://github.com/zczhuang/court16-mindbody-test-v2/blob/agent/family-account-handoff/docs/multi-site-automation-audit.md">multi-site audit</a>; the ordering, sandbox, status, and verification claims below are preserved only as project history.</div>
+
 <section class="summary-pkg">
   <dl>
     <dt>What</dt><dd>Extend <code>/api/book/trial/route.ts</code> (kids trial flow) — and later, the equivalent intro path — so after the existing HubSpot Contact submission succeeds, the handler creates a Deal associated to that Contact at stage <strong>Requested Trial</strong>.</dd>

@@ -15,9 +15,11 @@
 <header class="doc-head">
   <a class="back-link" href="./index.html">Back to Package A index</a>
   <div class="brand">Court 16 × Cedarwind · Package A · Spec 07</div>
-  <h1>24-hour class reminder workflow</h1>
-  <p class="subtitle">A HubSpot workflow that emails the parent the day before their scheduled trial — class time, location, and a short "what to bring" nudge.</p>
+  <h1>Historical 24-hour reminder proposal</h1>
+  <p class="subtitle">The original Package A workflow design, retained for context. It is not an activation checklist.</p>
 </header>
+
+<div class="callout warn"><strong>Keep this workflow off.</strong> The app now writes Deal <code>class_date</code>, but a trustworthy cancellation-suppression signal and controlled timing test are still required. Current Deny does not move the Deal to a Denied stage and rejects already-confirmed bookings, so the historical stage-only guard below is insufficient.</div>
 
 <section class="summary-pkg">
   <dl>
@@ -60,7 +62,7 @@
   <p>Class datetime should be stored as UTC ISO 8601 on the Deal. The email body renders local time via HubSpot's personalization-token date formatting. Stuart confirms the Deal-property format when he wires spec 03.</p>
 </div>
 
-<h2>Setup steps in HubSpot (once the decisions above are settled)</h2>
+<h2>Historical setup outline — do not activate from this page</h2>
 <ol class="steps">
   <li>Marketing → Workflows → Create workflow → Based on a Deal.</li>
   <li>Enrollment trigger: pipeline is Trials, stage is Scheduled Trial.</li>
@@ -68,7 +70,7 @@
   <li>Delay: wait until the Deal's class-datetime property minus 1 day.</li>
   <li>If/then: Deal stage is Scheduled Trial. True → send email. False → end.</li>
   <li>Pick the 24-hour reminder template from spec 08.</li>
-  <li>Turn the workflow on.</li>
+  <li>Save the workflow off. Activation requires the current owner, subscription classification, cancellation suppression, and tagged acceptance test.</li>
 </ol>
 
 <h2>Verification plan</h2>
@@ -77,7 +79,7 @@
   <li>Move it to Scheduled Trial. Confirm the workflow enrolled, delay shows ~23 hours pending.</li>
   <li>Edit class-datetime to "now + 5 minutes" to fast-forward. Confirm the delay recalculates.</li>
   <li>After the delay clears, check the workflow history: branch evaluated true, email sent.</li>
-  <li>On a second test, move the Deal to Denied before the delay clears. Confirm the false branch ends the workflow without sending.</li>
+  <li>Before activation, prove a cancelled or otherwise ineligible booking exits without a send using the current approved cancellation signal; do not rely on a Denied stage that the current route does not set.</li>
 </ol>
 
 <div class="meta-row"><div class="k">Depends on</div><div class="v"><span class="tag">Spec 02 — pipeline + class-datetime property</span><span class="tag">Spec 04 — Scheduled Trial stage move</span><span class="tag">Spec 08 — email template</span></div></div>

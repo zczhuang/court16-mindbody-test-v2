@@ -16,15 +16,15 @@
   <a class="back-link" href="./index.html">Back to Package A index</a>
   <div class="brand">Court 16 × Cedarwind · Package A · Spec 05</div>
   <h1>Deny action — alongside Confirm and Reassign</h1>
-  <p class="subtitle">A new staff action that closes the loop on trial requests the club can't accept: reason-coded, parent-notified, and MindBody-cancelled if a booking already opened.</p>
+  <p class="subtitle">Current behavior: a signed POST-based staff action records the denial state and reason before enrollment in the normal flow. It does not promise removal of an existing Mindbody visit.</p>
 </header>
 
 <section class="summary-pkg">
   <dl>
-    <dt>What</dt><dd>Scope from the SOW: add a Deny action alongside the existing Confirm / Reassign. A <strong>reason picklist</strong>, a <strong>denial email with reason-specific copy</strong>, and <strong>auto-cancel in MindBody</strong> if a booking was made.</dd>
+    <dt>What</dt><dd>Add a Deny action alongside Confirm / Reassign, store a reason, move the workflow state, and support reason-specific parent copy. Normal denial happens before enrollment.</dd>
     <dt>Why</dt><dd>Today unacceptable requests get silently ignored. Deny closes the loop politely, gives the parent useful context, and produces denial-reason data for pipeline reporting.</dd>
     <dt>Who</dt><dd><strong>Stuart</strong> builds the route + reason picker. <strong>Ibtissam</strong> owns the reason-specific email copy (spec 08) and the HubSpot workflow that branches on reason.</dd>
-    <dt>Status</dt><dd><span class="pill greenfield"><span class="dot"></span>Greenfield · picklist + copy defined with Ibtissam at kickoff</span></dd>
+    <dt>Status</dt><dd><span class="pill progress"><span class="dot"></span>Route + signed action built · confirmed bookings are rejected with 410 and require Mindbody-admin cancellation</span></dd>
   </dl>
 </section>
 
@@ -33,20 +33,20 @@
 <div class="pipeline">
   <div class="stage"><div class="stage-num">1</div><div class="stage-name">Staff clicks Deny</div><div class="stage-sub">Third link in the staff email</div></div>
   <div class="stage"><div class="stage-num">2</div><div class="stage-name">Reason picker loads</div><div class="stage-sub">Tiny HTML page · picklist</div></div>
-  <div class="stage"><div class="stage-num">3</div><div class="stage-name">Cancel MindBody</div><div class="stage-sub">If already booked</div></div>
-  <div class="stage"><div class="stage-num">4</div><div class="stage-name">Move Deal → Denied</div><div class="stage-sub">+ set reason</div></div>
+  <div class="stage"><div class="stage-num">3</div><div class="stage-name">Check enrollment state</div><div class="stage-sub">Escalate if a visit already exists</div></div>
+  <div class="stage"><div class="stage-num">4</div><div class="stage-name">Annotate Deal</div><div class="stage-sub">Keep stage · set reason/note</div></div>
   <div class="stage no-arrow"><div class="stage-num">5</div><div class="stage-name">Workflow emails parent</div><div class="stage-sub">Reason-specific copy</div></div>
 </div>
 
 <h2>What's defined (per the SOW)</h2>
 <div class="card">
   <ul>
-    <li>A third signed URL (alongside <code>action: "confirm"</code> and <code>action: "reassign"</code>) with <code>action: "deny"</code>, same HMAC scheme, same 24-hour expiry.</li>
+    <li>A third signed URL (alongside <code>action: "confirm"</code> and <code>action: "reassign"</code>) with <code>action: "deny"</code>, the same HMAC scheme, and the configurable token lifetime (72-hour default).</li>
     <li>Clicking Deny opens a tiny HTML page — not an auto-apply — so staff can select a reason rather than clicking-and-regretting.</li>
-    <li>On submit, the Deal moves to stage <strong>Denied</strong> (from spec 02) and the picked reason lands on a Deal custom property (<code>court16_denial_reason</code>).</li>
-    <li>If a MindBody booking was already created (i.e. staff had previously confirmed and is now reversing), the handler cancels the MindBody enrollment before closing the Deal.</li>
-    <li>A reason-branching HubSpot workflow sends the parent an email tailored to why the request was denied.</li>
-    <li>Every Deny click is logged with correlation ID + chosen reason + staff token, matching the existing Confirm / Reassign audit trail.</li>
+    <li>On submit, the Deal stage is left unchanged and the route writes Deal properties <code>denial_reason</code> and optional <code>denial_note</code>. The Contact moves to <code>failed</code> with a human-readable <code>court16_failure_reason</code>.</li>
+    <li>The normal path denies before a Mindbody enrollment exists. If the Contact is already <code>confirmed</code>, Deny returns HTTP 410 and directs staff to cancel in Mindbody admin instead.</li>
+    <li>The configured HubSpot workflow may branch on <code>court16_failure_reason</code>; its reason-to-email mapping and activation are reviewed separately.</li>
+    <li>The signed token is verified, and the route logs the correlation ID and chosen reason without logging the token itself.</li>
   </ul>
 </div>
 
@@ -60,7 +60,7 @@
 
 <div class="card">
   <h3>The reason picklist</h3>
-  <p>Concrete values + their internal names (<code>court16_denial_reason</code> dropdown options) get agreed at kickoff. Questions to resolve:</p>
+  <p>The route's concrete values map to the Deal's <code>denial_reason</code> property and the Contact's human-readable <code>court16_failure_reason</code>. Questions to resolve:</p>
   <ul>
     <li>How many options? (Fewer is easier on staff; more is better for reporting.)</li>
     <li>Is an "Other" + free-text staff-internal note needed for edge cases?</li>
@@ -69,12 +69,11 @@
 </div>
 
 <div class="card">
-  <h3>MindBody cancellation endpoint</h3>
+  <h3>Existing-enrollment cancellation is a separate future change</h3>
   <p>MindBody's Public API v6 has <code>/class/removeclientsfromclasses</code> and
     <code>/class/removefromwaitlist</code> depending on whether a wait-list
-    entry or a regular enrollment exists. Stuart confirms the correct call
-    against the <code>-99</code> sandbox once spec 04 has produced real
-    enrollments to test against.</p>
+    entry or a regular enrollment exists. Neither path is wired into the current
+    Deny handler. A confirmed booking cannot be denied through this route; staff receives HTTP 410 and must use the approved Mindbody-admin cancellation process.</p>
 </div>
 
 <div class="card">
@@ -103,11 +102,6 @@
       <td>Extend the action union to include <code>"deny"</code>.</td>
     </tr>
     <tr>
-      <td style="padding-left: 14px;">lib/mindbody.ts</td>
-      <td>Modify</td>
-      <td>Add the cancel-class helper (exact endpoint confirmed at kickoff).</td>
-    </tr>
-    <tr>
       <td style="padding-left: 14px;">app/api/book/trial/route.ts</td>
       <td>Modify</td>
       <td>Build the Deny URL via <code>buildStaffUrl</code> and store it as <code>court16_staff_deny_url</code> on the Contact submission.</td>
@@ -118,11 +112,11 @@
 
 <h2>Verification plan</h2>
 <ol class="steps">
-  <li>Submit a test trial. Verify the Contact now has <code>court16_staff_deny_url</code> populated.</li>
-  <li>Visit the URL in a browser → reason picker loads with parent/child/class details visible.</li>
-  <li>Pick a reason, submit → response shows "Denied." Check HubSpot: Deal moved to Denied, <code>court16_denial_reason</code> set.</li>
-  <li>If the test trial had been previously confirmed (i.e. already booked in MindBody), verify the MindBody enrollment was removed.</li>
-  <li>Watch the HubSpot workflow: confirm the correct reason-variant email queued for the parent.</li>
+  <li>Keep the denial workflow and live customer sending off. Use only a tagged, staff-approved Ridge Hill fixture with a verified Mindbody target, original Client-ID log, and named cleanup owner. Verify its Contact has <code>court16_staff_deny_url</code> populated.</li>
+  <li>Visit the URL in a browser → the reason picker loads with the five reasons and optional note field. It does not display parent, child, or class details.</li>
+  <li>Pick a reason, submit → response shows "Denied." Check HubSpot: Deal stage is unchanged; <code>denial_reason</code>/<code>denial_note</code> are set; Contact status is <code>failed</code> with <code>court16_failure_reason</code>.</li>
+  <li>For a separate already-confirmed fixture, open the picker and POST a valid reason; verify HTTP 410, no denial-state change, and the Mindbody-admin cancellation instruction.</li>
+  <li>With live customer sending off, use HubSpot workflow-test mode to confirm <code>court16_failure_reason</code> selects the correct static denial asset. Activation is a separate approval.</li>
 </ol>
 
 <div class="meta-row"><div class="k">Depends on</div><div class="v"><span class="tag">Spec 01</span><span class="tag">Spec 02</span><span class="tag">Spec 03</span><span class="tag">Spec 08 — email copy per reason</span></div></div>

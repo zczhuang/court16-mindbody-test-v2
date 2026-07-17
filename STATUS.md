@@ -1,41 +1,50 @@
-# Court 16 Booking — where we are, what's next
+# Court 16 Booking — archived April 2026 snapshot
 
-**Live demo:** <https://court16-mindbody-test.vercel.app>
-**Date:** April 18, 2026
+> [!CAUTION]
+> **ARCHIVED — DO NOT USE THIS FILE TO RUN TESTS, CHANGE AUTOMATION, OR MAKE A GO-LIVE DECISION.**
+> This file preserves an April 18 snapshot and contains superseded sandbox, site-access,
+> property-count, workflow, and cleanup assumptions. A submission to the current app can
+> create durable Mindbody and HubSpot records. Use the
+> [current multi-site readiness audit](docs/multi-site-automation-audit.md),
+> [Mindbody email and family-link handoff](public/package-a/06-password-setup-email.html),
+> and [staff family-account guide](public/package-a/10-family-account-staff-guide.html)
+> instead.
+
+**Historical demo URL — do not submit test data:** <https://court16-mindbody-test.vercel.app>
+**Snapshot date:** April 18, 2026
 **Author:** Stuart Chuang, Cedarwind
 
 ---
 
-## In one paragraph
+## What the April snapshot claimed
 
 We built a new online booking experience for Court 16 that replaces the
 clunky "12-field form + 11-step MindBody setup + 2-5 days of silence"
 flow parents hit today. Two paths — a **free kids trial** and a **paid
 adult intro offer** — both collect everything we need in under 2 minutes,
 create the MindBody accounts behind the scenes, and hand off to Ibtissam's
-existing HubSpot follow-up. It's live today as a demo on the public
-internet, talking to MindBody's test sandbox. A few specific unlocks from
-Anthony, Ibtissam, and MindBody are needed before we can point real
-customers at it.
+existing HubSpot follow-up. At the time, the demo was described as using a
+MindBody test sandbox. That statement is historical and must not be used as a
+current safety assumption; current production-site test records are durable.
 
 ---
 
-## What it does today
+## Historical product description
 
 ### For parents booking a kids trial
 
 1. Land on the homepage, click **"Start kids trial"**
-2. Pick a club (6 locations live: Brooklyn, LIC, FiDi, Ridge Hill, Fishtown, Newton)
+2. Pick one of the six clubs listed in the April prototype (not a statement of current authorization)
 3. Pick their kid's age (dropdown)
 4. Browse real MindBody calendar — see which days have available classes, how many spots are open
 5. Click a class → a modal pops up asking for name, email, phone (required), child's name, age, optional notes
 6. Submit → confirmation screen with a reference number
 
-Under the hood:
-- Checks MindBody for an existing account with that email (no duplicates, which was the #1 bug with the previous vendor)
+Historical intended behavior under the hood:
+- Checks MindBody for an existing account with that email; this was not proof that duplicates were impossible
 - Creates the parent's MindBody account
-- Creates the child's MindBody account
-- Links them with a Guardian relationship
+- Creates the child's MindBody account using the same reachable parent email
+- Links the pair with the site's verified Parent/Guardian relationship
 - Submits to the existing Court 16 HubSpot trial form, so Ibtissam's nurture automation fires
 - Stamps a signed URL that staff can click in an email to one-click confirm the class in MindBody (future)
 
@@ -60,7 +69,7 @@ Same shape:
 
 ---
 
-## What's working vs. what's placeholder
+## April status table — superseded
 
 | Piece | Status |
 |---|---|
@@ -75,17 +84,18 @@ Same shape:
 
 ---
 
-## What's left to go live — and who owns each piece
+## Historical go-live list — superseded
 
-These are the specific unlocks needed. None are big; they're mostly clicks
-in MindBody admin and HubSpot admin.
+This was the April work list. Do not execute it as written. Ridge Hill is now
+the only authorized control site; the six expansion sites remain unauthorized,
+and current per-site/readiness evidence lives in the multi-site audit linked above.
 
 ### 🎾 Anthony — MindBody side
 
-**The big one: MindBody's "Go Live" approval.** This is the blocker. MindBody's
-developer accounts default to sandbox-only; to read or write against real
-sites (even just their public class schedule) the developer account has to go
-through MindBody's formal Go Live review. Typically 1–3 weeks turnaround.
+**April assumption:** the developer account still needed Mindbody's formal
+“Go Live” review. That was the blocker recorded in this snapshot, not the
+current access state. Ridge Hill is now authorized; the six expansion sites
+still require site-specific authorization and preflight evidence.
 
 1. **Submit Cedarwind's developer account for Go Live review** at
    developers.mindbodyonline.com. Stuart files the paperwork; Anthony's role
@@ -105,8 +115,10 @@ through MindBody's formal Go Live review. Typically 1–3 weeks turnaround.
    site's cart settings. If they're staff-only today, flip them to
    "sellable online" so the payment flow completes.
 
-Once these are done, Stuart flips two switches in the app (`MINDBODY_WRITE_MODE=live`
-and `MINDBODY_USE_SANDBOX_FALLBACK=false`) and the real data flows.
+The April plan proposed flipping `MINDBODY_WRITE_MODE=live` and
+`MINDBODY_USE_SANDBOX_FALLBACK=false` after those steps. **Do not do that from
+this archived checklist.** The current per-site readiness and acceptance gates
+must pass first.
 
 **What's already confirmed:** Real Court 16 MindBody site IDs have been
 scraped from court16.com/login and are now correct in the app's config:
@@ -136,13 +148,11 @@ MindBody login page using these IDs.
    - Parent confirmation — fires when staff confirms, sends the "you're in!" email
 3. **Add a filter to the existing kids-trial nurture workflow** so it doesn't
    fire for adult submissions (a one-line `intent != kid_trial` rule).
-4. **Turn off reCAPTCHA on the Court 16 Trial form.** Marketing → Forms →
-   Court 16 Trial (`3e966ac4-872e-49ec-9b93-1f114fa6d39b`) → Settings →
-   uncheck "Protect this form from spam with Google reCAPTCHA". Right now
-   the API gets a 400 `FORM_HAS_RECAPTCHA_ENABLED` back, so leads captured
-   during any MindBody outage (status = `manual_review`) never reach the
-   contact database. Ten-second fix, unblocks graceful-degradation lead
-   capture with zero further code changes.
+4. **Historical reCAPTCHA proposal — do not execute.** The April list blamed
+   a Forms API 400 on the live form's reCAPTCHA setting. Current code does not
+   assume that server-to-server submissions require this toggle. Reproduce the
+   current behavior and audit website embeds, nurture enrollment, spam controls,
+   and the rollback owner before proposing any live-form change.
 5. **Optionally: create a Private App API token.** This is what lets the staff
    one-click-confirm emails actually work. Without it, staff will still get
    notified but they'll confirm the class manually in MindBody admin (same as
@@ -154,13 +164,12 @@ MindBody login page using these IDs.
   box for. The app already stores which version was accepted and when, so the
   legal team just needs to approve the wording.
 
-### 🔒 Stuart — final tuning (1 day after the above unlocks)
+### 🔒 April final-tuning proposal — do not execute
 
-- Flip `MINDBODY_WRITE_MODE=live` after a last smoke test
-- Point `app.court16.com` at the Vercel deployment (one DNS record, coordinated
-  with whoever manages DNS — likely Ibtissam in Squarespace)
-- Update the landing page copy and images to match Court 16's tone now that
-  the flow is final
+- The snapshot proposed flipping the write mode, pointing DNS, and updating
+  launch copy after one smoke test.
+- That sequence is superseded by the current per-site audit, family-account
+  acceptance test, authorization gates, and controlled rollout plan.
 
 ---
 
@@ -186,50 +195,38 @@ the extra polish.
 
 ---
 
-## What this de-risks for Court 16
+## Historical risk assessment — not a current guarantee
 
 The previous vendor (BLINK) tried something similar and failed. The specific
 things they couldn't get working are all working here:
 
-- **No duplicate MindBody accounts** — we check every time, the code is
-  documented, and it's been tested end-to-end
-- **Clean Guardian relationship between parent and child** — we figured out
-  MindBody's actual v6 API (it isn't where their docs say it is) and verified
-  it against sandbox
+- **Duplicate guard prototype** — the April implementation checked before
+  creating clients; current acceptance still requires proof that an existing
+  child Client ID is reused and connected rather than duplicated
+- **Parent/Guardian relationship prototype** — the current flow must use the
+  same parent email on both records and the exact relationship verified for
+  that Mindbody site
 - **Full logging** — every write has a correlation ID traced through logs,
   so debugging a failed booking takes ~60 seconds instead of the "no idea
   what happened" BLINK produced
-- **Safety switch** — all writes are tagged `Test=true` until explicitly
-  flipped. We won't accidentally create real records before you're ready.
+- **Superseded safety-switch assumption** — `Test=true` is not a deletion or
+  expiry guarantee on a real Mindbody site. Treat every current write as durable.
 
 ---
 
-## How to try it right now
+## Do not run the former demo walkthrough
 
-1. Go to <https://court16-mindbody-test.vercel.app>
-2. Click **Start kids trial** (or adult intro)
-3. Fill in the form with your own email (or `stuart+demo-123@cedarwind.io`
-   so we can tell test traffic from real traffic later)
-4. Submit
-
-What you'll see:
-- Kids flow: Reference number + "we'll confirm within a few hours" message
-- Adult flow: You'll be redirected to MindBody's cart — don't complete the
-  payment on a real card, the cart is pointing at the -99 test sandbox
-  until Anthony's authorization step is done
-
-What Stuart sees behind the scenes:
-- Your submission appears in the Vercel logs within seconds, tagged with your
-  correlation ID
-- The MindBody sandbox will have a client record created (though marked as a
-  test since we're in `Test=true` mode)
-- HubSpot's existing form gets a submission (so the current nurture sequence
-  will fire to whatever email you used — use a throwaway address if you don't
-  want real emails)
+The former “try it right now” instructions were removed because they relied on
+an obsolete `-99`/sandbox assumption. Do not submit a fake family, click a
+signed staff-action URL, or test payment from this document. A controlled write
+test requires a staff-approved fixture, a named cleanup owner, the current
+per-site readiness gates, and a record of the original parent and child Client
+IDs. The HubSpot parent-account nudge remains off until a trustworthy
+family-status gate exists.
 
 ---
 
-## Questions for Anthony and Ibtissam
+## Questions recorded in April — superseded
 
 1. **Anthony**: are you OK flipping the MindBody Api-Key authorization for
    all 6 sites this week, or would you rather start with one pilot site
@@ -245,8 +242,9 @@ What Stuart sees behind the scenes:
 
 ## Appendix — what's in the repo
 
-The code lives at <https://github.com/zczhuang/court16-mindbody-test> on branch
-`track1/new-customer-booking`. Relevant docs inside the repo:
+At the time, the code lived at <https://github.com/zczhuang/court16-mindbody-test>
+on branch `track1/new-customer-booking`. That branch reference is historical.
+Current handoff sources are linked in the archive warning at the top.
 
 - `README.md` — how to run the app locally, MindBody setup steps
 - `docs/hubspot-properties.md` — the exact 12 contact properties to add
@@ -254,5 +252,5 @@ The code lives at <https://github.com/zczhuang/court16-mindbody-test> on branch
 - `Court16_Phase3_Ideal_State_PRD.md` (in the parent folder) — the North Star vision
   this slice delivers against
 
-The build that's live on <https://court16-mindbody-test.vercel.app> mirrors
-what's on that branch.
+The old claim that the public build mirrored that branch is not a statement of
+current deployment state. Do not infer deployment safety from this snapshot.

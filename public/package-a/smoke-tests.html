@@ -40,18 +40,28 @@
 <body>
 <div class="wrap">
 
+<section role="alert" style="margin: 0 0 24px; padding: 18px 20px; border: 4px solid #a12828; border-radius: 10px; background: #f9e3e3; color: #241b1b;">
+  <div style="font: 700 13px/1.2 'Geist Mono', monospace; letter-spacing: .08em; color: #a12828;">ARCHIVED · DO NOT RUN</div>
+  <p style="margin: 8px 0 10px; font-weight: 600;">This May 2026 smoke log is historical evidence, not a current test plan or launch checklist.</p>
+  <p style="margin: 0; font-size: 13px;">Its consumer-mode, sandbox expiry, live-write, launch, and cleanup assumptions are superseded. Current Mindbody writes can create durable records. Ridge Hill is only an authorized control and currently has no upcoming Program 61 occurrences; the other six clubs return <code>403</code>. Use the
+    <a href="https://github.com/zczhuang/court16-mindbody-test-v2/blob/agent/family-account-handoff/docs/multi-site-automation-audit.md"><strong>current multi-site audit</strong></a>,
+    <a href="./06-password-setup-email.html"><strong>spec 06</strong></a>, and
+    <a href="./10-family-account-staff-guide.html"><strong>spec 10</strong></a> instead.
+  </p>
+</section>
+
 <header class="doc-head">
   <a class="back-link" href="./index.html">← Back to Package A index</a>
   <div class="brand">Court 16 × Cedarwind · Package A · Ridge Hill pilot</div>
-  <h1>Ridge Hill pilot smoke tests</h1>
-  <p class="subtitle">Pre-launch checklist for the Ridge Hill pilot. Two halves: (1) the gates that must <em>all be true</em> before tests can run, and (2) the 10 scenarios that prove the system works end-to-end. After all 10 pass + acceptance criteria hold, flip <code>MINDBODY_WRITE_MODE=live</code> and soft-launch.</p>
+  <h1>Archived Ridge Hill pilot smoke log</h1>
+  <p class="subtitle">Preserved to explain what was tried in May. Do not treat the gates, commands, actions, or proposed launch sequence below as current instructions.</p>
 </header>
 
 <hr class="section" />
 
-<h2>Part 1 · Pre-test gates (everything below must be TRUE)</h2>
+<h2>Part 1 · Historical pre-test gates</h2>
 
-<p>Each row is a single binary check. Don't start the smoke run until all 10 read DONE. The current state column reflects what's true right now (May 14).</p>
+<p>These rows record what the team believed on May 14–16. Their DONE labels are not current readiness evidence.</p>
 
 <table class="gate-table">
   <thead>
@@ -77,11 +87,11 @@
     </tr>
     <tr>
       <td class="layer">MindBody</td>
-      <td class="item">Real Ridge Hill staff-user credentials <s>required</s> — <strong>bypassed May 15</strong> via consumer-mode AddClient. SplitPass-docs probe revealed that omitting the staff token simply switches AddClient to "Consumer Mode required fields" enforcement (vs. "Business Mode"); satisfying RH's required-field config (<code>AddressLine1, City, State, PostalCode, ReferredBy, BirthDate, MobilePhone, Email, Gender, EmergencyContactInfo*</code> × 4) is enough. Smoke #2 v4 (May 15 22:00 ET) created real RH Clients <code>100002047</code> (parent) + <code>100002048</code> (child) end-to-end with no staff token. Staff invite is still nice-to-have for cleanup (UpdateClient soft-deletes); not blocking.
-        <div class="why-gate"><strong>The breakthrough</strong><code>Site Permissions</code> in the MindBody dev portal grants the API-Key access to a site; that access alone is sufficient for AddClient + ClientRelationships (inline) + AddClientToClass in Consumer Mode. The historical 403 on <code>/usertoken/issue</code> was a red herring — we never actually needed the token. See <code>lib/mindbody.ts</code> <code>consumerMode: true</code> path.</div>
+      <td class="item"><strong>Historical May experiment — not a current authorization rule.</strong> A consumer-mode write created Ridge Hill Clients <code>100002047</code> and <code>100002048</code>. It did not prove that consumer mode is a safe fallback, that the then-recorded required-field list remains accurate, or that the same behavior applies to another site.
+        <div class="why-gate"><strong>Current rule</strong>Use the source-token and read-preflight matrix in the current audit. The six expansion clubs fail both source and consumer reads with <code>403</code>; no blocked site may be bypassed or enabled from this observation.</div>
       </td>
       <td class="owner">Anthony</td>
-      <td><span class="check done">✓ DONE (bypassed)</span></td>
+      <td><span class="check gated">HISTORICAL</span></td>
     </tr>
     <tr>
       <td class="layer">HubSpot</td>
@@ -115,21 +125,21 @@
     </tr>
     <tr>
       <td class="layer">Vercel</td>
-      <td class="item"><code>MINDBODY_STAFF_USERNAME</code> + <code>MINDBODY_STAFF_PASSWORD</code> — <s>required</s> <strong>no longer used by the booking app</strong> after the consumer-mode refactor. Env vars stay on Vercel as a fallback for future endpoints that genuinely need staff (e.g. UpdateClient for soft-delete cleanup) but are no longer on the critical path.</td>
+      <td class="item"><strong>Historical credential assumption.</strong> Do not infer the current source/staff-token requirement from this row. Re-run the current per-site authorization preflights before any controlled write.</td>
       <td class="owner">Cedarwind</td>
-      <td><span class="check done">✓ DONE (deprecated)</span></td>
+      <td><span class="check gated">HISTORICAL</span></td>
     </tr>
     <tr>
       <td class="layer">Vercel</td>
-      <td class="item"><code>MINDBODY_WRITE_MODE=test</code> for the first smoke round (writes are accepted by MindBody but don't persist past a 24h sandbox window). Flips to <code>live</code> only after all 10 scenarios pass.</td>
+      <td class="item"><strong>Superseded safety assumption.</strong> A test flag is not an expiry or deletion guarantee on a real Mindbody site. Treat every write as durable; do not flip a write mode from this page.</td>
       <td class="owner">Cedarwind</td>
-      <td><span class="check done">✓ DONE</span></td>
+      <td><span class="check gated">DO NOT USE</span></td>
     </tr>
   </tbody>
 </table>
 
 <div class="why-gate" style="margin-top: 24px;">
-  <strong>Smoke results (May 16 02:10 ET)</strong>
+  <strong>Historical smoke results (May 16 02:10 ET)</strong>
   <table style="width:100%; border-collapse: collapse; margin-top:10px; font-size: 13px;">
     <tr style="background:#fff;">
       <th style="text-align:left; padding:6px 10px; border-bottom:1px solid #eee;">Test</th>
@@ -147,7 +157,7 @@
     <tr><td style="padding:6px 10px;">#9 Duplicate-email softwall</td><td><span class="check pending">⊘ PARTIAL</span></td><td><strong>Bug H</strong> (<a href="https://github.com/zczhuang/court16-mindbody-test-v2/issues/3" target="_blank">#3</a>): MindBody <code>/client/clients?SearchText=&lt;email&gt;</code> doesn't index newly-created clients fast enough. Second submit doesn't detect the duplicate, creates a 2nd MindBody Client, then degrades to manual_review. End-user UX is acceptable (Deal lands in HubSpot) but documented softwall path isn't hit. Fix path: dedup via HubSpot Contact lookup instead of MindBody.</td></tr>
     <tr><td style="padding:6px 10px;">#10 24h reminder timing</td><td><span class="check pending">⊘ BLOCKED</span></td><td>Needs #3 (Scheduled Deal); same Bug G blocker (<a href="https://github.com/zczhuang/court16-mindbody-test-v2/issues/2" target="_blank">#2</a>)</td></tr>
   </table>
-  <p style="margin:14px 0 0; font-size:13px;"><strong>Bottom line:</strong> 4 of 10 cleanly PASS (#1, #2, #6, #8). 1 PARTIAL with acceptable UX (#9). 1 DEFERRED until real payment (#7). 4 BLOCKED on Jane Montoya creating the "Complimentary Child Intro Session" service in RH MindBody (#3, #4, #5, #10). <strong>The booking app + HubSpot integration is production-ready for the parts that don't require Jane's service config.</strong> Flipping <code>MINDBODY_WRITE_MODE=live</code> would allow real customer bookings to land as Contact + Deal + MindBody Client; staff manually books the class in MindBody admin until Jane's service ships — then we re-test #3-5 + #10 and remove the manual step.</p>
+  <p style="margin:14px 0 0; font-size:13px;"><strong>Historical conclusion, now superseded:</strong> this run recorded 4 clean passes, 1 partial, 1 deferred, and 4 blocked scenarios. It does <strong>not</strong> prove production readiness. The current audit found zero upcoming Ridge Hill Program 61 occurrences, no trustworthy HubSpot family-status gate, and six unauthorized expansion sites. Do not flip <code>MINDBODY_WRITE_MODE</code> or launch from this result.</p>
 </div>
 
 <div style="margin-top: 24px; padding: 14px 18px; background: #fff5e6; border-left: 4px solid #f59e0b; border-radius: 0 8px 8px 0;">
@@ -161,7 +171,7 @@
     <tr><td style="padding:6px 10px;">B child_date_of_birth shape</td><td>✓ Patched May 15</td><td>commit 8d4b27a</td></tr>
     <tr><td style="padding:6px 10px;">C class_date type (long ms)</td><td>✓ Patched May 15</td><td>commit 8d4b27a</td></tr>
     <tr><td style="padding:6px 10px;">D class_date timezone (4h EDT)</td><td>✓ Patched May 15</td><td>commit d79f036</td></tr>
-    <tr><td style="padding:6px 10px;">A staff-token-required</td><td>✓ Bypassed via consumer-mode</td><td>commit 813f662 — turns out API-Key alone authorizes AddClient + class ops on real RH site</td></tr>
+    <tr><td style="padding:6px 10px;">A staff-token-required</td><td>Historical consumer-mode observation</td><td>commit 813f662 — retained as test history only; not a current or cross-site authorization rule</td></tr>
     <tr><td style="padding:6px 10px;">E ClassScheduleId vs ClassId</td><td>✓ Patched May 16</td><td>commit 52304a2 — forms now thread per-occurrence ClassId, not the recurring ScheduleId</td></tr>
     <tr><td style="padding:6px 10px;">F parseClass uses MaxCapacity</td><td>✓ Patched May 16</td><td>WebCapacity-aware spotsAvailable so non-web-bookable classes don't appear in the form</td></tr>
     <tr><td style="padding:6px 10px;">G No kids-trial MindBody service</td><td>⊘ BLOCKING (Jane) · <a href="https://github.com/zczhuang/court16-mindbody-test-v2/issues/2" target="_blank">#2</a></td><td>Members-only classes reject our kid Clients without a trial service applied. Jane Montoya tracker item; this is the last gating piece for #3-#5 + #10.</td></tr>
@@ -170,8 +180,8 @@
 </div>
 
 <div style="margin-top: 24px; padding: 14px 18px; background: #fff5e6; border-left: 4px solid #f59e0b; border-radius: 0 8px 8px 0;">
-  <strong style="display: block; margin-bottom: 8px;">🧹 RH MindBody cleanup list (for Ibtissam — deactivate via MindBody admin UI) · <a href="https://github.com/zczhuang/court16-mindbody-test-v2/issues/5" target="_blank">tracked in #5</a></strong>
-  <p style="margin: 0 0 6px; font-size: 13px;">Probe + smoke runs on May 15-16 created 12 real test Clients at site 5748154. MindBody Public API v6 doesn't expose a hard-delete; standard cleanup is to flip each to <code>Active: false</code> via the MindBody admin UI (Clients → search by email → Edit → Inactive).</p>
+  <strong style="display: block; margin-bottom: 8px;">🧹 Historical RH test-record inventory · <a href="https://github.com/zczhuang/court16-mindbody-test-v2/issues/5" target="_blank">tracked in #5</a></strong>
+  <p style="margin: 0 0 6px; font-size: 13px;">Probe + smoke runs on May 15–16 created 12 durable test Clients at site 5748154. This table is an inventory, not authorization to deactivate, merge, move, or delete them. Cleanup requires the staff-approved procedure and named owner from the current audit.</p>
   <table style="width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13px;">
     <tr style="background: #fff;">
       <th style="text-align:left; padding: 6px 10px; border-bottom: 1px solid #eee;">Client Id</th>
@@ -190,16 +200,16 @@
     <tr><td style="padding:6px 10px; font-family:'Geist Mono',monospace;">100002055</td><td>SMOKETEST-RH-ADULT Cedarwind-May15</td><td>smoke #6 adult intro</td></tr>
     <tr><td style="padding:6px 10px; font-family:'Geist Mono',monospace;">100002056-100002058</td><td>SMOKETEST-DUPE / DUPETEST</td><td>smoke #9 duplicate-softwall probe (3 clients from dup-detection testing)</td></tr>
   </table>
-  <p style="margin: 10px 0 0; font-size: 12px; color: var(--muted);">All emails contain <code>cedarwind-probe-</code> or <code>court16-smoke-rh-</code> prefix — 2-factor filter for batch cleanup. Run via MindBody admin Clients → Search → uncheck Active.</p>
+  <p style="margin: 10px 0 0; font-size: 12px; color: var(--muted);">The historical email prefixes can help staff identify candidates. They are not sufficient approval for batch cleanup; verify every Client ID and relationship before any staff action.</p>
 </div>
 
 <hr class="section" />
 
-<h2>Part 2 · The 10 smoke-test scenarios (in order)</h2>
+<h2>Part 2 · Archived scenarios — do not execute</h2>
 
-<p>Every scenario uses a unique correlation ID so artifacts are traceable. After each test passes, capture the correlation ID + Deal/Contact IDs for the post-run cleanup. If any test fails, stop the run — debug before continuing.</p>
+<p>The scenarios below preserve the May test design. They target live systems and contain mutating actions. Do not repeat them without a newly approved test plan, unique fixture, complete parent/child Client-ID log, and named cleanup owner.</p>
 
-<p>All tests run against <a href="https://court16-mindbody-test.vercel.app" target="_blank">court16-mindbody-test.vercel.app</a> with Ridge Hill as the chosen location.</p>
+<p><strong>Historical target only:</strong> the May run used the public deployment and Ridge Hill. The link is intentionally omitted here to prevent an accidental submission.</p>
 
 <div class="test">
   <div class="test-head">
@@ -207,8 +217,8 @@
     <h3 class="test-title">Read-only calendar pull (no writes)</h3>
     <span class="test-runner">Cedarwind</span>
   </div>
-  <p><strong>Action:</strong> hit <code>GET /api/mindbody/calendar?locationId=ridgehill&startDate=...&endDate=...</code></p>
-  <pre class="cmd">curl "https://court16-mindbody-test.vercel.app/api/mindbody/calendar?locationId=ridgehill&startDate=2026-05-18&endDate=2026-05-25"</pre>
+  <p><strong>Historical read-only action — do not reuse these dates:</strong> the May run queried the Ridge Hill calendar endpoint.</p>
+  <pre class="cmd">Archived example removed — use the current read-only audit command and date window.</pre>
   <div class="expect">
     <strong>Expect</strong>
     <ul class="verify-list">
@@ -225,7 +235,7 @@
     <h3 class="test-title">Kids trial happy path · submission → Deal in HubSpot</h3>
     <span class="test-runner">Cedarwind</span>
   </div>
-  <p><strong>Action:</strong> via the UI, submit a kids trial form for a fictional kid (age 6) at Ridge Hill, picking a class ~7 days out.</p>
+  <p><strong>Historical action — do not repeat:</strong> the May run submitted a fictional child through the Ridge Hill UI.</p>
   <div class="expect">
     <strong>Expect</strong>
     <ul class="verify-list">
@@ -234,7 +244,7 @@
       <li>HubSpot Deal appears in <strong>KIDS TRIALS (RIDGE HILL)</strong> pipeline at "Requested Trial" stage</li>
       <li>Deal's <code>class_date</code> property matches the picked slot's exact start datetime</li>
       <li>Deal's <code>court16_correlation_id</code> matches the Contact's correlation ID</li>
-      <li>MindBody admin (Ridge Hill site) shows a new client created with the test email</li>
+      <li>The historical run created real Mindbody records. A future controlled test must prove exactly one parent and one child share the parent email, use the verified Parent/Guardian relationship, and retain the original child Client ID.</li>
     </ul>
   </div>
 </div>
@@ -245,7 +255,7 @@
     <h3 class="test-title">Staff confirm flow · Deal advances to Scheduled Trial</h3>
     <span class="test-runner">Cedarwind</span>
   </div>
-  <p><strong>Action:</strong> From the Contact created in test 2, copy the <strong>Court 16 staff confirm URL</strong> property → open it in a browser. Then click the same URL a second time.</p>
+  <p><strong>Historical action — do not repeat:</strong> the May run opened a signed staff-confirm URL. Signed staff URLs mutate state and must not be opened from this archived plan.</p>
   <div class="expect">
     <strong>Expect</strong>
     <ul class="verify-list">
@@ -261,7 +271,7 @@
     <h3 class="test-title">Adult intro flow · Deal in correct pipeline with amount</h3>
     <span class="test-runner">Cedarwind</span>
   </div>
-  <p><strong>Action:</strong> via the UI, submit an adult intro form for <strong>Tennis Intro Special ($75)</strong> at Ridge Hill. After redirect to MindBody cart, close the cart tab (don't actually purchase).</p>
+  <p><strong>Historical action — do not repeat:</strong> the May run submitted an adult-intro fixture and opened the Mindbody cart.</p>
   <div class="expect">
     <strong>Expect</strong>
     <ul class="verify-list">
@@ -280,7 +290,7 @@
     <h3 class="test-title">Deny flow · Deal annotated, Contact failed</h3>
     <span class="test-runner">Cedarwind</span>
   </div>
-  <p><strong>Action:</strong> Submit a fresh kids trial. Copy the Contact's <strong>Court 16 staff deny URL</strong>, open it → pick "Wrong age band" radio → submit.</p>
+  <p><strong>Historical action — do not repeat:</strong> the May run submitted a fresh trial and used its signed deny action.</p>
   <div class="expect">
     <strong>Expect</strong>
     <ul class="verify-list">
@@ -297,7 +307,7 @@
     <h3 class="test-title">Reassign flow · Contact flips to manual_review</h3>
     <span class="test-runner">Cedarwind</span>
   </div>
-  <p><strong>Action:</strong> Submit a fresh kids trial. Open the Contact's <strong>Court 16 staff reassign URL</strong>.</p>
+  <p><strong>Historical action — do not repeat:</strong> the May run submitted a fresh trial and opened its signed reassign action.</p>
   <div class="expect">
     <strong>Expect</strong>
     <ul class="verify-list">
@@ -314,7 +324,7 @@
     <h3 class="test-title">Duplicate email softwall</h3>
     <span class="test-runner">Cedarwind</span>
   </div>
-  <p><strong>Action:</strong> Submit the same kids trial twice in a row with identical parent email.</p>
+  <p><strong>Historical action — do not repeat:</strong> the May run submitted the same parent email twice to probe duplicate handling.</p>
   <div class="expect">
     <strong>Expect</strong>
     <ul class="verify-list">
@@ -330,7 +340,7 @@
     <h3 class="test-title">Age-validation rejection</h3>
     <span class="test-runner">Cedarwind</span>
   </div>
-  <p><strong>Action:</strong> Submit a kids trial with child age = 12 against a class named "Little Freshman ..." (which is age 3–6).</p>
+  <p><strong>Historical action — do not repeat:</strong> the May run submitted an intentionally invalid age/class combination.</p>
   <div class="expect">
     <strong>Expect</strong>
     <ul class="verify-list">
@@ -347,11 +357,11 @@
     <h3 class="test-title">Workflow test mode (parent nudge stays off)</h3>
     <span class="test-runner">Ibtissam (verify) · Cedarwind (trigger)</span>
   </div>
-  <p><strong>Action:</strong> Use HubSpot's test enrollment with a fresh kids-trial record while workflow <code>1820551993</code> remains off. Then run test 3 (staff confirm).</p>
+  <p><strong>Historical action — blocked:</strong> do not create a fresh family from this page. Workflow <code>1820551993</code> remains off until a trustworthy family-status source and suppression branch exist.</p>
   <div class="expect">
     <strong>Expect</strong>
     <ul class="verify-list">
-      <li>WF2 test: an unclaimed parent reaches the revised Mindbody-email nudge; a claimed parent exits without a send</li>
+      <li>Future acceptance only: a verified <code>parent_claim_pending</code> state reaches the nudge; claimed, child-link-pending, complete, and manual-review states exit without a customer send</li>
       <li>Immediately after staff confirm: WF1 (Trial confirmation) fires · confirmation email queues</li>
       <li>For WF3 (24h reminder): book a class ~25h out · check workflow "Performance" tab shows enrollment with a scheduled send time at <code>class_date - 24h</code></li>
       <li>For WF4 (Denial): run test 5 then watch the workflow fire and the denial email queue</li>
@@ -365,7 +375,7 @@
     <h3 class="test-title">Failure trace integrity</h3>
     <span class="test-runner">Cedarwind</span>
   </div>
-  <p><strong>Action:</strong> Submit a booking with a deliberately invalid <code>classScheduleId</code> (e.g. <code>999999999</code>).</p>
+  <p><strong>Historical action — do not repeat:</strong> the May run submitted a deliberately invalid class identifier.</p>
   <div class="expect">
     <strong>Expect</strong>
     <ul class="verify-list">
@@ -378,7 +388,7 @@
 
 <hr class="section" />
 
-<h2>Part 3 · Acceptance criteria before flipping <code>MINDBODY_WRITE_MODE=live</code></h2>
+<h2>Part 3 · Archived acceptance criteria — not launch authority</h2>
 
 <div class="acceptance">
   <h3 style="margin-top: 0;">All five must hold</h3>
@@ -387,52 +397,33 @@
     <li><strong>0 duplicate Contacts</strong> on email match across the test run</li>
     <li><strong>0 unexpected 502s</strong> in any trace response</li>
     <li><strong>Every failure</strong> (intentional or not) is traceable from a correlation ID in the app log → HubSpot Contact → MindBody admin within 60 seconds</li>
-    <li><strong>All 4 workflows fire as expected</strong> — emails land in the test inbox at the right time, content renders without raw <code>{{ }}</code> tokens visible</li>
+    <li><strong>Each approved live workflow fires as expected</strong> — emails land in the test inbox at the right time and render without raw <code>{{ }}</code> tokens. The parent Mindbody nudge is exercised only in workflow-test mode and remains off until its family-status suppression gate is proven.</li>
   </ol>
 </div>
 
-<h3>Then, in this order:</h3>
-<ol>
-  <li>Flip <code>MINDBODY_WRITE_MODE=live</code> on Vercel</li>
-  <li>Cleanup the test artifacts (use the 2-factor filter: <code>court16_correlation_id HAS_PROPERTY</code> + name pattern contains "test/smoke")</li>
-  <li>Point <code>trial.court16.com</code> DNS at the Vercel deploy</li>
-  <li>Soft-launch — send the trial URL to a small group of real parents (~20) for the first week</li>
-  <li>Monitor for the 10 business days documented in Package C</li>
-</ol>
+<h3>Superseded May proposal — do not execute</h3>
+<p>The former sequence proposed flipping the write mode, cleaning records,
+pointing DNS, and soft-launching. It is intentionally no longer presented as
+an ordered checklist. The current multi-site audit requires per-site
+authorization and configuration, a scheduled Ridge Hill occurrence, a
+trustworthy family-state gate, an end-to-end original-child test, and named
+cleanup ownership before any controlled release.</p>
 
 <hr class="section" />
 
-<h2>Test cleanup playbook</h2>
-<p>After the smoke run, archive each test artifact safely. <strong>Use the 2-factor filter</strong> below — never archive by date + pipeline alone (one of those accidentally caught 2 real customer Deals during build).</p>
-
-<pre class="cmd"># Safe cleanup: only catches Cedarwind-tagged artifacts (court16_correlation_id is set)
-# + name matches test pattern. Never touches real customer Deals.
-
-# Find Deals
-curl -s -X POST "https://api.hubapi.com/crm/v3/objects/deals/search" \
-  -H "Authorization: Bearer $HUBSPOT_ACCESS_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "filterGroups":[{
-      "filters":[
-        {"propertyName":"court16_correlation_id","operator":"HAS_PROPERTY"},
-        {"propertyName":"dealname","operator":"CONTAINS_TOKEN","value":"smoke"}
-      ]
-    }],
-    "limit":50,
-    "properties":["dealname","court16_correlation_id"]
-  }'
-
-# Then for each id: DELETE /crm/v3/objects/deals/{id}
-# HubSpot DELETE is soft-archive — recoverable for 30 days via batch/restore</pre>
+<h2>Historical cleanup notes — no bulk action authorized</h2>
+<p>The former API cleanup commands were removed because a naming filter cannot
+prove that a record is disposable, and Mindbody records created on a real site
+are durable. Do not archive, deactivate, merge, move, or delete from this page.
+Use the current audit's tagged-fixture inventory, verify every HubSpot and
+Mindbody ID, and obtain approval from the named cleanup owner.</p>
 
 <footer>
   <p style="font-size: 12px; color: var(--muted); margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border);">
-    Court 16 × Cedarwind · RH pilot smoke tests · v1.0 (2026-05-14) ·
+    Court 16 × Cedarwind · archived RH pilot smoke log · original 2026-05-14 ·
     <a href="./index.html" style="color: var(--amber);">Package A index</a> ·
-    <a href="./test-walkthrough.html" style="color: var(--amber);">Dev test walkthrough</a> ·
-    <a href="./ibtissam-handoff.html" style="color: var(--amber);">Ibtissam handoff</a> ·
-    <a href="https://court16-mindbody-test.vercel.app/tracker.html" style="color: var(--amber);">Phase 2 tracker</a>
+    <a href="./06-password-setup-email.html" style="color: var(--amber);">Current email handoff</a> ·
+    <a href="./10-family-account-staff-guide.html" style="color: var(--amber);">Current staff guide</a>
   </p>
 </footer>
 

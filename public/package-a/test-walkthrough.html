@@ -28,55 +28,60 @@
 <body>
 <div class="wrap">
 
+<section role="alert" style="margin: 0 0 24px; padding: 18px 20px; border: 4px solid #a12828; border-radius: 10px; background: #f9e3e3; color: #241b1b;">
+  <div style="font: 700 13px/1.2 'Geist Mono', monospace; letter-spacing: .08em; color: #a12828;">ARCHIVED · DO NOT RUN</div>
+  <p style="margin: 8px 0 10px; font-weight: 600;">This May walkthrough targets production systems and contains mutating actions. Its sandbox and cleanup guarantees are false today.</p>
+  <p style="margin: 0; font-size: 13px;">Do not submit a fake family, choose Newton, open a signed staff URL, test payment, or bulk-clean records from this page. Current writes can create durable Mindbody and HubSpot records. Use the
+    <a href="https://github.com/zczhuang/court16-mindbody-test-v2/blob/agent/family-account-handoff/docs/multi-site-automation-audit.md"><strong>current multi-site audit</strong></a>,
+    <a href="./06-password-setup-email.html"><strong>spec 06</strong></a>, and
+    <a href="./10-family-account-staff-guide.html"><strong>spec 10</strong></a> instead.
+  </p>
+</section>
+
 <header class="doc-head">
   <a class="back-link" href="./index.html">← Back to Package A index</a>
   <div class="brand">Court 16 × Cedarwind · Package A · Test walkthrough</div>
-  <h1>Testing Package A end-to-end</h1>
-  <p class="subtitle">A 20-minute hands-on tour of every behavior Cedarwind built. Reproducible from a laptop with the production HubSpot portal open in another tab. No real customer harm — all test artifacts get cleaned up at the end.</p>
+  <h1>Archived Package A test walkthrough</h1>
+  <p class="subtitle">Preserved as a record of the May test design. It is not reproducible or safe to execute against the current production stack.</p>
 </header>
 
 <section class="summary-pkg">
   <dl>
-    <dt>For</dt><dd><strong>Ibtissam + Anthony</strong> — verify Package A behaves the way the SOW described before flipping any workflow live.</dd>
-    <dt>Where</dt><dd>Production stack — booking app at <a href="https://court16-mindbody-test.vercel.app" target="_blank">court16-mindbody-test.vercel.app</a>, HubSpot portal <code>4832170</code>.</dd>
-    <dt>Cost</dt><dd>Zero real bookings. The MindBody sandbox flag (<code>MINDBODY_USE_SANDBOX_FALLBACK=true</code>) is still on, so all writes hit MindBody's <code>-99</code> sandbox, not Court 16's live MindBody. HubSpot gets real test Deals + Contacts — those get archived at the end.</dd>
+    <dt>Historical audience</dt><dd><strong>Ibtissam + Anthony</strong></dd>
+    <dt>Historical target</dt><dd>The production booking app and HubSpot portal <code>4832170</code>; links are intentionally omitted from the run steps.</dd>
+    <dt>Current safety</dt><dd>There is no zero-cost or sandbox guarantee. Real-site writes are durable, the six expansion clubs are unauthorized, and cleanup must be approved record by record.</dd>
   </dl>
 </section>
 
-<h2>Pre-flight check (30 seconds)</h2>
-<p>Open these tabs in your browser, signed in to each:</p>
+<h2>Historical pre-flight reference</h2>
+<p>Do not open the production app to execute this walkthrough. The May run referenced:</p>
 <ul>
   <li><strong>HubSpot</strong> — <a href="https://app.hubspot.com/contacts/4832170/objects/0-3/views/all/list" target="_blank">Deals view</a> (portal 4832170)</li>
-  <li><strong>Booking app</strong> — <a href="https://court16-mindbody-test.vercel.app/" target="_blank">court16-mindbody-test.vercel.app</a></li>
-  <li><strong>Tracker</strong> — <a href="https://court16-mindbody-test.vercel.app/tracker.html" target="_blank">/tracker.html</a> (for crossref)</li>
+  <li><strong>Booking app</strong> — historical production deployment (no run link)</li>
+  <li><strong>Tracker</strong> — historical Phase 2 tracker</li>
 </ul>
-<p>You'll be jumping between the booking-app tab + the HubSpot Deals tab a lot. The HubSpot Deals view should show all 13 of Court 16's pipelines.</p>
+<p>This list is context only; it is not a pre-flight checklist.</p>
 
 <hr style="margin: 40px 0; border: 0; border-top: 1px solid var(--border);" />
 
-<h2>Test 1 · Kids trial submission creates a Deal <span class="badge who-anyone">Anyone</span></h2>
-<p>The simplest behavior to verify: a parent submits the trial form, a Deal lands in HubSpot.</p>
+<h2>Historical Test 1 · Kids trial submission created a Deal</h2>
+<p>Do not repeat this production write from the archived walkthrough.</p>
 
 <div class="step">
-  <div class="step-head"><span class="step-num">1.1</span><h3 class="step-title">Submit a fake trial</h3></div>
+  <div class="step-head"><span class="step-num">1.1</span><h3 class="step-title">Archived action · do not submit</h3></div>
   <ol>
-    <li>Open <a href="https://court16-mindbody-test.vercel.app/" target="_blank">the booking-app homepage</a></li>
-    <li>Click <strong>Kids free trial</strong></li>
-    <li>Pick any location (let's say <strong>Newton</strong>)</li>
-    <li>Pick any class from the calendar</li>
-    <li>Fill the form. Use <code>test+kids-walkthrough@cedarwind.io</code> as the email so it's easy to spot in HubSpot later. Make the child 6 years old.</li>
-    <li>Submit. You should land on the "we'll be in touch" confirmation screen.</li>
+    <li>The May walkthrough opened the booking app and selected a kids trial.</li>
+    <li>It used <strong>Newton</strong>. Newton now returns <code>403</code> and is disabled; do not select it.</li>
+    <li>It submitted a synthetic parent and child. A current write would create durable records and requires prior approval.</li>
   </ol>
-  <div class="step-expect"><strong>Expect</strong>The confirmation page shows a <em>correlation ID</em> (a short hex string). Copy it — you'll need it for later steps.</div>
+  <div class="step-expect"><strong>Historical observation</strong>The confirmation page displayed a correlation ID.</div>
 </div>
 
 <div class="step">
-  <div class="step-head"><span class="step-num">1.2</span><h3 class="step-title">Find the Deal in HubSpot</h3></div>
+  <div class="step-head"><span class="step-num">1.2</span><h3 class="step-title">Archived Newton pipeline check</h3></div>
   <ol>
-    <li>Switch to your HubSpot tab → <strong>Sales → Deals</strong></li>
-    <li>Change the pipeline dropdown to <strong>KIDS TRIALS (NEWTON)</strong></li>
-    <li>You should see a brand-new Deal named something like <em>"Kids trial — &lt;child name&gt; · NY - Newton"</em> at the top, in the <strong>Requested Trial</strong> column</li>
-    <li>Click the Deal to open it</li>
+    <li>The May run inspected <strong>KIDS TRIALS (NEWTON)</strong>.</li>
+    <li>This does not prove current Newton routing or authorization.</li>
   </ol>
   <div class="step-expect"><strong>Expect</strong>
     The Deal has:
@@ -88,33 +93,30 @@
   </div>
 </div>
 
-<div class="gotcha"><strong>Gotcha</strong>If you don't see the Deal in <em>Newton</em>'s pipeline but it landed in another pipeline (or no pipeline), check that the booking-app form used the right location. The pipeline-to-location mapping lives in <code>config/hubspot-deals.ts</code>.</div>
+<div class="gotcha"><strong>Superseded</strong>Do not use another pipeline as a fallback. A club stays disabled until its exact Mindbody authorization and HubSpot routing are verified.</div>
 
 <hr style="margin: 40px 0; border: 0; border-top: 1px solid var(--border);" />
 
-<h2>Test 2 · Adult intro flow <span class="badge who-anyone">Anyone</span></h2>
-<p>Identical to Test 1 but on the adult side. Confirms the same Deal-creation works for the Tennis / Pickleball intro offers from Package B.</p>
+<h2>Historical Test 2 · Adult intro flow</h2>
+<p>Archived behavior only. Adult offers and payment are outside the current kids-trial handoff; do not submit this test.</p>
 
 <div class="step">
-  <div class="step-head"><span class="step-num">2.1</span><h3 class="step-title">Submit an adult intro</h3></div>
+  <div class="step-head"><span class="step-num">2.1</span><h3 class="step-title">Archived action · do not submit or open payment</h3></div>
   <ol>
-    <li>Booking app homepage → <strong>Adult intro</strong></li>
-    <li>Pick <strong>Brooklyn</strong>, then <strong>Tennis Intro Special ($75)</strong></li>
-    <li>Pick any class</li>
-    <li>Fill the form with <code>test+adult-walkthrough@cedarwind.io</code>, birthdate <code>1990-01-15</code></li>
-    <li>Submit. You'll see a confirmation screen + a redirect prompt to MindBody's cart (sandbox URL — don't actually pay; just close the cart tab).</li>
+    <li>The May run selected Brooklyn and Tennis Intro Special.</li>
+    <li>Its assumption that the resulting cart was a harmless sandbox URL is superseded.</li>
   </ol>
   <div class="step-expect"><strong>Expect</strong>HubSpot → Sales → Deals → KID TRIALS (BK) pipeline shows a new Deal named "Adult intro · Tennis Intro Special · NY - Downtown Brooklyn" in <strong>Requested Trial / Intro Offer</strong>, amount $75.</div>
 </div>
 
 <hr style="margin: 40px 0; border: 0; border-top: 1px solid var(--border);" />
 
-<h2>Test 3 · Staff confirm moves the Deal forward <span class="badge who-stuart">Stuart</span></h2>
-<p>Verifies that when staff clicks the "Confirm" link in the (future) staff notification email, the Deal advances from <em>Requested Trial</em> to <em>Scheduled Trial</em>.</p>
+<h2>Historical Test 3 · Staff confirm moved the Deal forward</h2>
+<p>Signed staff URLs mutate Mindbody and HubSpot state. Do not open one from this archived walkthrough.</p>
 
 <div class="step">
-  <div class="step-head"><span class="step-num">3.1</span><h3 class="step-title">Build the signed staff URL</h3></div>
-  <p>The staff URLs are HMAC-signed by Cedarwind's app. They live as Contact properties on each booking. From your test booking in Test 1:</p>
+  <div class="step-head"><span class="step-num">3.1</span><h3 class="step-title">Archived signed-URL inspection</h3></div>
+  <p>The May run located a signed URL on the Contact. The instructions are retained as historical context only:</p>
   <ol>
     <li>HubSpot → click the parent Contact (from the Deal's right-rail "Contact" association)</li>
     <li>Scroll the Contact's properties → <strong>Court 16 staff confirm URL</strong> — copy the value</li>
@@ -123,37 +125,37 @@
 </div>
 
 <div class="step">
-  <div class="step-head"><span class="step-num">3.2</span><h3 class="step-title">Click it</h3></div>
-  <p>Open the URL in a new tab. (In production this link is in the staff notification email.)</p>
+  <div class="step-head"><span class="step-num">3.2</span><h3 class="step-title">Archived mutation · do not click</h3></div>
+  <p>The May run opened the URL. Current staff actions require an explicit review page and POST; opening an old or unapproved signed action is not a safe test.</p>
   <div class="step-expect"><strong>Expect</strong>
     <ul style="margin: 6px 0 0 18px;">
       <li>A simple "Confirmed" HTML page</li>
       <li>HubSpot Deal: stage flips to <strong>Scheduled Trial</strong></li>
       <li>HubSpot Contact: <strong>Court 16 booking status</strong> flips to <code>confirmed</code></li>
-      <li>MindBody sandbox: the child is now booked into the class (sandbox-only)</li>
+      <li>The historical run attempted a Mindbody enrollment; do not assume sandbox isolation</li>
     </ul>
   </div>
 </div>
 
-<div class="gotcha"><strong>Gotcha</strong>If you click the URL twice, the second click returns "This booking is already confirmed" (HTTP 410). That's the single-use guarantee enforced via the Contact's status field — not via a separate token table. Working as designed.</div>
+<div class="gotcha"><strong>Historical observation</strong>The May run saw an HTTP 410 on a repeat action. Do not treat that old response as a current single-use guarantee; the current staff route and Contact/Deal state must be verified in an approved acceptance test.</div>
 
 <hr style="margin: 40px 0; border: 0; border-top: 1px solid var(--border);" />
 
-<h2>Test 4 · Deny action <span class="badge who-stuart">Stuart</span></h2>
-<p>Verifies the new Spec 5 functionality: deny with a 5-reason picklist.</p>
+<h2>Historical Test 4 · Deny action</h2>
+<p>Archived behavior only. Do not create a record or open a signed deny action from this page.</p>
 
 <div class="step">
-  <div class="step-head"><span class="step-num">4.1</span><h3 class="step-title">Get the deny URL</h3></div>
-  <p>Submit a fresh kids trial (repeat Test 1 with a new email like <code>test+deny@cedarwind.io</code>). On its Contact, copy the <strong>Court 16 staff deny URL</strong> property.</p>
+  <div class="step-head"><span class="step-num">4.1</span><h3 class="step-title">Archived action · do not create a fixture</h3></div>
+  <p>The May run created another trial record and located its deny URL.</p>
 </div>
 
 <div class="step">
-  <div class="step-head"><span class="step-num">4.2</span><h3 class="step-title">Open the deny URL</h3></div>
-  <p>Paste it into a browser. You'll see a form with 5 radio buttons (Wrong age band / No availability / Parent cancelled / Duplicate booking / Other) and an optional note field.</p>
+  <div class="step-head"><span class="step-num">4.2</span><h3 class="step-title">Archived mutation · do not open</h3></div>
+  <p>The May run opened the signed action and observed the five-reason form.</p>
 </div>
 
 <div class="step">
-  <div class="step-head"><span class="step-num">4.3</span><h3 class="step-title">Submit a denial</h3></div>
+  <div class="step-head"><span class="step-num">4.3</span><h3 class="step-title">Archived mutation · do not submit</h3></div>
   <ol>
     <li>Pick a reason (e.g. "Wrong age band")</li>
     <li>Click <strong>Deny + send email</strong></li>
@@ -167,12 +169,12 @@
   </div>
 </div>
 
-<div class="gotcha"><strong>Note</strong>MindBody booking-cancellation is documented as a TODO — the deny route flips the Deal + Contact state but doesn't yet auto-remove the client from the MindBody class. Track 2 enhancement; for now staff cancels in MindBody admin if needed.</div>
+<div class="gotcha"><strong>Current safety rule</strong>The normal flow denies before enrollment. Deny cannot be completed after confirmation: a valid POST returns HTTP 410 without changing denial state. Use the approved Mindbody-admin cancellation process for the existing visit.</div>
 
 <hr style="margin: 40px 0; border: 0; border-top: 1px solid var(--border);" />
 
-<h2>Test 5 · Workflow test mode (do not activate) <span class="badge who-ibtissam">Ibtissam</span></h2>
-<p>Use HubSpot's workflow test function while the parent-account nudge remains <code>enabled=false</code>. See the <a href="./06-password-setup-email.html">updated visual handoff</a> before testing.</p>
+<h2>Historical Test 5 · Workflow-test outline</h2>
+<p>Workflow <code>1820551993</code> must remain off. Do not run this outline until HubSpot is reauthorized and a trustworthy Mindbody/staff-verified family-status gate exists. See <a href="./06-password-setup-email.html">the current visual handoff</a>.</p>
 
 <div class="step">
   <div class="step-head"><span class="step-num">5.1</span><h3 class="step-title">Verify the workflow shells exist</h3></div>
@@ -184,61 +186,60 @@
 </div>
 
 <div class="step">
-  <div class="step-head"><span class="step-num">5.2</span><h3 class="step-title">Verify the existing nudge actions</h3></div>
-  <p>For <strong>Parent Mindbody account nudge</strong> (workflow id <code>1820551993</code>):</p>
+  <div class="step-head"><span class="step-num">5.2</span><h3 class="step-title">Archived action outline · do not edit from this page</h3></div>
+  <p>The May plan recorded these proposed actions for <strong>Parent Mindbody account nudge</strong> (workflow id <code>1820551993</code>):</p>
   <ol>
     <li>Confirm <strong>Delay</strong> is 1 hour</li>
     <li>Confirm <strong>Send automated email</strong> references asset <code>212772629316</code></li>
     <li>Review the revised email draft: it points to the separate Mindbody email and contains no password button</li>
     <li>Keep the workflow off until the parent-claim status gate is added</li>
   </ol>
-  <p>For <strong>24h reminder</strong> (workflow id <code>1820562947</code>):</p>
+  <p>It also proposed this outline for <strong>24h reminder</strong> (workflow id <code>1820562947</code>):</p>
   <ol>
     <li>Add <strong>Delay until a date</strong> → property: a custom class-date property (Cedarwind doesn't store one yet — see notes below), offset -24 hours</li>
     <li>Add <strong>Send automated email</strong> → <code>[Cedarwind] 24h reminder</code> (asset id <code>212773969554</code>)</li>
     <li>Save</li>
   </ol>
-  <div class="gotcha"><strong>Class-date gotcha</strong>The 24h reminder needs a date property on the Deal to subtract 24 hours from. Currently the booking app only stores <code>court16_class_id</code> (MindBody class ID, not a date). For Test 5 you'll need either to (a) add a <code>court16_class_starts_at</code> Deal property and have Cedarwind extend the booking routes to write it, or (b) defer this workflow until Track 2. Spec 7 acknowledges this gap.</div>
+  <div class="gotcha"><strong>Superseded class-date note</strong>The May page assumed no Deal datetime existed. The current app writes <code>class_date</code>; that does not authorize the reminder. Verify the live property type, timezone, cancellation suppression, email, and workflow-test result before any activation.</div>
 </div>
 
 <div class="step">
   <div class="step-head"><span class="step-num">5.3</span><h3 class="step-title">Run a test enrollment</h3></div>
   <ol>
     <li>Leave the workflow <strong>Off</strong></li>
-    <li>Use HubSpot's Test action with one new Ridge Hill test family</li>
-    <li>Confirm an unclaimed parent follows the nudge path</li>
-    <li>Confirm a claimed parent exits without a send before activation</li>
+    <li>Do not create a new Ridge Hill family from this page</li>
+    <li>Future controlled acceptance: verified <code>parent_claim_pending</code> reaches the nudge</li>
+    <li>Future controlled acceptance: claimed, child-link-pending, complete, and manual-review states exit without a send</li>
   </ol>
 </div>
 
 <hr style="margin: 40px 0; border: 0; border-top: 1px solid var(--border);" />
 
-<h2>Cleanup <span class="badge who-anyone">Anyone</span></h2>
-<p>To leave Court 16's HubSpot clean after the walkthrough:</p>
-<ol>
-  <li>HubSpot → Deals → filter by <strong>Deal name</strong> contains "test" or "walkthrough" — bulk-archive each test deal</li>
-  <li>Contacts → filter by <strong>email</strong> contains "@cedarwind.io" with "walkthrough" in the local-part — bulk-archive each test contact</li>
-</ol>
-<p>HubSpot keeps archived records for 30 days, so accidental archives are recoverable from <em>Recently deleted</em>.</p>
-
-<div class="gotcha"><strong>Tip</strong>Cedarwind also has a 2-factor cleanup script (filter by <code>court16_correlation_id HAS_PROPERTY</code> + name pattern) that only catches Cedarwind-tagged test artifacts and never touches real-customer Deals. Ask Stuart if you'd like that run instead.</div>
+<h2>Historical cleanup section — no bulk action authorized</h2>
+<p>The former HubSpot-only cleanup checklist was removed because it ignored
+durable Mindbody parent/child records and no naming filter can prove that a
+record is disposable. Do not bulk-archive, deactivate, merge, move, or delete
+from this walkthrough. A controlled test must log every HubSpot and Mindbody ID
+before the write, then use the staff-approved cleanup procedure and named owner
+in the current multi-site audit.</p>
 
 <hr style="margin: 40px 0; border: 0; border-top: 1px solid var(--border);" />
 
-<h2>If something fails</h2>
-<p>Every booking-app POST returns a JSON trace with one entry per integration step. To see it: when submitting via the UI, open <strong>DevTools → Network</strong>, find the <code>book/trial</code> or <code>book/intro</code> request, click <strong>Response</strong>. The <code>trace</code> array shows each step's status (<code>ok</code> / <code>error</code> / <code>skipped</code>) with the actual HubSpot or MindBody error message attached.</p>
-<p>Most common failure modes:</p>
+<h2>Historical diagnostics reference</h2>
+<p>The May implementation returned a JSON trace per integration step. Do not create a new POST merely to view a trace; use existing approved test evidence or the current read-only audit.</p>
+<p>Failure modes recorded in May:</p>
 <ul>
   <li><strong>HubSpot 400 INVALID_OPTION on <code>preferred_location</code></strong> — means our location-to-dropdown map drifted (rare, fixed in 2026-05-12)</li>
-  <li><strong>MindBody <code>usertoken/issue</code> 500</strong> — sandbox is flaky; the booking still completes via the graceful-degradation path (Contact gets <code>court16_booking_status=manual_review</code>)</li>
+  <li><strong>MindBody <code>usertoken/issue</code> 500</strong> — historical observation only; do not treat a failed token or consumer fallback as safe authorization</li>
   <li><strong>HubSpot form-submit 400 <code>FORM_HAS_RECAPTCHA_ENABLED</code></strong> — the reCAPTCHA toggle in spec 9 still needs flipping. Deal creation still works (different API path).</li>
 </ul>
 
 <footer>
   <p style="font-size: 12px; color: var(--muted); margin-top: 32px;">
-    Court 16 × Cedarwind · Package A test walkthrough · v1.0 — generated 2026-05-12 ·
+    Court 16 × Cedarwind · archived Package A test walkthrough · original 2026-05-12 ·
     <a href="./index.html" style="color: var(--amber);">Package A index</a> ·
-    <a href="https://court16-mindbody-test.vercel.app/tracker.html" style="color: var(--amber);">Phase 2 tracker</a>
+    <a href="./06-password-setup-email.html" style="color: var(--amber);">Current email handoff</a> ·
+    <a href="./10-family-account-staff-guide.html" style="color: var(--amber);">Current staff guide</a>
   </p>
 </footer>
 

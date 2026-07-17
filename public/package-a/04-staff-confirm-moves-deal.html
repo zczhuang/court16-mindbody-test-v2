@@ -15,9 +15,11 @@
 <header class="doc-head">
   <a class="back-link" href="./index.html">Back to Package A index</a>
   <div class="brand">Court 16 × Cedarwind · Package A · Spec 04</div>
-  <h1>Staff confirm moves Deal to Scheduled Trial</h1>
-  <p class="subtitle">The existing one-click staff-confirm URL extends to move the associated Deal's stage, which is what workflows downstream hang off.</p>
+  <h1>Historical staff-confirm implementation sheet</h1>
+  <p class="subtitle">The original Package A design and verification plan, retained for implementation history.</p>
 </header>
+
+<div class="callout warn"><strong>Archived—do not execute the write tests below.</strong> Current confirmation can mutate both Mindbody and HubSpot. A controlled test requires the current multi-site audit gates, a staff-approved tagged Ridge Hill family, eligible occurrence, original Client-ID log, and named cleanup owner.</div>
 
 <section class="summary-pkg">
   <dl>
@@ -37,8 +39,8 @@
     Confirm · Reassign · Deny.
   </li>
   <li>
-    Staff clicks the Confirm URL. The URL is a signed JWT with a 24-hour
-    expiry and <code>action: "confirm"</code> baked in — this part is already
+    Staff clicks the Confirm URL. The URL is a signed token with a configurable
+    lifetime (72-hour default) and <code>action: "confirm"</code> baked in — this part is
     shipped in <code>lib/staff-tokens.ts</code>.
   </li>
   <li>
@@ -78,7 +80,7 @@
 <h2>What's defined</h2>
 <div class="card">
   <ul>
-    <li>The confirm URL scheme + HMAC signing + 24-hour expiry are already live in <code>lib/staff-tokens.ts</code> and don't change.</li>
+    <li>The confirm URL scheme + HMAC signing are implemented in <code>lib/staff-tokens.ts</code>. The default expiry is 72 hours and can be overridden with <code>STAFF_TOKEN_TTL_HOURS</code>.</li>
     <li>The single correlation ID is the join key: same value on the Contact and on the Deal, unique on both.</li>
     <li>The MindBody write happens <em>before</em> the Deal stage move, so the physical booking is always the source of truth. If the Deal update fails, the parent is still booked.</li>
   </ul>

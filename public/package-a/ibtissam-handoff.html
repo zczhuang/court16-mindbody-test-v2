@@ -37,17 +37,25 @@
 <header class="doc-head">
   <a class="back-link" href="./index.html">← Back to Package A index</a>
   <div class="brand">Court 16 × Cedarwind · Ibtissam handoff</div>
-  <h1>Email copy + workflow assembly</h1>
-  <p class="subtitle">Everything you need to finish Package A: 4 email bodies (copy-paste ready) + 4 workflow walkthroughs. Total time ~45 minutes. After this, the booking app sends parents the right email at every state transition automatically.</p>
+  <h1>Archived kickoff sheet · review only</h1>
+  <p class="subtitle">This May assembly sheet preserves historical email and workflow detail. It is not a bulk-publish checklist. The July family-account test changed the safe activation order.</p>
 </header>
 
+<section class="gotcha">
+  <strong>Current authority</strong>
+  Use <a href="./06-password-setup-email.html">spec 06</a> for the account-email decision and
+  <a href="./10-family-account-staff-guide.html">spec 10</a> for staff family completion. Do not publish or enable assets in bulk.
+  HubSpot writes require connector reauthorization, and workflow <code>1820551993</code> must remain off until a trustworthy
+  family-status gate suppresses claimed or completed parents.
+</section>
+
 <section class="tldr">
-  <h2 style="margin-top: 0;">TL;DR</h2>
+  <h2 style="margin-top: 0;">Safe review order</h2>
   <ol style="margin: 0;">
-    <li><strong>Open 4 emails</strong> in HubSpot — Marketing → Email → find each by name (search "[Cedarwind]"). For each, paste the Subject + Preheader + Body from below.</li>
-    <li><strong>Publish each email</strong> (right-side "Review and publish" → "Publish").</li>
-    <li><strong>Open 4 workflows</strong> in HubSpot — Automation → Workflows → search "[Cedarwind]". For each, drag in 1–2 actions per the instructions, save.</li>
-    <li><strong>Turn on each workflow</strong> when you're ready for real customers (top-right toggle).</li>
+    <li><strong>Reauthorize first.</strong> Confirm CRM write, Marketing Email, and Workflow access before changing an asset.</li>
+    <li><strong>Open and inventory</strong> the current emails/workflows. Preserve their live action graphs; do not assume this historical sheet is the latest revision.</li>
+    <li><strong>Keep drafts and workflows off</strong> while reviewing. Use HubSpot workflow-test mode with an existing staff-approved Ridge Hill fixture; do not create a new family from this sheet. Any later write test also needs an eligible occurrence, verified Mindbody target, original Client-ID log, and named cleanup owner.</li>
+    <li><strong>Never enable the parent Mindbody nudge</strong> until the claim/family-status source and suppression branch are proven.</li>
   </ol>
 </section>
 
@@ -86,7 +94,9 @@
 
 <hr class="section" />
 
-<h2>Part 1 · Email copy (paste into HubSpot)</h2>
+<h2>Part 1 · Historical email copy reference</h2>
+
+<div class="gotcha"><strong>Do not publish from this archived section.</strong> Use it only to compare copy. Review each current HubSpot asset, its classification, suppression rules, and approved owner before saving a draft or publishing.</div>
 
 <p>For each email below, navigate in HubSpot:</p>
 <ul>
@@ -95,7 +105,7 @@
   <li>Click the email → <strong>Edit</strong></li>
   <li><strong>Settings tab</strong> → paste Subject + Preheader</li>
   <li><strong>Edit tab</strong> → click the body text module → paste the body HTML below — <strong>via the <code>&lt;/&gt;</code> Source Code view</strong> (read the callout immediately below before pasting any HTML)</li>
-  <li><strong>Review and publish</strong> top-right → <strong>Publish</strong></li>
+  <li><strong>Save as draft only.</strong> Do not publish from this archived sheet.</li>
 </ul>
 
 <div class="gotcha" style="margin: 24px 0; padding: 18px 22px;">
@@ -177,7 +187,7 @@
 </div>
 
 <h3>📧 Email 1 · Trial confirmation</h3>
-<p><span class="field-name">HubSpot asset id 212773423758</span> · <span class="field-name">Name: [Cedarwind] Trial confirmation — DRAFT, edit copy + activate</span></p>
+<p><span class="field-name">HubSpot asset id 212773423758</span> · <span class="field-name">Historical name: [Cedarwind] Trial confirmation — DRAFT</span></p>
 
 <div class="copy-label">Subject line (use <strong>Path A · Personalize button</strong> to insert <code>{{ contact.child_name }}</code> — see top of Part 1)</div>
 <div class="copy-block">{{ contact.child_name }}'s Court 16 trial is confirmed 🎾</div>
@@ -255,7 +265,7 @@ The Court 16 team&lt;/p&gt;
 <hr style="margin: 36px 0; border: 0; border-top: 1px dashed var(--border);" />
 
 <h3>📧 Email 3 · 24h reminder</h3>
-<p><span class="field-name">HubSpot asset id 212773969554</span> · <span class="field-name">Name: [Cedarwind] 24h reminder — DRAFT, edit copy + activate</span></p>
+<p><span class="field-name">HubSpot asset id 212773969554</span> · <span class="field-name">Historical name: [Cedarwind] 24h reminder — DRAFT</span></p>
 
 <div class="copy-label">Subject line (use <strong>Path A · Personalize button</strong> to insert <code>{{ contact.child_name }}</code> — see top of Part 1)</div>
 <div class="copy-block">See you tomorrow at Court 16, {{ contact.child_name }} 🎾</div>
@@ -325,7 +335,7 @@ The Court 16 team&lt;/p&gt;
 
 &lt;p&gt;&lt;small&gt;Reference: {{ contact.court16_correlation_id }}&lt;/small&gt;&lt;/p&gt;</div>
 
-<div class="info" style="margin: 16px 0;"><strong>Status of the 5 new assets</strong>Cedarwind cloned the 5 assets via API on May 20 with the bodies below pre-loaded. Each is <code>AUTOMATED_DRAFT</code> + <code>isPublished: false</code>. Open each in HubSpot UI, verify the body renders correctly, then publish.</div>
+<div class="info" style="margin: 16px 0;"><strong>Historical status of the 5 assets</strong>Cedarwind cloned these assets via API on May 20. Do not infer their current state from this page and do not publish them as a group. Inventory the live drafts, then keep each unapproved asset off.</div>
 
 <details open style="margin: 14px 0; background: #fff; border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px;">
   <summary style="font-weight: 700; font-size: 14px;">📧 4a · Wrong age band</summary>
@@ -363,17 +373,19 @@ The Court 16 team&lt;/p&gt;
   <p style="margin: 8px 0 0; font-size: 12px; color: var(--muted);">When staff picks "Other" + types a note, that note appears in <code>court16_failure_reason</code> after the "Denied:" prefix. This catch-all asset surfaces it directly.</p>
 </details>
 
-<div class="info" style="margin-top: 18px;"><strong>Workflow wiring (one-time, in HubSpot UI)</strong>Edit workflow <a href="https://app.hubspot.com/workflows/4832170/view/1820568681" target="_blank">1820568681 (Denial · trial declined)</a> → replace the existing "Send email" action with an "if/then" branch on <code>Contact: court16_failure_reason</code> using <code>CONTAINS</code> on each label: "Wrong age band" → 4a · "No availability" → 4b · "Parent cancelled" → 4c · "Duplicate booking" → 4d · default (else) → 4e. ~5 min in the workflow builder. Once all 5 emails are published + the branch is set, the denial flow is live.</div>
+<div class="info" style="margin-top: 18px;"><strong>Historical wiring proposal</strong>Workflow <a href="https://app.hubspot.com/workflows/4832170/view/1820568681" target="_blank">1820568681 (Denial · trial declined)</a> proposed an if/then branch on <code>Contact: court16_failure_reason</code>. Do not treat the flow as live from this description. Confirm the current trigger, reason labels, classification, recipient, suppression rules, and a tagged test before any individual activation.</div>
 
 <hr class="section" />
 
-<h2>Part 2 · Workflow assembly</h2>
+<h2>Part 2 · Historical workflow assembly reference</h2>
+
+<div class="gotcha"><strong>Keep workflows off while using this section.</strong> The steps document the May scaffold, not current authorization or launch approval. Workflow <code>1820551993</code> specifically stays off until its trusted family-status branch is proven.</div>
 
 <p>For each workflow below, navigate in HubSpot:</p>
 <ul>
   <li><strong>Automation → Workflows</strong> (top nav)</li>
   <li>Search "[Cedarwind]" — you should see all 4</li>
-  <li>Click into each → assemble actions per below → save → turn on</li>
+  <li>Open only the individually reviewed workflow → compare its action graph → save off; activation requires the current approval and acceptance test</li>
 </ul>
 
 <h3>⚙️ Workflow 1 · Trial confirmation</h3>
@@ -395,8 +407,8 @@ The Court 16 team&lt;/p&gt;
 </div>
 
 <div class="step">
-  <div class="step-head"><span class="step-num">4</span><h3 class="step-title">Save + turn on</h3></div>
-  Top-right "Review and publish" → set re-enrollment to <strong>Off</strong> (don't re-send if status reverts and re-confirms) → "Turn on workflow".
+  <div class="step-head"><span class="step-num">4</span><h3 class="step-title">Save off for current review</h3></div>
+  Set re-enrollment to <strong>Off</strong>. Do not turn on from this archived instruction; first verify the current owner, trigger, classification, suppression rules, and tagged acceptance test.
 </div>
 
 <hr style="margin: 30px 0; border: 0; border-top: 1px dashed var(--border);" />
@@ -416,7 +428,7 @@ The Court 16 team&lt;/p&gt;
 
 <div class="step">
   <div class="step-head"><span class="step-num">3</span><h3 class="step-title">Keep off through review</h3></div>
-  Review and publish the new email draft first. Test one new Ridge Hill family in workflow test mode. Only turn on after the status gate suppresses an already-claimed parent.
+  Review the email draft without publishing. Use HubSpot workflow-test mode with an existing staff-approved Ridge Hill fixture; do not create a new family from this archived sheet. Keep the workflow off until the trusted status gate suppresses an already-claimed parent and the full controlled-write prerequisites are approved.
 </div>
 
 <hr style="margin: 30px 0; border: 0; border-top: 1px dashed var(--border);" />
@@ -437,7 +449,7 @@ The Court 16 team&lt;/p&gt;
 
 <div class="step">
   <div class="step-head"><span class="step-num">3</span><h3 class="step-title">Save + turn on (or leave off pending date property)</h3></div>
-  Re-enrollment <strong>Off</strong> → "Turn on workflow" once the email body is polished.
+  Save with re-enrollment <strong>Off</strong>. Keep the workflow off until the Ridge Hill reminder timing and cancellation-suppression test pass; then enable this workflow individually.
 </div>
 
 <hr style="margin: 30px 0; border: 0; border-top: 1px dashed var(--border);" />
@@ -453,7 +465,7 @@ The Court 16 team&lt;/p&gt;
 
 <div class="step">
   <div class="step-head"><span class="step-num">2</span><h3 class="step-title">Save + turn on</h3></div>
-  Re-enrollment <strong>Off</strong>.
+  Save with re-enrollment <strong>Off</strong>. Keep it off until its trigger, reason branch, recipient, and test email are verified; then enable this workflow individually.
 </div>
 
 <hr class="section" />
@@ -465,37 +477,37 @@ The Court 16 team&lt;/p&gt;
   Open each email → top-right <strong>Actions → Send test email</strong> → enter your email + pick a real Court 16 Contact as the merge-token source. Verify:
   <ul>
     <li>Merge tokens render correctly (no <code>{{ contact.… }}</code> visible)</li>
-    <li>HUBL conditionals on the denial email render the right branch</li>
-    <li>The CTA button in Email 2 is clickable</li>
+    <li>The five static denial assets map to the correct <code>court16_failure_reason</code> branch; no obsolete HUBL conditional is assumed</li>
+    <li>Email 2 contains no Court 16 password button or copied secure link; it only tells the parent to find Mindbody's separate Welcome email</li>
     <li>Mobile preview renders cleanly</li>
   </ul>
 </div>
 
 <div class="step">
   <div class="step-head"><span class="step-num">B</span><h3 class="step-title">Walk one trial through end-to-end</h3></div>
-  Use Cedarwind's <a href="./test-walkthrough.html">test walkthrough</a> Tests 1 + 3 to submit a kids trial then click the staff-confirm URL. Watch your inbox + the workflow's <strong>Performance</strong> tab — emails 1 (confirmation) and 2 (password setup) should fire within 1h.
+  Do not run the <a href="./test-walkthrough.html">archived test walkthrough</a>. A current controlled acceptance requires the multi-site audit gates, a staff-approved tagged Ridge Hill family, verified Mindbody target and eligible occurrence, original Client-ID log, and named cleanup owner. Exercise the account nudge only through HubSpot's workflow-test function while workflow <code>1820551993</code> remains off; verify a claimed family exits without a send.
 </div>
 
 <div class="step">
-  <div class="step-head"><span class="step-num">C</span><h3 class="step-title">Turn off reCAPTCHA on the trial form</h3></div>
-  This is spec 9 — separate from the email work but still pending. Settings → Forms → Court 16 Trial form → uncheck "Use reCAPTCHA". Lets the form-submit-side path complete cleanly when MindBody is down.
+  <div class="step-head"><span class="step-num">C</span><h3 class="step-title">Audit form submission + spam protection</h3></div>
+  Do not toggle reCAPTCHA from the archived spec 09 instructions. First verify the current Forms v3 Integration behavior, embedded website forms, existing nurture enrollment, and spam-control owner; change the live form only through a separately approved test.
 </div>
 
 <hr class="section" />
 
 <h2>Known gaps (Track 2 follow-ups)</h2>
 <ul>
-  <li><strong>Class day/time/coach merge tokens in email bodies</strong>: <code>class_date</code> is now on the Deal (May 14 ship), but the emails still reference class time generically because day/time/coach are derived from the MindBody class object, not pushed to HubSpot. Two paths: (a) HubSpot personalization token for <code>{{ deal.class_date }}</code> formatted via HUBL, or (b) Cedarwind extends the booking app to also write classDay/classTime/coachName to the Deal — small lift, ping Stuart.</li>
+  <li><strong>Class day/time/coach merge tokens in email bodies</strong>: the app already writes <code>court16_class_name</code>, <code>court16_class_day_time</code>, and <code>court16_coach_name</code> to the Contact, plus <code>class_date</code> on the Deal. Update and test the email personalization; no new app field is required.</li>
   <li><strong>Parent-claim status readback</strong>: Workflow 2 stays off until HubSpot can distinguish <code>parent_claim_pending</code> from <code>parent_claimed</code>. Mindbody owns the secure link; there is no Court 16 CTA to localize.</li>
-  <li><strong>MindBody booking auto-cancellation on deny</strong>: <code>/api/staff/deny</code> flips state correctly but doesn't yet remove the client from the MindBody class (needs visit-id we don't capture from AddClientToClass — Track 2).</li>
+  <li><strong>Deny does not cancel a confirmed Mindbody visit</strong>: the normal review flow denies before enrollment. For a confirmed Contact, <code>/api/staff/deny</code> returns HTTP 410 without changing denial state and directs staff to the approved Mindbody-admin cancellation process.</li>
   <li><strong>Reason picklist drift</strong>: if you change Cedarwind's deny picklist labels (the human-readable ones — "Wrong age band", "No availability", etc.), the workflow branch CONTAINS strings in workflow 1820568681 need a matching update. Worth keeping labels stable.</li>
 </ul>
 
 <footer>
   <p style="font-size: 12px; color: var(--muted); margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border);">
-    Court 16 × Cedarwind · Ibtissam email + workflow handoff · v1.0 (2026-05-12) ·
+    Court 16 × Cedarwind · archived Ibtissam email + workflow handoff · safe-state banner updated 2026-07-17 ·
     <a href="./index.html" style="color: var(--amber);">Package A index</a> ·
-    <a href="./test-walkthrough.html" style="color: var(--amber);">Test walkthrough</a> ·
+    <a href="./test-walkthrough.html" style="color: var(--amber);">Archived test walkthrough</a> ·
     <a href="https://court16-mindbody-test.vercel.app/tracker.html" style="color: var(--amber);">Phase 2 tracker</a>
   </p>
 </footer>
