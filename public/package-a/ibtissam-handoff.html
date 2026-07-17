@@ -67,9 +67,9 @@
       <td>Contact status = <code>confirmed</code> · location = RH</td>
     </tr>
     <tr>
-      <td>2. Password setup</td>
-      <td>[Cedarwind] Password setup · 1h after Requested Trial</td>
-      <td>RH Deal → Requested Trial</td>
+      <td>2. Parent Mindbody account nudge</td>
+      <td>[DRAFT · OFF] Parent Mindbody account nudge · 1h after Requested Trial</td>
+      <td>RH Deal → Requested Trial · only while claim is pending</td>
     </tr>
     <tr>
       <td>3. 24h reminder</td>
@@ -216,38 +216,41 @@ The Court 16 team&lt;/p&gt;
 
 <hr style="margin: 36px 0; border: 0; border-top: 1px dashed var(--border);" />
 
-<h3>📧 Email 2 · Password setup</h3>
-<p><span class="field-name">HubSpot asset id 212772629316</span> · <span class="field-name">Name: [Cedarwind] Password setup — DRAFT, edit copy + activate</span></p>
+<h3>📧 Email 2 · Parent Mindbody account nudge</h3>
+<p><span class="field-name">HubSpot asset id 212772629316</span> · <span class="field-name">Draft: [DRAFT] Parent Mindbody account nudge — review before activation</span></p>
 
-<div class="copy-label">Subject line (use <strong>Path A · Personalize button</strong> to insert <code>{{ contact.child_name }}</code> — see top of Part 1)</div>
-<div class="copy-block">One quick step for {{ contact.child_name }}'s Court 16 trial</div>
+<div class="info"><strong>Updated after the live family-account test</strong>Mindbody owns the secure password/claim link. This HubSpot email only tells the parent to use the separate Mindbody email. The revised copy is staged in HubSpot's draft buffer; the workflow is off. <a href="./06-password-setup-email.html">Open the short visual handoff →</a></div>
+
+<div class="copy-label">Subject</div>
+<div class="copy-block">Finish setting up your Court 16 / Mindbody account</div>
 
 <div class="copy-label">Preheader</div>
-<div class="copy-block">Set your MindBody password so you can manage future bookings.</div>
+<div class="copy-block">Use the separate secure email from Mindbody to create your password.</div>
 
-<div class="copy-label">Body (use <strong>Path B · drag HTML module</strong> — recommended; or Path C · Source Code <code>&lt;/&gt;</code> on existing text module — see top of Part 1)</div>
+<div class="copy-label">Body</div>
 <div class="copy-block">&lt;p&gt;Hi {{ contact.firstname }},&lt;/p&gt;
 
-&lt;p&gt;We've got {{ contact.child_name }}'s trial request — thanks for choosing Court 16. While our team locks in the class, here's one thing you can do now to speed things up:&lt;/p&gt;
+&lt;p&gt;We created the Court 16 / Mindbody records for you and {{ contact.child_name }} when you requested the trial.&lt;/p&gt;
 
-&lt;h3&gt;Set your Court 16 / MindBody password&lt;/h3&gt;
-&lt;p&gt;We use MindBody behind the scenes to manage class spots. Setting up your account now means you can view, reschedule, or cancel future classes without emailing us.&lt;/p&gt;
+&lt;p&gt;&lt;strong&gt;Mindbody sent you a separate secure email to create your password.&lt;/strong&gt; That Mindbody email contains the unique account link; this Court 16 email does not.&lt;/p&gt;
 
-&lt;p&gt;&lt;a href="https://www.court16.com/login" style="display:inline-block; padding:12px 20px; background:#F5B800; color:#111; text-decoration:none; font-weight:600; border-radius:6px;"&gt;Set your password →&lt;/a&gt;&lt;/p&gt;
+&lt;ol&gt;
+&lt;li&gt;Look for an email from an address ending in &lt;strong&gt;@mindbodyonline.com&lt;/strong&gt; with &lt;strong&gt;Welcome&lt;/strong&gt; in the subject.&lt;/li&gt;
+&lt;li&gt;Use the create or change password link in that Mindbody email.&lt;/li&gt;
+&lt;li&gt;Complete the secure email verification when Mindbody prompts you.&lt;/li&gt;
+&lt;/ol&gt;
 
-&lt;p&gt;&lt;small&gt;Click "Forgot password?" on the sign-in page and enter {{ contact.email }} — MindBody will email you a setup link.&lt;/small&gt;&lt;/p&gt;
+&lt;p&gt;Please check spam or promotions if you do not see it. Your child does not need a separate password or login.&lt;/p&gt;
 
-&lt;h3&gt;What's next?&lt;/h3&gt;
-&lt;p&gt;You'll hear from our team within a few hours with {{ contact.child_name }}'s specific class day, time, and coach. Once we send you that confirmation, you're all set.&lt;/p&gt;
+&lt;p&gt;If you already completed these steps, you can ignore this reminder.&lt;/p&gt;
 
-&lt;p&gt;Questions? Reply to this email — we read every one.&lt;/p&gt;
+&lt;p&gt;Questions? Reply to this email and our team will help.&lt;/p&gt;
 
-&lt;p&gt;See you on court,&lt;br/&gt;
-The Court 16 team&lt;/p&gt;
+&lt;p&gt;See you on court,&lt;br/&gt;The Court 16 team&lt;/p&gt;
 
 &lt;p&gt;&lt;small&gt;Reference: {{ contact.court16_correlation_id }}&lt;/small&gt;&lt;/p&gt;</div>
 
-<div class="gotcha"><strong>Per-location login</strong>The link above (court16.com/login) is the generic landing page; it routes to the right MindBody portal per club. If you want per-location precision, swap the href to the specific MindBody URL for the parent's <code>court16_location_slug</code> — that's a Smart Content rule, optional polish for v2.</div>
+<div class="gotcha"><strong>Do not add a password button</strong>No <code>court16.com/login</code>, no generic “Forgot password” instruction, and no copied Mindbody token. The parent must use Mindbody's own secure email.</div>
 
 <hr style="margin: 36px 0; border: 0; border-top: 1px dashed var(--border);" />
 
@@ -398,22 +401,22 @@ The Court 16 team&lt;/p&gt;
 
 <hr style="margin: 30px 0; border: 0; border-top: 1px dashed var(--border);" />
 
-<h3>⚙️ Workflow 2 · Password setup</h3>
-<p><span class="field-name">HubSpot id 1820551993</span> · Triggers when Deal enters Ridge Hill's <strong>Requested Trial</strong> stage (narrowed from 6 pipelines to RH-only on May 14 per your pilot scope; will re-broaden as Package D activates more sites).</p>
+<h3>⚙️ Workflow 2 · Parent Mindbody account nudge</h3>
+<p><span class="field-name">HubSpot id 1820551993</span> · <strong>Currently OFF, revision 6.</strong> Triggers when a Deal enters Ridge Hill's <strong>Requested Trial</strong> stage.</p>
 
 <div class="step">
-  <div class="step-head"><span class="step-num">1</span><h3 class="step-title">Add a delay action</h3></div>
-  Open the workflow → click <strong>+</strong> after the trigger → <strong>Delay</strong> → <strong>1 hour</strong> → Save.
+  <div class="step-head"><span class="step-num">1</span><h3 class="step-title">Review what is already built</h3></div>
+  The workflow already has <strong>Delay 1 hour → Send email 212772629316</strong>, Ridge Hill enrollment only, and re-enrollment off.
 </div>
 
 <div class="step">
-  <div class="step-head"><span class="step-num">2</span><h3 class="step-title">Add the send-email action</h3></div>
-  Click <strong>+</strong> after the delay → <strong>Send email</strong> → search "[Cedarwind] Password setup" → select.
+  <div class="step-head"><span class="step-num">2</span><h3 class="step-title">Add the claim-status decision</h3></div>
+  Before the send, add an If/then branch: <code>parent_claim_pending</code> → send the nudge; <code>parent_claimed</code> or later → end. If the status is still unknown after 24 hours, create a staff task.
 </div>
 
 <div class="step">
-  <div class="step-head"><span class="step-num">3</span><h3 class="step-title">Save + turn on</h3></div>
-  Re-enrollment <strong>Off</strong> → "Turn on workflow".
+  <div class="step-head"><span class="step-num">3</span><h3 class="step-title">Keep off through review</h3></div>
+  Review and publish the new email draft first. Test one new Ridge Hill family in workflow test mode. Only turn on after the status gate suppresses an already-claimed parent.
 </div>
 
 <hr style="margin: 30px 0; border: 0; border-top: 1px dashed var(--border);" />
@@ -483,7 +486,7 @@ The Court 16 team&lt;/p&gt;
 <h2>Known gaps (Track 2 follow-ups)</h2>
 <ul>
   <li><strong>Class day/time/coach merge tokens in email bodies</strong>: <code>class_date</code> is now on the Deal (May 14 ship), but the emails still reference class time generically because day/time/coach are derived from the MindBody class object, not pushed to HubSpot. Two paths: (a) HubSpot personalization token for <code>{{ deal.class_date }}</code> formatted via HUBL, or (b) Cedarwind extends the booking app to also write classDay/classTime/coachName to the Deal — small lift, ping Stuart.</li>
-  <li><strong>Per-location password-setup link</strong>: Email 2's CTA points at court16.com/login (generic). Optional polish via Smart Content keyed on <code>court16_location_slug</code>.</li>
+  <li><strong>Parent-claim status readback</strong>: Workflow 2 stays off until HubSpot can distinguish <code>parent_claim_pending</code> from <code>parent_claimed</code>. Mindbody owns the secure link; there is no Court 16 CTA to localize.</li>
   <li><strong>MindBody booking auto-cancellation on deny</strong>: <code>/api/staff/deny</code> flips state correctly but doesn't yet remove the client from the MindBody class (needs visit-id we don't capture from AddClientToClass — Track 2).</li>
   <li><strong>Reason picklist drift</strong>: if you change Cedarwind's deny picklist labels (the human-readable ones — "Wrong age band", "No availability", etc.), the workflow branch CONTAINS strings in workflow 1820568681 need a matching update. Worth keeping labels stable.</li>
 </ul>

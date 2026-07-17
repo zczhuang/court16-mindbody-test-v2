@@ -1,8 +1,9 @@
 # HubSpot Workflows — Court 16 Track 1
 
-Two workflows own every email the app sends after a form submission. The
-app writes `court16_booking_status` transitions on the Contact; workflows
-react.
+The app writes booking state to HubSpot; workflows react to those state
+changes. Mindbody remains the only sender of password, verification, and
+account-link tokens. HubSpot may remind or explain, but must never construct
+or copy a Mindbody credential link.
 
 The existing **form-submission nurture** that Ibtissam built in Phase 1
 stays attached to the form. The Forms API submission keeps firing it —
@@ -71,7 +72,48 @@ so workflow-email with transactional classification is available.
 
 ---
 
-## Optional — Workflow 3: manual review / failed alerts
+## Workflow 3 — Parent Mindbody account nudge (DRAFT / OFF)
+
+**HubSpot workflow:** `1820551993`
+
+**HubSpot email:** `212772629316`
+
+**Current safe state (2026-07-17):** workflow is disabled. The revised email
+exists only in HubSpot's draft buffer; the old published revision must not be
+used.
+
+**Trigger:** Ridge Hill Deal enters `Requested Trial`. Re-enrollment is off.
+
+**Actions:** wait 60 minutes, then send the associated parent a reminder to
+use the separate secure email sent by Mindbody.
+
+**Required gate before activation:**
+
+- If family-account status is `parent_claim_pending`, send the reminder.
+- If status is `parent_claimed` or later, end without sending.
+- If the state is still unknown after 24 hours, create a staff follow-up task.
+
+Email opens and clicks must not advance the status. They do not prove that the
+parent created a password, completed OTP verification, added the child under
+Family, or linked the existing child record.
+
+**Email rule:** no Court 16 password button and no generic "Forgot password"
+instruction. Copy says to find the separate `@mindbodyonline.com` Welcome
+email. The child needs no separate password or login.
+
+**Classification check:** HubSpot currently reports the email as
+`isTransactional=false`. Ibtissam must review the subscription/transactional
+classification in the email UI before activation.
+
+**Activation order:** publish the reviewed email draft, test one new Ridge
+Hill family, verify the status gate suppresses claimed parents, then turn on
+the workflow.
+
+Visual handoff: `public/package-a/06-password-setup-email.html`.
+
+---
+
+## Optional — Workflow 4: manual review / failed alerts
 
 Consolidate into one workflow:
 
@@ -88,11 +130,11 @@ Skip Slack webhook for Track 1; add in Track 3 when volume justifies it.
 ## Testing a workflow
 
 1. Set `HUBSPOT_ENV=sandbox` + use the sandbox portal's access token + form GUID.
-2. Open the workflow in HubSpot, put it in History test mode.
+2. Keep the workflow off and use HubSpot's workflow test function.
 3. Hit the app's `/api/book/trial` with a test payload.
 4. Verify the workflow enrolled the Contact (by matching email).
 5. Verify the outbound email was queued (Workflow history shows the send).
-6. Mirror the workflow to production.
+6. Publish/activate only after the result is reviewed.
 
 ## Disaster recovery
 

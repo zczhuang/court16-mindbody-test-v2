@@ -91,15 +91,15 @@
     </tr>
     <tr>
       <td class="layer">HubSpot</td>
-      <td class="item">All 4 AUTOMATED_EMAIL templates published (state=AUTOMATED, isPublished=true) with copy pasted via <code>&lt;/&gt;</code> Source view <span style="font-size:11px;color:var(--muted)">(Ibtissam · 1 PM Friday call)</span></td>
+      <td class="item">Parent Mindbody account nudge asset <code>212772629316</code> has revised draft copy; review and test before publishing. Other email assets retain their existing state.</td>
       <td class="owner">Ibtissam</td>
-      <td><span class="check done">✓ DONE</span></td>
+      <td><span class="check pending">REVIEW</span></td>
     </tr>
     <tr>
       <td class="layer">HubSpot</td>
-      <td class="item">All 4 workflows assembled in HubSpot UI (delay + send-email actions added) with enrollment triggers narrowed to Ridge Hill, and <code>enabled=true</code> <span style="font-size:11px;color:var(--muted)">(Ibtissam · 1 PM Friday call)</span></td>
+      <td class="item">Parent Mindbody account nudge workflow <code>1820551993</code> is intentionally <code>enabled=false</code> until the parent-claim status gate is tested. Do not bulk-enable all workflows.</td>
       <td class="owner">Ibtissam</td>
-      <td><span class="check done">✓ DONE</span></td>
+      <td><span class="check pending">OFF</span></td>
     </tr>
     <tr>
       <td class="layer">HubSpot</td>
@@ -344,14 +344,14 @@
 <div class="test">
   <div class="test-head">
     <span class="test-num">9</span>
-    <h3 class="test-title">Workflow firing (after Ibtissam enables them)</h3>
+    <h3 class="test-title">Workflow test mode (parent nudge stays off)</h3>
     <span class="test-runner">Ibtissam (verify) · Cedarwind (trigger)</span>
   </div>
-  <p><strong>Action:</strong> Submit a fresh kids trial. Wait 1h (or use HubSpot's workflow Test enrollment to skip the delay). Then run test 3 (staff confirm).</p>
+  <p><strong>Action:</strong> Use HubSpot's test enrollment with a fresh kids-trial record while workflow <code>1820551993</code> remains off. Then run test 3 (staff confirm).</p>
   <div class="expect">
     <strong>Expect</strong>
     <ul class="verify-list">
-      <li>~1h after submission: WF2 (Password setup) fires · password-setup email queues to the test inbox</li>
+      <li>WF2 test: an unclaimed parent reaches the revised Mindbody-email nudge; a claimed parent exits without a send</li>
       <li>Immediately after staff confirm: WF1 (Trial confirmation) fires · confirmation email queues</li>
       <li>For WF3 (24h reminder): book a class ~25h out · check workflow "Performance" tab shows enrollment with a scheduled send time at <code>class_date - 24h</code></li>
       <li>For WF4 (Denial): run test 5 then watch the workflow fire and the denial email queue</li>

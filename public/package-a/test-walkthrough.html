@@ -171,26 +171,26 @@
 
 <hr style="margin: 40px 0; border: 0; border-top: 1px solid var(--border);" />
 
-<h2>Test 5 · Workflows fire (after Ibtissam's setup) <span class="badge who-ibtissam">Ibtissam</span></h2>
-<p>This test only works after Ibtissam adds the 2 actions to each workflow + flips them <code>enabled=true</code>. Skip if you haven't done that yet.</p>
+<h2>Test 5 · Workflow test mode (do not activate) <span class="badge who-ibtissam">Ibtissam</span></h2>
+<p>Use HubSpot's workflow test function while the parent-account nudge remains <code>enabled=false</code>. See the <a href="./06-password-setup-email.html">updated visual handoff</a> before testing.</p>
 
 <div class="step">
   <div class="step-head"><span class="step-num">5.1</span><h3 class="step-title">Verify the workflow shells exist</h3></div>
   <ol>
     <li>HubSpot → <strong>Automation → Workflows</strong></li>
-    <li>Search "Cedarwind" — you should see <code>[Cedarwind] Password setup · 1h after Requested Trial</code> and <code>[Cedarwind] 24h reminder · class -24h after Scheduled Trial</code></li>
-    <li>Click each → confirm the enrollment trigger reads "Deal stage is any of …" with 6 stage IDs (one per location)</li>
+    <li>Search "Parent Mindbody account nudge" — workflow <code>1820551993</code> should show <strong>Off</strong></li>
+    <li>Open it and confirm the trigger is Ridge Hill Requested Trial, with re-enrollment off</li>
   </ol>
 </div>
 
 <div class="step">
-  <div class="step-head"><span class="step-num">5.2</span><h3 class="step-title">Add the 2 actions per workflow</h3></div>
-  <p>For <strong>Password setup</strong> (workflow id <code>1820551993</code>):</p>
+  <div class="step-head"><span class="step-num">5.2</span><h3 class="step-title">Verify the existing nudge actions</h3></div>
+  <p>For <strong>Parent Mindbody account nudge</strong> (workflow id <code>1820551993</code>):</p>
   <ol>
-    <li>Open the workflow → click <strong>+</strong> after the enrollment trigger</li>
-    <li>Add <strong>Delay</strong> → 1 hour</li>
-    <li>Add <strong>Send automated email</strong> → pick <code>[Cedarwind] Password setup</code> (asset id <code>212772629316</code>, AUTOMATED_EMAIL type)</li>
-    <li>Save</li>
+    <li>Confirm <strong>Delay</strong> is 1 hour</li>
+    <li>Confirm <strong>Send automated email</strong> references asset <code>212772629316</code></li>
+    <li>Review the revised email draft: it points to the separate Mindbody email and contains no password button</li>
+    <li>Keep the workflow off until the parent-claim status gate is added</li>
   </ol>
   <p>For <strong>24h reminder</strong> (workflow id <code>1820562947</code>):</p>
   <ol>
@@ -202,12 +202,12 @@
 </div>
 
 <div class="step">
-  <div class="step-head"><span class="step-num">5.3</span><h3 class="step-title">Test the fire</h3></div>
+  <div class="step-head"><span class="step-num">5.3</span><h3 class="step-title">Run a test enrollment</h3></div>
   <ol>
-    <li>Flip the password-setup workflow to <strong>On</strong></li>
-    <li>Submit a new kids trial via the booking app</li>
-    <li>Watch the HubSpot workflow's <strong>Performance</strong> tab — within ~1 hour you should see the new contact enrolled</li>
-    <li>Check the Contact's <strong>Activity</strong> timeline — the password-setup email should be queued (or sent if the workflow is unpaused beyond test mode)</li>
+    <li>Leave the workflow <strong>Off</strong></li>
+    <li>Use HubSpot's Test action with one new Ridge Hill test family</li>
+    <li>Confirm an unclaimed parent follows the nudge path</li>
+    <li>Confirm a claimed parent exits without a send before activation</li>
   </ol>
 </div>
 

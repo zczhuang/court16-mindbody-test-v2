@@ -3,11 +3,12 @@
  * workflows (Package A specs 6 + 7) and the staff-confirm denial
  * email (spec 5).
  *
- * All four templates were created as DRAFTs via the HubSpot API on
- * 2026-05-12 (state="DRAFT", isPublished=false). Ibtissam edits the
- * body copy + flips published state from the HubSpot UI before the
- * referenced workflows can send. The IDs themselves are stable —
- * editing copy in HubSpot doesn't change the ID.
+ * These templates began as drafts on 2026-05-12. Their current live/draft
+ * state must be checked in HubSpot rather than inferred from the asset name.
+ * In particular, asset 212772629316 has an old published revision plus an
+ * unpublished 2026-07-17 draft buffer. Workflow 1820551993 is disabled while
+ * Ibtissam reviews that draft. The IDs themselves are stable — editing copy
+ * in HubSpot doesn't change the ID.
  *
  * If a template gets archived or replaced, capture the new ID here.
  */
@@ -28,7 +29,11 @@
 export const TRIAL_EMAIL_TEMPLATE_IDS = {
   /** Sent to parents after staff-confirm or intro-confirm advances Deal to "Scheduled Trial". */
   confirmation: "212773423758",
-  /** Sent 1h after Deal enters "Requested Trial" — sets up the MindBody password. */
+  /**
+   * Draft reminder sent 1h after Requested Trial. Mindbody—not HubSpot—owns
+   * the actual password/claim link. Keep workflow 1820551993 disabled until
+   * a parent-claim status gate is implemented and tested.
+   */
   passwordSetup: "212772629316",
   /** Sent 24h before the scheduled class. */
   reminder24h: "212773969554",
@@ -76,16 +81,15 @@ export type TrialDenialReasonKey = keyof typeof TRIAL_DENIAL_EMAILS_BY_REASON;
 export type TrialEmailTemplateKey = keyof typeof TRIAL_EMAIL_TEMPLATE_IDS;
 
 /**
- * Pre-built workflow shells on HubSpot. Both have the enrollment trigger
- * fully configured (Deal in ANY of the 6 location-specific stages); the
- * v4 flows API rejected rich action graphs (500s on send-email actions),
- * so the 2 action steps per workflow are Ibtissam's drag-in-builder
- * task. Both shells were created with enabled=false.
+ * Pre-built HubSpot workflows. State is external and must be verified in
+ * HubSpot before any activation. As of 2026-07-17, workflow 1820551993 is
+ * revision 6, Ridge Hill only, and disabled; its action graph is already
+ * Delay 60 minutes → Send email 212772629316.
  */
 export const PACKAGE_A_WORKFLOW_SHELLS = {
   /**
-   * Spec 6 — fires when Deal enters Requested Trial. Ibtissam adds:
-   * (1) Delay 1h, (2) Send email = passwordSetup asset.
+   * Spec 6 — parent Mindbody account nudge. Keep OFF until the email draft is
+   * reviewed and the workflow can suppress parents who already claimed.
    */
   passwordSetup: "1820551993",
   /**
