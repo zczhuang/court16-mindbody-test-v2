@@ -8,6 +8,8 @@ interface Props {
   date: string | null;
   selectedClassId: number | null;
   onPick: (tc: TrialClass) => void;
+  /** Browse-only calendar preview: show times, hide the booking CTA. */
+  previewOnly?: boolean;
 }
 
 const DOW_LONG = [
@@ -18,7 +20,7 @@ const MONTH_NAMES = [
   "July", "August", "September", "October", "November", "December",
 ];
 
-export default function DayDetail({ classes, date, selectedClassId, onPick }: Props) {
+export default function DayDetail({ classes, date, selectedClassId, onPick, previewOnly }: Props) {
   if (!date) {
     return (
       <div className="detail empty-state" role="status" aria-live="polite">
@@ -51,7 +53,12 @@ export default function DayDetail({ classes, date, selectedClassId, onPick }: Pr
           {classes.length} {classes.length === 1 ? "class" : "classes"} available
         </div>
       </div>
-      <div className="class-list">
+      {previewOnly && (
+        <p className="class-list-preview-note" role="status">
+          Online booking for this club opens soon — these times are a preview.
+        </p>
+      )}
+      <div className={`class-list ${previewOnly ? "class-list--preview" : ""}`}>
         {classes.map((c) => (
           <ClassCard
             key={`${c.classScheduleId}-${c.date}`}

@@ -39,6 +39,16 @@ export interface Location {
    */
   trialBookingEnabled: boolean;
   /**
+   * Browse-only escape hatch: lets parents open this club's kids-trial
+   * calendar (read-only, program-filtered) before the full launch gates
+   * pass. Booking stays fail-closed — no class can be requested and the
+   * intake route still enforces full readiness. Requires an authorized
+   * Mindbody site plus verified Program and $0 Service IDs; a club without
+   * those must remain fully dark (the unfiltered-calendar fallback stays
+   * removed).
+   */
+  trialCalendarPreviewEnabled?: boolean;
+  /**
    * Operational evidence required in addition to static IDs. Every boolean
    * must be true before this club can appear in the public kids-trial flow.
    * Update only from dated acceptance evidence, not from configuration alone.
@@ -181,6 +191,11 @@ export const LOCATIONS: Location[] = [
     timezone: "America/New_York",
     publicBookingEnabled: true,
     trialBookingEnabled: false,
+    // Read-only calendar preview only: the site is authorized and Program 61 +
+    // Service 100328 are verified, but the July 18 audit found zero upcoming
+    // Program 61 occurrences, so the calendar renders its honest empty state
+    // until staff schedules trial classes. Booking remains fully gated.
+    trialCalendarPreviewEnabled: true,
     trialUnavailableReason: "The next online kids trial times are being finalized.",
     trialLaunchEvidence: {
       mindbodySiteAuthorized: true,

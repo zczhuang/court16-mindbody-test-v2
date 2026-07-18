@@ -32,12 +32,15 @@ import {
   TRIAL_MAX_ADVANCE_DAYS,
 } from "@/config/trial-config";
 import { getDealPipeline, getHubspotPreferredLocation } from "@/config/hubspot-deals";
-import { getKidsTrialReadiness } from "@/config/kids-trial-readiness";
+import {
+  getKidsTrialCalendarPreviewReadiness,
+  getKidsTrialReadiness,
+} from "@/config/kids-trial-readiness";
 import type { ChildEntry } from "@/components/AgeSelector";
 
 type Step = "location" | "calendar" | "confirmed";
 
-function isTrialLocationReady(location: Location | undefined): location is Location {
+function isTrialLocationReady(location: Location | undefined): boolean {
   if (!location) return false;
   return getKidsTrialReadiness({
     location,
@@ -45,6 +48,21 @@ function isTrialLocationReady(location: Location | undefined): location is Locat
     pipeline: getDealPipeline(location.id),
     preferredLocation: getHubspotPreferredLocation(location.id),
   }).ready;
+}
+
+/** Browse-only: the calendar may be viewed, but no class can be requested. */
+function isTrialLocationPreviewOnly(location: Location | undefined): boolean {
+  if (!location) return false;
+  if (isTrialLocationReady(location)) return false;
+  return getKidsTrialCalendarPreviewReadiness({
+    location,
+    trialConfig: TRIAL_CONFIG[location.id],
+  }).ready;
+}
+
+/** Fully ready OR browse-only preview — either way the calendar may render. */
+function isTrialLocationBrowsable(location: Location | undefined): location is Location {
+  return Boolean(location) && (isTrialLocationReady(location) || isTrialLocationPreviewOnly(location));
 }
 
 function TrialInner() {
@@ -55,7 +73,7 @@ function TrialInner() {
   // A bare /trial always starts at club selection. A location deep link may
   // skip ahead only when that club's trial pipeline is verified and enabled.
   const urlResolved = urlLocation ? getLocationById(urlLocation) : undefined;
-  const preResolved = isTrialLocationReady(urlResolved) ? urlResolved : null;
+  const preResolved = isTrialLocationBrowsable(urlResolved) ? urlResolved : null;
 
   const [step, setStep] = useState<Step>(preResolved ? "calendar" : "location");
   const [location, setLocation] = useState<Location | null>(preResolved);
@@ -95,7 +113,7 @@ function TrialInner() {
     setAgeFilter(null);
 
     const loc = urlLocation ? getLocationById(urlLocation) : undefined;
-    if (isTrialLocationReady(loc)) {
+    if (isTrialLocationBrowsable(loc)) {
       setLocation(loc);
       setGlobalLoc(loc);
       setStep("calendar");
@@ -179,7 +197,7 @@ function TrialInner() {
   }, [step]);
 
   function selectLoc(loc: Location) {
-    if (!isTrialLocationReady(loc)) return;
+    if (!isTrialLocationBrowsable(loc)) return;
     setLocation(loc);
     setGlobalLoc(loc);
     setSelectedDate(null);
@@ -206,6 +224,10 @@ function TrialInner() {
   }
 
   function handleClassSelect(tc: TrialClass) {
+    // Browse-only preview: the calendar is visible but no request may start.
+    // The intake route independently enforces full readiness; this guard just
+    // keeps a parent from filling a form that would be refused on submit.
+    if (isTrialLocationPreviewOnly(location ?? undefined)) return;
     setSelectedClass(tc);
     setSubmissionId(window.crypto.randomUUID());
     setShowFormModal(true);
@@ -342,6 +364,13 @@ function TrialInner() {
                   <span>Racquet provided</span>
                   <span>Ages 3–17</span>
                 </div>
+                {isTrialLocationPreviewOnly(location) && (
+                  <p className="trial-preview-note" role="status">
+                    Calendar preview — this club&apos;s trial times are still being
+                    posted and online booking isn&apos;t open here yet. Want a heads-up?{" "}
+                    <a href="https://www.court16.com/contact">Ask our team</a>.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -448,6 +477,7 @@ function TrialInner() {
                       date={selectedDate}
                       selectedClassId={selectedClass?.classScheduleId ?? null}
                       onPick={handleClassSelect}
+                      previewOnly={isTrialLocationPreviewOnly(location)}
                     />
                   </aside>
                 </div>

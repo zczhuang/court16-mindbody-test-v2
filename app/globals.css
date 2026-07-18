@@ -413,6 +413,21 @@ strong { font-weight: 800; }
 .loc-pin { width: 9px; height: 9px; border: 2px solid var(--c16-black); border-radius: 50%; background: var(--c16-yellow); box-shadow: 0 0 0 3px rgba(255,250,0,.45); }
 .trial-reassurance { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 .trial-reassurance span { padding: 5px 9px; border: 1.5px solid var(--c16-black); border-radius: 999px; background: var(--c16-yellow); font-size: 10px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+.trial-preview-note {
+  max-width: 62ch;
+  margin: 14px 0 0;
+  padding: 10px 14px;
+  border: 2px solid var(--c16-black);
+  border-left-width: 8px;
+  border-left-color: var(--c16-yellow);
+  border-radius: var(--r-md);
+  background: #fff;
+  color: var(--c16-ink-2);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.trial-preview-note a { font-weight: 800; text-decoration: underline; text-decoration-color: var(--c16-yellow); text-underline-offset: 3px; }
 .age-filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin: 0 0 16px 178px; }
 .age-filter-select { min-height: 38px; padding: 7px 34px 7px 11px; border: 1.5px solid var(--c16-black); border-radius: 8px; background: white; font-size: 13px; }
 .age-filter-empty { color: var(--c16-ink-3); font-size: 12px; }
@@ -479,6 +494,9 @@ strong { font-weight: 800; }
 .cc-meta .mono { color: var(--c16-black); font-weight: 800; }
 .cc-meta .sep { color: var(--c16-line); }
 .cc-go { display: inline-flex; align-items: center; gap: 7px; margin-top: 3px; font-size: 12px; font-weight: 800; }
+.class-list-preview-note { margin: 0 0 4px; padding: 8px 12px; border: 1.5px solid var(--c16-black); border-left: 6px solid var(--c16-yellow); border-radius: var(--r-md); background: #fff; color: var(--c16-ink-2); font-size: 12px; font-weight: 600; }
+.class-list--preview .class-card { pointer-events: none; }
+.class-list--preview .cc-go { display: none; }
 
 .empty-state { min-height: 310px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; padding: 30px; border: 2px dashed var(--c16-line); border-radius: var(--r-lg); background: var(--c16-paper-2); text-align: center; }
 .empty-ball, .loading-ball { width: 62px; height: 62px; margin-bottom: 10px; border: 2px solid var(--c16-black); border-radius: 50%; background: var(--c16-yellow); box-shadow: 3px 3px 0 var(--c16-black); }

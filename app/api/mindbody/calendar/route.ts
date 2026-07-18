@@ -4,7 +4,10 @@ import { createLogger, makeCorrelationId } from "@/lib/logger";
 import { LOCATIONS, getLocationById } from "@/config/locations";
 import { maxBookableDateStr, TRIAL_CONFIG } from "@/config/trial-config";
 import { getDealPipeline, getHubspotPreferredLocation } from "@/config/hubspot-deals";
-import { getKidsTrialReadiness } from "@/config/kids-trial-readiness";
+import {
+  getKidsTrialCalendarPreviewReadiness,
+  getKidsTrialReadiness,
+} from "@/config/kids-trial-readiness";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -64,19 +67,40 @@ export async function GET(request: NextRequest) {
         })
       : null;
 
-  if (trialReadiness && !trialReadiness.ready) {
-    log.warn("calendar.trial-location.not-ready", {
-      locationId: loc.id,
-      missing: trialReadiness.missing,
-    });
-    return NextResponse.json(
-      {
-        error: "Kids trial scheduling is not yet available for this club.",
-        code: "trial_location_not_ready",
-        locationId: loc.id,
-      },
-      { status: 409 },
-    );
+  // The verified Kid's Trials Program for server-side narrowing below. Both
+  // paths that reach the Mindbody read guarantee one — there is deliberately
+  // no unfiltered kids-calendar fallback.
+  let kidTrialProgramId: number | undefined;
+  if (trialReadiness) {
+    if (trialReadiness.ready) {
+      kidTrialProgramId = trialReadiness.programId;
+    } else {
+      // Browse-only escape hatch: an authorized club with verified Program +
+      // $0 Service IDs may expose its program-filtered calendar READ before
+      // the full launch gates pass. This never relaxes booking — the intake
+      // route still enforces full readiness on submission.
+      const preview = getKidsTrialCalendarPreviewReadiness({
+        location: loc,
+        trialConfig: TRIAL_CONFIG[loc.id],
+      });
+      if (!preview.ready) {
+        log.warn("calendar.trial-location.not-ready", {
+          locationId: loc.id,
+          missing: trialReadiness.missing,
+          previewMissing: preview.missing,
+        });
+        return NextResponse.json(
+          {
+            error: "Kids trial scheduling is not yet available for this club.",
+            code: "trial_location_not_ready",
+            locationId: loc.id,
+          },
+          { status: 409 },
+        );
+      }
+      kidTrialProgramId = preview.programId;
+      log.info("calendar.trial-location.preview-only", { locationId: loc.id });
+    }
   }
 
   // Booking window (Ibtissam Jun 11): for kid trials, never return classes
@@ -108,7 +132,7 @@ export async function GET(request: NextRequest) {
   // scheduled in the location's Kid's Trials program. Drops all the
   // regular recurring kid classes (Little Freshman / Junior / etc.)
   // that aren't trial-eligible. Other intents pass through unfiltered.
-  const programIds = trialReadiness?.ready ? String(trialReadiness.programId) : undefined;
+  const programIds = kidTrialProgramId ? String(kidTrialProgramId) : undefined;
 
   try {
     const result = await authedMindbodyGet<{ Classes?: unknown[] }>(log, {

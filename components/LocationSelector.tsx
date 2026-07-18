@@ -3,7 +3,10 @@
 import { LOCATIONS, type Location } from "@/config/locations";
 import { TRIAL_CONFIG } from "@/config/trial-config";
 import { getDealPipeline, getHubspotPreferredLocation } from "@/config/hubspot-deals";
-import { getKidsTrialReadiness } from "@/config/kids-trial-readiness";
+import {
+  getKidsTrialCalendarPreviewReadiness,
+  getKidsTrialReadiness,
+} from "@/config/kids-trial-readiness";
 
 interface Props {
   selectedId: string | null;
@@ -37,7 +40,7 @@ export default function LocationSelector({
 
       <div className="loc-grid">
         {LOCATIONS.map((loc) => {
-          const enabled = trialOnly
+          const fullyReady = trialOnly
             ? getKidsTrialReadiness({
                 location: loc,
                 trialConfig: TRIAL_CONFIG[loc.id],
@@ -45,6 +48,16 @@ export default function LocationSelector({
                 preferredLocation: getHubspotPreferredLocation(loc.id),
               }).ready
             : loc.publicBookingEnabled;
+          // Browse-only: the club's program-filtered calendar may be viewed
+          // even though booking is not yet open there.
+          const previewOnly =
+            trialOnly &&
+            !fullyReady &&
+            getKidsTrialCalendarPreviewReadiness({
+              location: loc,
+              trialConfig: TRIAL_CONFIG[loc.id],
+            }).ready;
+          const enabled = fullyReady || previewOnly;
           const on = enabled && selectedId === loc.id;
           const unavailableReason = trialOnly
             ? loc.trialUnavailableReason
@@ -54,18 +67,36 @@ export default function LocationSelector({
               <div className="loc-top">
                 <span className="state-chip">{loc.state}</span>
                 <span className="loc-status" aria-hidden="true">
-                  {enabled ? (on ? "Selected" : "Online") : "Setup in progress"}
+                  {enabled
+                    ? on
+                      ? "Selected"
+                      : previewOnly
+                        ? "Calendar preview"
+                        : "Online"
+                    : "Setup in progress"}
                 </span>
               </div>
               <div className="loc-name">{loc.name}</div>
               <div className="loc-addr">{shortAddress(loc)}</div>
+              {previewOnly && (
+                <div className="loc-unavailable-reason">
+                  Trial times are still being posted — take a look at the calendar while
+                  online booking is finished.
+                </div>
+              )}
               {!enabled && unavailableReason && (
                 <div className="loc-unavailable-reason">{unavailableReason}</div>
               )}
               <div className="loc-foot">
                 {enabled ? (
                   <span className="loc-go">
-                    {on ? "Selected" : trialOnly ? "See trial classes" : "Choose this club"}
+                    {on
+                      ? "Selected"
+                      : previewOnly
+                        ? "Preview the calendar"
+                        : trialOnly
+                          ? "See trial classes"
+                          : "Choose this club"}
                     <span aria-hidden="true">→</span>
                   </span>
                 ) : (
@@ -95,7 +126,11 @@ export default function LocationSelector({
               type="button"
               onClick={() => onSelect(loc)}
               aria-pressed={on}
-              aria-label={`See trial classes at ${loc.name}`}
+              aria-label={
+                previewOnly
+                  ? `Preview the trial calendar at ${loc.name}; online booking is not open yet`
+                  : `See trial classes at ${loc.name}`
+              }
               className={`loc-card loc-card--enabled ${on ? "on" : ""}`}
             >
               {cardContent}

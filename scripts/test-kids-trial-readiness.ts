@@ -4,9 +4,11 @@ import type { Location } from "../config/locations";
 import type { LocationTrialConfig } from "../config/trial-config";
 
 const readinessModuleUrl = new URL("../config/kids-trial-readiness.ts", import.meta.url).href;
-const { getKidsTrialReadiness, getKidsTrialStaffReadiness } = (await import(
-  readinessModuleUrl
-)) as typeof import("../config/kids-trial-readiness");
+const {
+  getKidsTrialCalendarPreviewReadiness,
+  getKidsTrialReadiness,
+  getKidsTrialStaffReadiness,
+} = (await import(readinessModuleUrl)) as typeof import("../config/kids-trial-readiness");
 
 const location: Location = {
   id: "readiness-test",
@@ -88,6 +90,57 @@ try {
   });
   assert.equal(revoked.ready, false);
   if (!revoked.ready) assert(revoked.missing.includes("mindbody_site_authorized"));
+
+  // Browse-only calendar preview: strictly weaker than public readiness and
+  // never implied by it — the flag must be explicit, and preview never makes
+  // a club publicly ready.
+  const previewOff = getKidsTrialCalendarPreviewReadiness({ location, trialConfig });
+  assert.equal(previewOff.ready, false);
+  if (!previewOff.ready) assert(previewOff.missing.includes("calendar_preview_enabled"));
+
+  const previewLocation: Location = { ...location, trialCalendarPreviewEnabled: true };
+  const previewOn = getKidsTrialCalendarPreviewReadiness({
+    location: previewLocation,
+    trialConfig,
+  });
+  assert.equal(previewOn.ready, true);
+  if (previewOn.ready) assert.equal(previewOn.programId, 61);
+
+  // Preview does not unlock the public flow: the same club still fails the
+  // full readiness gate.
+  const previewStillNotPublic = getKidsTrialReadiness({
+    location: previewLocation,
+    trialConfig,
+    pipeline,
+    preferredLocation: "Test - New York",
+  });
+  assert.equal(previewStillNotPublic.ready, false);
+
+  // Preview requires an authorized site plus verified Program + $0 Service —
+  // the removed unfiltered-calendar fallback can never resurface through it.
+  const previewUnauthorized = getKidsTrialCalendarPreviewReadiness({
+    location: {
+      ...previewLocation,
+      trialLaunchEvidence: { ...previewLocation.trialLaunchEvidence!, mindbodySiteAuthorized: false },
+    },
+    trialConfig,
+  });
+  assert.equal(previewUnauthorized.ready, false);
+  if (!previewUnauthorized.ready) {
+    assert(previewUnauthorized.missing.includes("mindbody_site_authorized"));
+  }
+  const previewNoProgram = getKidsTrialCalendarPreviewReadiness({
+    location: { ...previewLocation, kidTrialProgramId: undefined },
+    trialConfig,
+  });
+  assert.equal(previewNoProgram.ready, false);
+  if (!previewNoProgram.ready) assert(previewNoProgram.missing.includes("mindbody_program_id"));
+  const previewNoService = getKidsTrialCalendarPreviewReadiness({
+    location: previewLocation,
+    trialConfig: { ...trialConfig, trialServiceId: undefined },
+  });
+  assert.equal(previewNoService.ready, false);
+  if (!previewNoService.ready) assert(previewNoService.missing.includes("mindbody_service_id"));
 } finally {
   if (originalPublicLaunch === undefined) {
     delete process.env.NEXT_PUBLIC_KIDS_TRIAL_PUBLIC_LAUNCH_ENABLED;

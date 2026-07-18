@@ -21,6 +21,12 @@ export type KidsTrialReadinessRequirement =
   | "hubspot_pipeline"
   | "hubspot_preferred_location";
 
+export type KidsTrialCalendarPreviewRequirement =
+  | "calendar_preview_enabled"
+  | "mindbody_site_authorized"
+  | "mindbody_program_id"
+  | "mindbody_service_id";
+
 export type KidsTrialStaffReadinessRequirement =
   | "mindbody_site_authorized"
   | "hubspot_deal_ledger_verified"
@@ -180,6 +186,31 @@ export function getKidsTrialReadiness({
  * without stranding an in-flight booking. The current server-side Mindbody
  * write allowlist remains a separate mandatory check at the mutation point.
  */
+/**
+ * Browse-only calendar preview: strictly weaker than public readiness and
+ * never a booking gate. It only decides whether parents may SEE this club's
+ * program-filtered trial calendar (including its honest empty state) before
+ * the full launch checklist passes. Requires an authorized Mindbody site plus
+ * the verified Program and $0 Service IDs so the removed unfiltered-calendar
+ * fallback can never resurface through preview.
+ */
+export function getKidsTrialCalendarPreviewReadiness({
+  location,
+  trialConfig,
+}: Pick<KidsTrialReadinessInput, "location" | "trialConfig">):
+  | { ready: true; location: Location; programId: number }
+  | { ready: false; location: Location; missing: KidsTrialCalendarPreviewRequirement[] } {
+  const missing: KidsTrialCalendarPreviewRequirement[] = [];
+  if (location.trialCalendarPreviewEnabled !== true) missing.push("calendar_preview_enabled");
+  if (!location.trialLaunchEvidence?.mindbodySiteAuthorized) {
+    missing.push("mindbody_site_authorized");
+  }
+  if (!isPositiveInteger(location.kidTrialProgramId)) missing.push("mindbody_program_id");
+  if (!isPositiveInteger(trialConfig?.trialServiceId)) missing.push("mindbody_service_id");
+  if (missing.length > 0) return { ready: false, location, missing };
+  return { ready: true, location, programId: location.kidTrialProgramId! };
+}
+
 export function getKidsTrialStaffReadiness({
   location,
   trialConfig,
