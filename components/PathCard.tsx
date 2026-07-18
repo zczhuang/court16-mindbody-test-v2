@@ -26,7 +26,7 @@ export default function PathCard({
   description,
   cta,
   href,
-  accentColor = "#FFE033",
+  accentColor = "#FFFA00",
 }: Props) {
   const ref = useRef<HTMLAnchorElement>(null);
   const [hover, setHover] = useState(false);

@@ -22,7 +22,7 @@ export default function ProgressBar({ step }: Props) {
     <div className="c16-progress trial-progress">
       <div className="trial-hero-copy">
         <div className="trial-kicker">Free kids tennis trial</div>
-        <h1>Find their first Court 16 class.</h1>
+        <h1>Book Your Kids Tennis Trial</h1>
         <p className="prog-lead">
           Choose a club and an age-appropriate trial time. It&apos;s free, we provide the
           racquet, and our team will confirm the spot.

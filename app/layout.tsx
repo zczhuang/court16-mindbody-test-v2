@@ -1,23 +1,18 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, Inter, Poppins } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 
-const display = Bricolage_Grotesque({
-  subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
-  variable: "--font-bricolage",
-  display: "swap",
-});
-const sans = Inter({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  variable: "--font-inter",
-  display: "swap",
-});
-const trialBrand = Poppins({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800", "900"],
-  variable: "--font-poppins",
+// Court 16's brand typeface, self-hosted from the same Gilroy cuts the
+// Squarespace site loads: Regular (body), SemiBold (h2/h3), ExtraBold
+// (nav/buttons/eyebrows), Heavy (display headlines).
+const gilroy = localFont({
+  src: [
+    { path: "../public/fonts/Gilroy-Regular.woff2", weight: "400", style: "normal" },
+    { path: "../public/fonts/Gilroy-SemiBold.woff2", weight: "600", style: "normal" },
+    { path: "../public/fonts/Gilroy-ExtraBold.woff2", weight: "800", style: "normal" },
+    { path: "../public/fonts/Gilroy-Heavy.woff2", weight: "900", style: "normal" },
+  ],
+  variable: "--font-gilroy",
   display: "swap",
 });
 
@@ -28,10 +23,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html
-      lang="en"
-      className={`${display.variable} ${sans.variable} ${trialBrand.variable}`}
-    >
+    <html lang="en" className={gilroy.variable}>
       <body className="app-root">{children}</body>
     </html>
   );

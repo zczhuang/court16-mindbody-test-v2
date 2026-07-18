@@ -33,7 +33,7 @@ export default function Home() {
               description="Ages 3–17. Browse real classes, pick a time, and staff confirms within a few hours."
               cta="Start kids trial"
               href="/trial"
-              accentColor="#FFE033"
+              accentColor="#FFFA00"
             />
             <PathCard
               eyebrow="For you"
