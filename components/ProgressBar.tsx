@@ -11,7 +11,7 @@ interface Props {
 const STEPS: { k: TrialStep; n: number; label: string }[] = [
   { k: "location", n: 1, label: "Choose a club" },
   { k: "calendar", n: 2, label: "Pick a class" },
-  { k: "details", n: 3, label: "Parent details" },
+  { k: "details", n: 3, label: "Family details" },
 ];
 
 export default function ProgressBar({ step }: Props) {
@@ -24,15 +24,16 @@ export default function ProgressBar({ step }: Props) {
         <div className="trial-kicker">Free kids tennis trial</div>
         <h1>Find their first Court 16 class.</h1>
         <p className="prog-lead">
-          Pick a club and an age-appropriate class. We&apos;ll check for an existing family,
-          create only the profiles that are needed, and have our team confirm the trial.
+          Choose a club and an age-appropriate trial time. It&apos;s free, we provide the
+          racquet, and our team will confirm the spot.
         </p>
       </div>
-      <div className="prog-rail" aria-label="Trial request progress">
+      <nav className="prog-rail" aria-label="Trial request progress">
         {STEPS.map((s, i) => (
           <React.Fragment key={s.k}>
             <div
               className={`prog-step ${i <= effectiveIdx ? "on" : ""} ${i === effectiveIdx ? "current" : ""}`}
+              aria-current={i === effectiveIdx ? "step" : undefined}
             >
               <span className="prog-dot">{i < effectiveIdx ? "✓" : s.n}</span>
               <span className="prog-lbl">{s.label}</span>
@@ -42,7 +43,7 @@ export default function ProgressBar({ step }: Props) {
             )}
           </React.Fragment>
         ))}
-      </div>
+      </nav>
     </div>
   );
 }

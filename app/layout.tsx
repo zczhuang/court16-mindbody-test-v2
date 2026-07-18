@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Bricolage_Grotesque, Inter } from "next/font/google";
+import { Bricolage_Grotesque, Inter, Poppins } from "next/font/google";
 import "./globals.css";
 
 const display = Bricolage_Grotesque({
@@ -14,6 +14,12 @@ const sans = Inter({
   variable: "--font-inter",
   display: "swap",
 });
+const trialBrand = Poppins({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800", "900"],
+  variable: "--font-poppins",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Court 16 Booking | Tennis Remixed",
@@ -24,7 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html
       lang="en"
-      className={`${display.variable} ${sans.variable}`}
+      className={`${display.variable} ${sans.variable} ${trialBrand.variable}`}
     >
       <body className="app-root">{children}</body>
     </html>

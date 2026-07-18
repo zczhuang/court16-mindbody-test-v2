@@ -3,8 +3,10 @@
 // Design notes (these matter — BLINK failed exactly here):
 //   1. NEVER call AddClient without GetClients first. Duplicate client records
 //      are the #1 cause of "sync is broken" support tickets.
-//   2. Every write call defaults to Test=true unless MINDBODY_WRITE_MODE === "live".
-//      Even in live mode, individual callers can still opt-in to Test=true.
+//   2. MINDBODY_WRITE_MODE controls Test=true only on endpoints that support
+//      it. Consumer-mode AddClient/AddClientToClass reject Test on real sites,
+//      so those calls omit the flag and persist. Site authorization and
+//      application launch gates are the production safety boundary.
 //   3. StaffUserTokens are cached per SiteId for ~50 minutes (MindBody tokens
 //      live for ~60 minutes). A token issued for one club must never be reused
 //      against another club during a multi-site serverless invocation.
@@ -16,6 +18,7 @@
 // layer — this file is the MindBody adapter, not the app's business logic.
 
 import type { Logger } from "./logger";
+import { assertMindbodyWriteAllowed } from "./mindbody-write-guard";
 
 export interface MindbodyConfig {
   apiKey: string;
@@ -665,6 +668,7 @@ export async function addClient(
   log: Logger,
   input: AddClientInput,
 ): Promise<MindbodyClient> {
+  assertMindbodyWriteAllowed(cfg.siteId, "AddClient");
   const res = await authedFetch<MindbodyClient & { Client?: MindbodyClient }>(cfg, log, {
     method: "POST",
     path: "/client/addclient",
@@ -700,6 +704,7 @@ export async function addClientRelationship(
   log: Logger,
   input: AddRelationshipInput,
 ): Promise<unknown> {
+  assertMindbodyWriteAllowed(cfg.siteId, "UpdateClient relationship");
   const clientPayload = {
     Id: input.ClientId,
     ClientRelationships: [
@@ -781,6 +786,7 @@ export async function addClientToClass(
   log: Logger,
   input: AddClientToClassInput,
 ): Promise<unknown> {
+  assertMindbodyWriteAllowed(cfg.siteId, "AddClientToClass");
   return authedFetch(cfg, log, {
     method: "POST",
     path: "/class/addclienttoclass",
@@ -827,6 +833,7 @@ export async function purchaseTrialService(
   log: Logger,
   input: PurchaseTrialServiceInput,
 ): Promise<PurchaseTrialServiceResult> {
+  assertMindbodyWriteAllowed(cfg.siteId, "CheckoutShoppingCart");
   const bearer = await issueSourceStaffToken(cfg, log);
   const body = {
     ClientId: String(input.ClientId),

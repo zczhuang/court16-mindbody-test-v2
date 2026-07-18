@@ -21,7 +21,7 @@ const MONTH_NAMES = [
 export default function DayDetail({ classes, date, selectedClassId, onPick }: Props) {
   if (!date) {
     return (
-      <div className="detail empty-state">
+      <div className="detail empty-state" role="status" aria-live="polite">
         <div className="empty-ball" aria-hidden="true" />
         <div className="es-title">Pick a day to see classes</div>
         <div className="es-sub">
@@ -33,7 +33,7 @@ export default function DayDetail({ classes, date, selectedClassId, onPick }: Pr
 
   if (classes.length === 0) {
     return (
-      <div className="detail empty-state">
+      <div className="detail empty-state" role="status" aria-live="polite">
         <div className="es-title">No trials on this day</div>
         <div className="es-sub">Try another highlighted day for available trial classes.</div>
       </div>
@@ -44,7 +44,7 @@ export default function DayDetail({ classes, date, selectedClassId, onPick }: Pr
   const dLabel = `${DOW_LONG[dt.getDay()]}, ${MONTH_NAMES[dt.getMonth()]} ${dt.getDate()}`;
 
   return (
-    <div className="detail">
+    <div className="detail" aria-live="polite">
       <div className="detail-head">
         <div className="eyebrow">{dLabel}</div>
         <div className="detail-count">

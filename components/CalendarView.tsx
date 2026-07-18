@@ -23,6 +23,12 @@ const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December",
 ];
+const FULL_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  weekday: "long",
+  month: "long",
+  day: "numeric",
+  year: "numeric",
+});
 
 export default function CalendarView({
   classes,
@@ -123,6 +129,10 @@ export default function CalendarView({
           const isToday = dateStr === todayStr;
           const isPast = dateStr < todayStr;
           const isBeyondWindow = !!maxDateStr && dateStr > maxDateStr;
+          const fullDate = FULL_DATE_FORMATTER.format(new Date(year, month - 1, day));
+          const availabilityLabel = has
+            ? `${dayClasses.length} ${dayClasses.length === 1 ? "class" : "classes"}, ${spots} ${spots === 1 ? "spot" : "spots"}`
+            : "No trial classes";
 
           return (
             <button
@@ -131,6 +141,9 @@ export default function CalendarView({
               className={`cal-cell ${isPast || isBeyondWindow ? "past" : ""} ${has && !isBeyondWindow ? "has" : ""} ${isSelected ? "sel" : ""} ${isToday ? "today" : ""}`}
               disabled={!has || isPast || isBeyondWindow}
               onClick={() => onSelectDate(dateStr)}
+              aria-label={`${fullDate}: ${availabilityLabel}`}
+              aria-pressed={has && !isPast && !isBeyondWindow ? isSelected : undefined}
+              aria-current={isToday ? "date" : undefined}
             >
               <span className="cal-num">{day}</span>
               {isToday && !isPast && <span className="today-dot" />}

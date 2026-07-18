@@ -38,6 +38,19 @@ export interface Location {
    * before this becomes true.
    */
   trialBookingEnabled: boolean;
+  /**
+   * Operational evidence required in addition to static IDs. Every boolean
+   * must be true before this club can appear in the public kids-trial flow.
+   * Update only from dated acceptance evidence, not from configuration alone.
+   */
+  trialLaunchEvidence?: {
+    mindbodySiteAuthorized: boolean;
+    upcomingTrialInventoryVerified: boolean;
+    hubspotRoutingVerified: boolean;
+    endToEndAcceptancePassed: boolean;
+    designOwnerApproved: boolean;
+    reviewedAt: string;
+  };
   /** Short parent-facing reason shown for a club that is not trial-ready. */
   trialUnavailableReason?: string;
   /**
@@ -165,7 +178,16 @@ export const LOCATIONS: Location[] = [
     postalCode: "10710",
     timezone: "America/New_York",
     publicBookingEnabled: true,
-    trialBookingEnabled: true,
+    trialBookingEnabled: false,
+    trialUnavailableReason: "The next online kids trial times are being finalized.",
+    trialLaunchEvidence: {
+      mindbodySiteAuthorized: true,
+      upcomingTrialInventoryVerified: false,
+      hubspotRoutingVerified: false,
+      endToEndAcceptancePassed: false,
+      designOwnerApproved: false,
+      reviewedAt: "2026-07-18",
+    },
     loginUrl: LOGIN_URLS.ridgehill,
     // Ibtissam created Program 61 + 4 ClassDescriptions on May 20-21:
     // Little Freshman Trial (115), Freshman/Sophomore Trial (116),

@@ -30,6 +30,13 @@ interface Props {
 
 type FormStep = "family" | "mindbody";
 
+const TRIAL_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  weekday: "long",
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
+
 export default function TrialRequestForm({
   trialClass,
   locationId,
@@ -92,10 +99,13 @@ export default function TrialRequestForm({
   }, [onCancel, submitting]);
 
   useEffect(() => {
+    const previousFocus =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
+      previousFocus?.focus();
     };
   }, []);
 
@@ -108,6 +118,9 @@ export default function TrialRequestForm({
   }, [formStep]);
 
   const derivedAge = childBirthDate ? ageFromDob(childBirthDate) : NaN;
+  const trialDateLabel = TRIAL_DATE_FORMATTER.format(
+    new Date(`${trialClass.date}T00:00:00`),
+  );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -155,7 +168,7 @@ export default function TrialRequestForm({
       return;
     }
     if (!parentGender || !childGender) {
-      setError("Select the Mindbody gender field for both the parent and child.");
+      setError("Select the required gender field for both the parent and child.");
       return;
     }
     setSubmitting(true);
@@ -235,14 +248,12 @@ export default function TrialRequestForm({
             >
               {formStep === "family"
                 ? "Tell us about your player."
-                : "Create accurate Mindbody profiles."}
+                : "Finish your family details."}
             </h3>
             <div className="trf-meta">
               <strong>{trialClass.name}</strong>
               <span className="sep">·</span>
-              <span className="mono">
-                {trialClass.dayOfWeek}, {trialClass.time}
-              </span>
+              <span className="mono">{trialDateLabel} at {trialClass.time}</span>
               <span className="sep">·</span>
               <span>{trialClass.coach}</span>
               <span className="sep">·</span>
@@ -269,10 +280,10 @@ export default function TrialRequestForm({
           {formStep === "family" ? (
             <>
               <div className="trf-account-note">
-                <strong>We skip the 11-step Mindbody signup.</strong>
+                <strong>One quick form. We&apos;ll handle the setup.</strong>
                 <span>
-                  Court 16 collects the essentials here, creates the parent and child
-                  profiles when safe, and lets Mindbody send its secure account-claim link.
+                  No credit card is needed. We&apos;ll use these details to prepare the
+                  family records, and Mindbody will send any secure account email.
                 </span>
               </div>
               <div className="trf-section">
@@ -303,7 +314,7 @@ export default function TrialRequestForm({
                 </div>
                 <Field
                   label="Email *"
-                  hint="If a new parent account is created, Mindbody sends the account-claim email here."
+                  hint="We'll send trial updates here. Mindbody may also send a secure account email."
                 >
                   <input
                     type="email"
@@ -327,7 +338,7 @@ export default function TrialRequestForm({
                       className="trf-input"
                     />
                   </Field>
-                  <Field label="Your date of birth *" hint="Required to create the parent Mindbody profile.">
+                  <Field label="Your date of birth *" hint="Needed to prepare the family account.">
                     <input
                       type="date"
                       required
@@ -369,7 +380,7 @@ export default function TrialRequestForm({
                   hint={
                     !Number.isNaN(derivedAge)
                       ? `Age ${derivedAge} — we'll match the right class level.`
-                      : "Used for age matching and the child's Mindbody profile."
+                      : "Used to match the right class."
                   }
                 >
                   <input
@@ -437,30 +448,28 @@ export default function TrialRequestForm({
                   />
                 </Field>
                 <div className="trf-family-note">
-                  The parent email is also the child's reachable family email. Your child
-                  does not need a password; staff can help link the existing child after
-                  the parent claims the account.
+                  Your child shares the parent contact email and never needs a separate
+                  login. Court 16 staff will help with any final family-account link.
                 </div>
               </div>
             </>
           ) : (
             <>
               <div className="trf-account-note">
-                <strong>No made-up profile data.</strong>
+                <strong>Keep the family profile accurate.</strong>
                 <span>
-                  Mindbody requires the details below only when we create new profiles.
-                  We use one household address for both profiles; if we find an existing
-                  family, we do not overwrite it. These private fields are never copied
-                  into HubSpot.
+                  Mindbody asks for the details below when a new account is prepared. We
+                  use the household address for both parent and child and protect it under
+                  Court 16&apos;s Privacy Policy.
                 </span>
               </div>
 
               <div className="trf-section">
-                <div className="eyebrow">Mindbody required field</div>
+                <div className="eyebrow">Profile details</div>
                 <div className="trf-grid">
                   <Field
-                    label="Parent gender in Mindbody *"
-                    hint={`Options configured by this club in Mindbody: ${genderOptions.join(", ")}.`}
+                    label="Parent or guardian gender *"
+                    hint="Required by Mindbody for this club."
                   >
                     <select
                       required
@@ -481,8 +490,8 @@ export default function TrialRequestForm({
                     </select>
                   </Field>
                   <Field
-                    label="Child gender in Mindbody *"
-                    hint="Saved on the child's Mindbody reporting record."
+                    label="Child gender *"
+                    hint="Required by Mindbody for this club."
                   >
                     <select
                       required
@@ -576,6 +585,13 @@ export default function TrialRequestForm({
             </>
           )}
 
+          <p className="trf-privacy">
+            By sending this request, you agree Court 16 may use these details to arrange
+            the trial and prepare linked Mindbody records. See our{" "}
+            <a href="https://www.court16.com/terms/privacy-policy">Privacy Policy</a> and{" "}
+            <a href="https://www.court16.com/terms/terms-of-use">Terms of Use</a>.
+          </p>
+
           {error && (
             <div className="trf-error" role="alert">
               {error}
@@ -620,7 +636,10 @@ export default function TrialRequestForm({
           display: flex;
           align-items: flex-start;
           justify-content: center;
-          padding: 24px;
+          padding: max(12px, env(safe-area-inset-top))
+            max(12px, env(safe-area-inset-right))
+            max(12px, env(safe-area-inset-bottom))
+            max(12px, env(safe-area-inset-left));
           background: color-mix(in oklab, var(--c16-ink), transparent 40%);
           backdrop-filter: blur(4px);
           overflow-y: auto;
@@ -640,7 +659,8 @@ export default function TrialRequestForm({
           overflow: hidden;
           display: flex;
           flex-direction: column;
-          max-height: calc(100vh - 48px);
+          max-height: calc(100vh - 24px);
+          max-height: calc(100dvh - 24px);
         }
         .trf-head {
           padding: 24px 26px 20px;
@@ -735,6 +755,7 @@ export default function TrialRequestForm({
         }
         .trf-input {
           width: 100%;
+          min-height: 44px;
           padding: 11px 14px;
           font-size: 14px;
           font-family: var(--f-sans);
@@ -758,6 +779,19 @@ export default function TrialRequestForm({
           font-size: 13px;
           font-weight: 600;
         }
+        .trf-privacy {
+          margin: 0;
+          color: var(--c16-ink-3);
+          font-size: 11px;
+          line-height: 1.55;
+        }
+        .trf-privacy a {
+          color: var(--c16-black);
+          font-weight: 700;
+          text-decoration: underline;
+          text-decoration-color: var(--c16-yellow);
+          text-underline-offset: 3px;
+        }
         .trf-account-note,
         .trf-family-note {
           display: grid;
@@ -778,7 +812,7 @@ export default function TrialRequestForm({
           color: var(--c16-ink-2);
         }
         .trf-foot {
-          padding: 16px 26px;
+          padding: 16px 26px max(16px, env(safe-area-inset-bottom));
           border-top: 1px solid var(--c16-line);
           background: var(--c16-paper-2);
           display: flex;

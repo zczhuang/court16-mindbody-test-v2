@@ -23,7 +23,11 @@ export default function ConfirmationScreen({ request, correlationId, status }: P
           ✓
         </div>
         <div className="eyebrow">Trial request received</div>
-        <h1>Nice choice. We&apos;ll take it from here.</h1>
+        <h1 id="trial-step-heading" tabIndex={-1}>
+          {accountCreated
+            ? "Request received. Check your Mindbody email."
+            : "Request received. Our team is checking the account."}
+        </h1>
         <p>
           We&apos;re checking <strong>{childName}&apos;s</strong> spot in{" "}
           <strong>{request.className.split(" I ")[0]}</strong> on{" "}

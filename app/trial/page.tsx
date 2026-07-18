@@ -1,7 +1,7 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import RedesignChrome from "@/components/RedesignChrome";
 import ProgressBar from "@/components/ProgressBar";
 import LocationSelector from "@/components/LocationSelector";
@@ -9,6 +9,7 @@ import CalendarView from "@/components/CalendarView";
 import DayDetail from "@/components/DayDetail";
 import TrialRequestForm from "@/components/TrialRequestForm";
 import ConfirmationScreen from "@/components/ConfirmationScreen";
+import TrialSiteFooter from "@/components/TrialSiteFooter";
 import { getLocationById, type Location } from "@/config/locations";
 import type {
   TrialClass,
@@ -47,8 +48,9 @@ function isTrialLocationReady(location: Location | undefined): location is Locat
 }
 
 function TrialInner() {
+  const router = useRouter();
   const params = useSearchParams();
-  const { location: rememberedLocation, setLocation: setGlobalLoc } = useSelectedLocation();
+  const { setLocation: setGlobalLoc } = useSelectedLocation();
   const urlLocation = params.get("location");
   // A bare /trial always starts at club selection. A location deep link may
   // skip ahead only when that club's trial pipeline is verified and enabled.
@@ -57,15 +59,9 @@ function TrialInner() {
 
   const [step, setStep] = useState<Step>(preResolved ? "calendar" : "location");
   const [location, setLocation] = useState<Location | null>(preResolved);
+  const syncedUrlLocationRef = useRef<string | null | undefined>(undefined);
+  const renderedStepRef = useRef<Step>(step);
 
-  // Mirror a verified URL-provided location into shared location state.
-  useEffect(() => {
-    if (urlLocation) {
-      const loc = getLocationById(urlLocation);
-      if (isTrialLocationReady(loc) && loc.id !== rememberedLocation?.id)
-        setGlobalLoc(loc);
-    }
-  }, [urlLocation, rememberedLocation, setGlobalLoc]);
   const [allClasses, setAllClasses] = useState<TrialClass[]>([]);
   const [ageFilter, setAgeFilter] = useState<number | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
@@ -82,6 +78,31 @@ function TrialInner() {
   const [calYear, setCalYear] = useState(now.getFullYear());
   const [calMonth, setCalMonth] = useState(now.getMonth() + 1);
 
+  // Keep the visible step in sync with browser Back/Forward while rejecting
+  // deep links for clubs that have not passed the launch-readiness gate.
+  useEffect(() => {
+    if (submittedRequest || syncedUrlLocationRef.current === urlLocation) return;
+    syncedUrlLocationRef.current = urlLocation;
+
+    // A history navigation represents a new visible step, so discard any
+    // modal or class state from the page we just left. Forward navigation may
+    // restore the club/calendar, but never a stale, previously open form.
+    setShowFormModal(false);
+    setSelectedClass(null);
+    setSelectedDate(null);
+    setAgeFilter(null);
+
+    const loc = urlLocation ? getLocationById(urlLocation) : undefined;
+    if (isTrialLocationReady(loc)) {
+      setLocation(loc);
+      setGlobalLoc(loc);
+      setStep("calendar");
+    } else {
+      setLocation(null);
+      setStep("location");
+    }
+  }, [urlLocation, submittedRequest, setGlobalLoc]);
+
   const visibleClasses =
     ageFilter != null ? filterByAge(allClasses, ageFilter) : allClasses;
   const dayClasses = selectedDate
@@ -89,9 +110,10 @@ function TrialInner() {
     : [];
 
   const fetchClasses = useCallback(
-    async (loc: Location) => {
+    async (loc: Location, signal?: AbortSignal) => {
       setLoading(true);
       setError(null);
+      setAllClasses([]);
       try {
         // Fetch the complete booking window in one request. A month-only
         // request falsely showed an empty state near month-end when valid
@@ -103,6 +125,7 @@ function TrialInner() {
         // Mindbody is queried; there is no unfiltered kids-class fallback.
         const resp = await fetch(
           `/api/mindbody/calendar?locationId=${loc.id}&startDate=${startDate}&endDate=${endDate}&intent=kid_trial`,
+          { signal },
         );
         if (!resp.ok) throw new Error("Failed to load classes");
         const data = await resp.json();
@@ -125,33 +148,53 @@ function TrialInner() {
         });
         setAllClasses(available);
       } catch (err) {
+        if (signal?.aborted) return;
         setError(err instanceof Error ? err.message : "Failed to load classes");
         setAllClasses([]);
       } finally {
-        setLoading(false);
+        if (!signal?.aborted) setLoading(false);
       }
     },
     [],
   );
 
   useEffect(() => {
-    if (location && step === "calendar") fetchClasses(location);
+    if (!location || step !== "calendar") return;
+    const controller = new AbortController();
+    void fetchClasses(location, controller.signal);
+    return () => controller.abort();
   }, [location, step, fetchClasses]);
+
+  useEffect(() => {
+    if (renderedStepRef.current === step) return;
+    renderedStepRef.current = step;
+    const frame = window.requestAnimationFrame(() => {
+      const heading = document.querySelector<HTMLElement>("#trial-step-heading");
+      heading?.focus({ preventScroll: true });
+      heading?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [step]);
 
   function selectLoc(loc: Location) {
     if (!isTrialLocationReady(loc)) return;
     setLocation(loc);
     setGlobalLoc(loc);
-  }
-
-  function continueFromLoc() {
-    if (location) setStep("calendar");
+    setSelectedDate(null);
+    setSelectedClass(null);
+    setAgeFilter(null);
+    setStep("calendar");
+    router.push(`/trial?location=${encodeURIComponent(loc.id)}`, { scroll: false });
   }
 
   function backToLoc() {
     setStep("location");
+    setLocation(null);
+    setShowFormModal(false);
     setSelectedDate(null);
     setSelectedClass(null);
+    setAgeFilter(null);
+    router.push("/trial", { scroll: false });
   }
 
   function handleDateSelect(date: string) {
@@ -240,21 +283,22 @@ function TrialInner() {
 
   if (step === "confirmed" && submittedRequest) {
     return (
-      <>
+      <div className="trial-page-shell">
         <RedesignChrome />
         <ConfirmationScreen
           request={submittedRequest}
           correlationId={submittedCorrelationId}
           status={submittedStatus}
         />
-      </>
+        <TrialSiteFooter />
+      </div>
     );
   }
 
   return (
-    <>
+    <div className="trial-page-shell">
       <RedesignChrome />
-      <div className="c16-container">
+      <main className="c16-container" id="main-content">
         <ProgressBar step={showFormModal ? "details" : step} />
 
         {step === "location" && (
@@ -264,26 +308,6 @@ function TrialInner() {
               onSelect={selectLoc}
               trialOnly
             />
-            {location && (
-              <div className="sticky-continue">
-                <div className="sc-inner">
-                  <div className="sc-label">
-                    <span className="eyebrow">Selected</span>
-                    <strong>{location.name}</strong>
-                    <span className="sc-addr">
-                      {location.address}, {location.city}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    className="btn primary"
-                    onClick={continueFromLoc}
-                  >
-                    See available classes <span aria-hidden="true">→</span>
-                  </button>
-                </div>
-              </div>
-            )}
           </>
         )}
 
@@ -295,7 +319,9 @@ function TrialInner() {
               </button>
               <div className="cal-context">
                 <span className="eyebrow">Step 2 of 3</span>
-                <h2 className="section-title">Choose their trial class.</h2>
+                <h2 id="trial-step-heading" className="section-title" tabIndex={-1}>
+                  Choose their trial class.
+                </h2>
                 <p className="section-sub">
                   Select a highlighted day, then choose the class that best fits your child.
                 </p>
@@ -305,11 +331,17 @@ function TrialInner() {
                     {location.state} — {location.name}
                   </span>
                 </div>
+                <div className="trial-reassurance" aria-label="Trial essentials">
+                  <span>Free trial</span>
+                  <span>No credit card</span>
+                  <span>Racquet provided</span>
+                  <span>Ages 3–17</span>
+                </div>
               </div>
             </div>
 
             {loading && (
-              <div className="empty-state">
+              <div className="empty-state" role="status" aria-live="polite">
                 <div className="loading-ball" aria-hidden="true" />
                 <div className="es-title">Checking trial availability…</div>
                 <div className="es-sub">This usually takes only a moment.</div>
@@ -317,7 +349,7 @@ function TrialInner() {
             )}
 
             {error && (
-              <div className="empty-state booking-error">
+              <div className="empty-state booking-error" role="alert">
                 <div className="es-title">
                   We can still help at {location?.name || "this club"}.
                 </div>
@@ -340,7 +372,7 @@ function TrialInner() {
             )}
 
             {!loading && !error && allClasses.length === 0 && (
-              <div className="empty-state no-classes-state">
+              <div className="empty-state no-classes-state" role="status">
                 <div className="empty-ball" aria-hidden="true" />
                 <div className="es-title">No online trial times are posted right now.</div>
                 <div className="es-sub">
@@ -387,7 +419,7 @@ function TrialInner() {
                     ))}
                   </select>
                   {ageFilter != null && visibleClasses.length === 0 && (
-                    <span className="age-filter-empty">
+                    <span className="age-filter-empty" role="status">
                       No classes match age {ageFilter}.
                     </span>
                   )}
@@ -418,7 +450,7 @@ function TrialInner() {
             )}
           </section>
         )}
-      </div>
+      </main>
 
       {showFormModal && selectedClass && location && (
         <TrialRequestForm
@@ -434,7 +466,8 @@ function TrialInner() {
           }}
         />
       )}
-    </>
+      <TrialSiteFooter />
+    </div>
   );
 }
 

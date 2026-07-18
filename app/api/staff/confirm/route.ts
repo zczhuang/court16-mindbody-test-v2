@@ -24,7 +24,9 @@ import { createLogger } from "@/lib/logger";
 import { getLocationById } from "@/config/locations";
 import { TRIAL_CONFIG } from "@/config/trial-config";
 import { getDealPipeline } from "@/config/hubspot-deals";
+import { getKidsTrialStaffReadiness } from "@/config/kids-trial-readiness";
 import { withLocalActionLock } from "@/lib/action-lock";
+import { getMindbodyWriteGuard } from "@/lib/mindbody-write-guard";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -154,37 +156,81 @@ async function confirmBooking(payload: ReturnType<typeof verifyToken>) {
   // studio.
   const locationSlug = contact.properties.court16_location_slug;
   const location = locationSlug ? getLocationById(locationSlug) : undefined;
-  const trialConfig = location ? TRIAL_CONFIG[location.id] : undefined;
   const pipeline = location ? getDealPipeline(location.id) : null;
+  const kidTrialReadiness = location
+    ? getKidsTrialStaffReadiness({
+        location,
+        trialConfig: TRIAL_CONFIG[location.id],
+        pipeline,
+      })
+    : null;
+  const trialConfig = kidTrialReadiness?.ready
+    ? kidTrialReadiness.trialConfig
+    : location
+      ? TRIAL_CONFIG[location.id]
+      : undefined;
   if (
     !location ||
-    !location.publicBookingEnabled ||
     !pipeline ||
-    (isKidTrial &&
-      (!location.trialBookingEnabled ||
-        !location.kidTrialProgramId ||
-        !trialConfig?.trialServiceId ||
-        !trialConfig.trialServiceName ||
-        !trialConfig.parentGuardianRelationship))
+    (isKidTrial && !kidTrialReadiness?.ready)
   ) {
     log.warn("staff.confirm.location-not-ready", {
       locationSlug: locationSlug ?? null,
       knownLocation: Boolean(location),
       intent,
-      publicBookingEnabled: location?.publicBookingEnabled ?? false,
-      trialBookingEnabled: location?.trialBookingEnabled ?? false,
       hasProgram: Boolean(location?.kidTrialProgramId),
       hasService: Boolean(trialConfig?.trialServiceId),
       hasServiceName: Boolean(trialConfig?.trialServiceName),
       hasParentGuardianRelationship: Boolean(trialConfig?.parentGuardianRelationship),
       hasPipeline: Boolean(pipeline),
+      missing: kidTrialReadiness && !kidTrialReadiness.ready ? kidTrialReadiness.missing : [],
     });
     return html(
       "This club is missing or its trial automation is not verified. No Mindbody enrollment was attempted. Escalate with the request reference and club.",
       409,
     );
   }
+
+  // The Deal is the immutable per-request location ledger. A Contact can be
+  // reused across clubs, while Mindbody client IDs are site-scoped. Refuse to
+  // enroll when the Deal pipeline and the Contact's ID-owning club disagree.
+  let bookingDeal: Awaited<ReturnType<typeof findDealByCorrelationId>>;
+  try {
+    bookingDeal = await findDealByCorrelationId(hsCfg, log, payload.correlationId);
+  } catch (e) {
+    log.warn("staff.confirm.dealLookup.fail", {
+      error: e instanceof Error ? e.message : String(e),
+    });
+    return html(
+      "The HubSpot booking record could not be verified. No Mindbody enrollment was attempted.",
+      502,
+    );
+  }
+  if (!bookingDeal || bookingDeal.properties.pipeline !== pipeline.pipelineId) {
+    log.warn("staff.confirm.deal-location-mismatch", {
+      correlationId: payload.correlationId,
+      contactLocationSlug: location.id,
+      expectedPipeline: pipeline.pipelineId,
+      actualPipeline: bookingDeal?.properties.pipeline ?? null,
+    });
+    return html(
+      "The request's HubSpot Deal does not match the club that owns these Mindbody client IDs. No enrollment was attempted; review the family and club manually.",
+      409,
+    );
+  }
   mbCfg = { ...mbCfg, siteId: String(location.siteId) };
+  const writeGuard = getMindbodyWriteGuard(mbCfg.siteId);
+  if (!writeGuard.allowed) {
+    log.warn("staff.confirm.mindbody-writes.blocked", {
+      locationSlug: location.id,
+      siteId: mbCfg.siteId,
+      reason: writeGuard.reason,
+    });
+    return html(
+      "Mindbody writes are not authorized for this club on this deployment. No service or enrollment was created.",
+      503,
+    );
+  }
 
   const classId = contact.properties.court16_class_id
     ? Number(contact.properties.court16_class_id)
@@ -355,15 +401,16 @@ async function confirmBooking(payload: ReturnType<typeof verifyToken>) {
 
   await updateContact(hsCfg, log, contact.id, { court16_booking_status: "confirmed" });
 
-  // Advance the Deal in the Trials pipeline. Soft-failure: log + continue.
+  // Advance the already-verified Deal in the Trials pipeline. Soft-failure:
+  // log + continue.
   // The Contact-side status flip above is the canonical signal staff
   // workflows trigger on; the Deal move is for reporting / kanban.
   try {
-    const deal = await findDealByCorrelationId(hsCfg, log, payload.correlationId);
-    if (deal) {
-      await moveDealStage(hsCfg, log, deal.id, pipeline.stages.scheduled);
-      log.info("staff.confirm.dealMoved", { dealId: deal.id, stage: pipeline.stages.scheduled });
-    }
+    await moveDealStage(hsCfg, log, bookingDeal.id, pipeline.stages.scheduled);
+    log.info("staff.confirm.dealMoved", {
+      dealId: bookingDeal.id,
+      stage: pipeline.stages.scheduled,
+    });
   } catch (e) {
     log.warn("staff.confirm.dealMove.fail", { error: e instanceof Error ? e.message : String(e) });
   }

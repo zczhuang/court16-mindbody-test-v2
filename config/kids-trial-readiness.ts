@@ -3,8 +3,14 @@ import type { Location } from "./locations";
 import type { LocationTrialConfig } from "./trial-config";
 
 export type KidsTrialReadinessRequirement =
+  | "public_launch_enabled"
   | "public_booking_enabled"
   | "trial_booking_enabled"
+  | "mindbody_site_authorized"
+  | "upcoming_trial_inventory_verified"
+  | "hubspot_routing_verified"
+  | "end_to_end_acceptance_passed"
+  | "design_owner_approved"
   | "mindbody_program_id"
   | "mindbody_service_id"
   | "mindbody_service_name"
@@ -13,11 +19,24 @@ export type KidsTrialReadinessRequirement =
   | "hubspot_pipeline"
   | "hubspot_preferred_location";
 
+export type KidsTrialStaffReadinessRequirement =
+  | "mindbody_site_authorized"
+  | "end_to_end_acceptance_passed"
+  | "mindbody_program_id"
+  | "mindbody_service_id"
+  | "mindbody_service_name"
+  | "hubspot_pipeline";
+
 type ReadyTrialConfig = LocationTrialConfig & {
   trialServiceId: number;
   trialServiceName: string;
   parentGuardianRelationship: NonNullable<LocationTrialConfig["parentGuardianRelationship"]>;
   mindbodyGenderOptions: NonNullable<LocationTrialConfig["mindbodyGenderOptions"]>;
+};
+
+type ReadyStaffTrialConfig = LocationTrialConfig & {
+  trialServiceId: number;
+  trialServiceName: string;
 };
 
 export type KidsTrialReadiness =
@@ -33,6 +52,20 @@ export type KidsTrialReadiness =
       ready: false;
       location: Location;
       missing: KidsTrialReadinessRequirement[];
+    };
+
+export type KidsTrialStaffReadiness =
+  | {
+      ready: true;
+      location: Location;
+      programId: number;
+      trialConfig: ReadyStaffTrialConfig;
+      pipeline: DealPipelineConfig;
+    }
+  | {
+      ready: false;
+      location: Location;
+      missing: KidsTrialStaffReadinessRequirement[];
     };
 
 interface KidsTrialReadinessInput {
@@ -90,9 +123,20 @@ export function getKidsTrialReadiness({
   preferredLocation,
 }: KidsTrialReadinessInput): KidsTrialReadiness {
   const missing: KidsTrialReadinessRequirement[] = [];
+  const evidence = location.trialLaunchEvidence;
 
+  if (process.env.NEXT_PUBLIC_KIDS_TRIAL_PUBLIC_LAUNCH_ENABLED !== "true") {
+    missing.push("public_launch_enabled");
+  }
   if (!location.publicBookingEnabled) missing.push("public_booking_enabled");
   if (!location.trialBookingEnabled) missing.push("trial_booking_enabled");
+  if (!evidence?.mindbodySiteAuthorized) missing.push("mindbody_site_authorized");
+  if (!evidence?.upcomingTrialInventoryVerified) {
+    missing.push("upcoming_trial_inventory_verified");
+  }
+  if (!evidence?.hubspotRoutingVerified) missing.push("hubspot_routing_verified");
+  if (!evidence?.endToEndAcceptancePassed) missing.push("end_to_end_acceptance_passed");
+  if (!evidence?.designOwnerApproved) missing.push("design_owner_approved");
   if (!isPositiveInteger(location.kidTrialProgramId)) missing.push("mindbody_program_id");
   if (!isPositiveInteger(trialConfig?.trialServiceId)) missing.push("mindbody_service_id");
   if (!hasText(trialConfig?.trialServiceName)) missing.push("mindbody_service_name");
@@ -120,5 +164,42 @@ export function getKidsTrialReadiness({
     },
     pipeline: pipeline!,
     preferredLocation: preferredLocation!,
+  };
+}
+
+/**
+ * Resolve the narrower safety boundary for completing a request that already
+ * reached `pending_staff`. Public-launch, current inventory, and design gates
+ * intentionally do not apply here: operators must be able to stop new intake
+ * without stranding an in-flight booking. The current server-side Mindbody
+ * write allowlist remains a separate mandatory check at the mutation point.
+ */
+export function getKidsTrialStaffReadiness({
+  location,
+  trialConfig,
+  pipeline,
+}: Omit<KidsTrialReadinessInput, "preferredLocation">): KidsTrialStaffReadiness {
+  const missing: KidsTrialStaffReadinessRequirement[] = [];
+  const evidence = location.trialLaunchEvidence;
+
+  if (!evidence?.mindbodySiteAuthorized) missing.push("mindbody_site_authorized");
+  if (!evidence?.endToEndAcceptancePassed) missing.push("end_to_end_acceptance_passed");
+  if (!isPositiveInteger(location.kidTrialProgramId)) missing.push("mindbody_program_id");
+  if (!isPositiveInteger(trialConfig?.trialServiceId)) missing.push("mindbody_service_id");
+  if (!hasText(trialConfig?.trialServiceName)) missing.push("mindbody_service_name");
+  if (!hasExactPipeline(pipeline)) missing.push("hubspot_pipeline");
+
+  if (missing.length > 0) return { ready: false, location, missing };
+
+  return {
+    ready: true,
+    location,
+    programId: location.kidTrialProgramId!,
+    trialConfig: {
+      ...trialConfig!,
+      trialServiceId: trialConfig!.trialServiceId!,
+      trialServiceName: trialConfig!.trialServiceName!,
+    },
+    pipeline: pipeline!,
   };
 }

@@ -33,6 +33,7 @@ import { getKidsTrialReadiness } from "@/config/kids-trial-readiness";
 import type { MindBodyClass, TrialRequest } from "@/lib/trial-types";
 import { consumeSignupRateLimit } from "@/lib/request-rate-limit";
 import { tryAcquireLocalActionLock } from "@/lib/action-lock";
+import { getMindbodyWriteGuard } from "@/lib/mindbody-write-guard";
 import {
   MAX_KIDS_TRIAL_AGE,
   MIN_KIDS_TRIAL_AGE,
@@ -169,6 +170,23 @@ export async function POST(req: Request) {
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     return NextResponse.json({ ok: false, correlationId, error: msg }, { status: 500 });
+  }
+  const writeGuard = getMindbodyWriteGuard(mbCfg.siteId);
+  if (!writeGuard.allowed) {
+    log.warn("trial.mindbody-writes.blocked", {
+      locationId: location.id,
+      siteId: mbCfg.siteId,
+      reason: writeGuard.reason,
+    });
+    return NextResponse.json(
+      {
+        ok: false,
+        correlationId,
+        code: "mindbody_writes_not_authorized",
+        error: "Trial account setup is not yet authorized for this club.",
+      },
+      { status: 503 },
+    );
   }
   const hsCfg = loadHubspotConfig();
   if (!hsCfg) {
@@ -323,6 +341,15 @@ export async function POST(req: Request) {
   // parent doesn't see a 502 and staff can follow up by hand.
   let mbDegraded = false;
 
+  // Contact-scoped Mindbody IDs are a temporary ownership cache, not a
+  // cross-site identity. Preserve their original site pairing when a parent
+  // requests a different club or when legacy data has no owning site.
+  let protectedMindbodyOwnership: {
+    locationSlug?: string;
+    parentId?: string;
+    childId?: string;
+  } | null = null;
+
   try {
     let existing: Awaited<ReturnType<typeof getClientsByEmail>> = [];
 
@@ -339,6 +366,7 @@ export async function POST(req: Request) {
           "court16_mindbody_child_id",
           "court16_booking_status",
           "court16_correlation_id",
+          "court16_location_slug",
         ]);
         const activeStatuses = new Set([
           "pending_staff",
@@ -365,10 +393,15 @@ export async function POST(req: Request) {
             { status: 409 },
           );
         }
-        const knownIds = [
-          contact?.properties?.court16_mindbody_parent_id,
-          contact?.properties?.court16_mindbody_child_id,
-        ].filter((v): v is string => typeof v === "string" && v.length > 0);
+        const storedLocationSlug = contact?.properties?.court16_location_slug?.trim() || undefined;
+        const storedIdsBelongToThisSite = storedLocationSlug === location.id;
+        const storedParentId =
+          contact?.properties?.court16_mindbody_parent_id?.trim() || undefined;
+        const storedChildId = contact?.properties?.court16_mindbody_child_id?.trim() || undefined;
+        const storedIds = [storedParentId, storedChildId].filter(
+          (v): v is string => typeof v === "string" && v.length > 0,
+        );
+        const knownIds = storedIdsBelongToThisSite ? storedIds : [];
         if (knownIds.length > 0) {
           existing = await getClientsByIds(mbCfg, log, knownIds);
           idGuardAmbiguous = existing.length === 0;
@@ -377,11 +410,39 @@ export async function POST(req: Request) {
             status: "ok",
             data: { knownIds, verified: existing.length, ambiguous: idGuardAmbiguous },
           });
+        } else if (storedIds.length > 0 && !storedIdsBelongToThisSite) {
+          // A Mindbody Client.Id is site-scoped. Until the per-booking Deal
+          // ledger stores one ID pair per site, never auto-create or reuse a
+          // family when the Contact's only known IDs belong to another club
+          // or came from legacy data with no owning-site slug.
+          idGuardAmbiguous = true;
+          protectedMindbodyOwnership = {
+            locationSlug: storedLocationSlug,
+            parentId: storedParentId,
+            childId: storedChildId,
+          };
+          trace.push({
+            step: "idFirstGuard",
+            status: "skipped",
+            data: {
+              reason: storedLocationSlug
+                ? "stored MindBody ids belong to another site; manual review required"
+                : "stored MindBody ids have no owning site; manual review required",
+              storedLocationSlug: storedLocationSlug ?? null,
+              requestLocationSlug: location.id,
+            },
+          });
         } else {
           trace.push({
             step: "idFirstGuard",
             status: "skipped",
-            data: { reason: contact ? "contact has no stored MindBody ids" : "no HubSpot contact" },
+            data: {
+              reason: !contact
+                ? "no HubSpot contact"
+                : "contact has no site-scoped MindBody ids",
+              storedLocationSlug: storedLocationSlug ?? null,
+              requestLocationSlug: location.id,
+            },
           });
         }
       } catch (e) {
@@ -577,7 +638,34 @@ export async function POST(req: Request) {
         childMbId: child?.Id != null ? String(child.Id) : undefined,
         baseUrl,
       });
-      await submitFormSafely(hsCfg, log, fields, trace, "hubspot.submitTrialForm (manual_review)", hsContext);
+      const safeFields = protectedMindbodyOwnership
+        ? {
+            ...fields,
+            // Never pair IDs from one Mindbody site with another site's slug.
+            // Empty action URLs also prevent a staff click from attempting a
+            // cross-site enrollment before the family is reviewed manually.
+            court16_location_slug: protectedMindbodyOwnership.locationSlug ?? "",
+            court16_mindbody_parent_id: protectedMindbodyOwnership.parentId,
+            court16_mindbody_child_id: protectedMindbodyOwnership.childId,
+            court16_staff_confirm_url: "",
+            court16_staff_reassign_url: "",
+            court16_staff_deny_url: "",
+          }
+        : fields;
+      await submitFormSafely(
+        hsCfg,
+        log,
+        safeFields,
+        trace,
+        "hubspot.submitTrialForm (manual_review)",
+        hsContext,
+      );
+      const contactProperties = contactPropertiesFromFields(safeFields);
+      if (protectedMindbodyOwnership) {
+        contactProperties.court16_failure_reason = protectedMindbodyOwnership.locationSlug
+          ? `[cross_site_request] Requested ${location.id}; stored Mindbody IDs remain owned by ${protectedMindbodyOwnership.locationSlug}. Manual review required.`
+          : `[mindbody_site_unknown] Requested ${location.id}; stored Mindbody IDs have no owning-site slug. Manual review required.`;
+      }
       const dealCreated = await createDealSafely(
         hsCfg,
         log,
@@ -585,7 +673,7 @@ export async function POST(req: Request) {
           email: body.parentEmail,
           correlationId,
           locationId: location.id,
-          contactProperties: contactPropertiesFromFields(fields),
+          contactProperties,
           classStartsAt: classStartsAtUtc,
           dealName: `${primaryKid.firstName} ${childLastName} - ${body.parentEmail} (manual review)`,
           amount: 0,
@@ -757,9 +845,12 @@ function contactPropertiesFromFields(fields: ReturnType<typeof buildFormFields>)
     // blank Child line).
     child_name: fields.child_name,
     child_1___last_name: fields.child_1___last_name,
+    childage: fields.childage,
+    child_date_of_birth: fields.child_date_of_birth,
     child_1___playing_level: fields.child_1___playing_level,
     school: fields.school,
     lead_source: fields.lead_source,
+    any_question_just_let_us_know: fields.any_question_just_let_us_know,
     court16_correlation_id: fields.court16_correlation_id,
     court16_intent: fields.court16_intent,
     court16_booking_status: fields.court16_booking_status,

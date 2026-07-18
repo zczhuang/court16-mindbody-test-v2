@@ -1,6 +1,6 @@
 # Court 16 kids-trial automation: multi-site readiness and handoff
 
-**Audit date:** 2026-07-17
+**Audit date:** 2026-07-18
 
 **Scope:** Allston, Downtown Brooklyn, Fishtown, Long Island City, Manhattan–FiDi, Newton, and Ridge Hill.
 **Decision rule:** do not enable a club because its Site ID is known. Enable it only after Mindbody authorization, the club's own trial configuration, HubSpot routing, and the full parent/child test all pass.
@@ -11,7 +11,7 @@ The copy/paste owner and admin steps are in [the access-authorization handoff](.
 
 Ridge Hill is the only authorized control site. Its Mindbody source-token probe returned `200`, and its known trial configuration is Program `61` plus $0 Service `100328`. The same source-token probe returned `403` (no site access) for the other six clubs. Consumer/API-key read probes on those six clubs also returned `403`, so consumer mode is **not** a safe fallback.
 
-This proves authorization and configuration visibility only; it does not prove a club is ready for families. The reusable 30-day audit on July 17 found Program `61`, Service `100328`, required fields, and family relationships at Ridge Hill, but returned **zero upcoming Program 61 occurrences**. Ridge Hill therefore needs a schedule check before accepting a real request. The live HubSpot family-status dropdown now exists, but a trustworthy Mindbody claim/link completion readback still does not.
+This proves authorization and configuration visibility only; it does not prove a club is ready for families. The reusable 30-day audit on July 17 found Program `61`, Service `100328`, required fields, and family relationships at Ridge Hill, but returned **zero upcoming Program 61 occurrences**. Ridge Hill is therefore also disabled from public trial requests. The live HubSpot family-status dropdown now exists, but a trustworthy Mindbody claim/link completion readback still does not.
 
 Labels used below:
 
@@ -31,7 +31,7 @@ The live API evidence used source `CedarWindSolutionsLLC`. For the six blocked s
 | **Long Island City** | `985499` | **Verified blocked:** source `403`; consumer reads `403` | **Unknown / unknown** | **Recorded:** pipeline `1460258`; `5321400` → `11096161` | **Blocked** |
 | **Manhattan–FiDi** | `5728093` | **Verified blocked:** source `403`; consumer reads `403` | **Unknown / unknown** | **Recorded:** pipeline `2477627`; `8517561` → `8517634` | **Blocked** |
 | **Newton** | `5751422` | **Verified blocked:** source `403`; consumer reads `403` | **Unknown / unknown** | **Recorded:** pipeline `873061120`; `1307706690` → `1307706693` | **Blocked** |
-| **Ridge Hill** | `5748154` | **Verified:** source token and all six read probes `200`; zero Program 61 occurrences in the next 30 days | **Verified live:** Program `61`; Service `100328`; required fields and family relationships visible | **Verified live:** pipeline `830977386`; `1231873814` → `1231873816` | **Authorized control; schedule required before live requests** |
+| **Ridge Hill** | `5748154` | **Verified:** source token and all six read probes `200`; zero Program 61 occurrences in the next 30 days | **Verified live:** Program `61`; Service `100328`; required fields and family relationships visible | **Verified live:** pipeline `830977386`; `1231873814` → `1231873816`; customer workflows remain off | **Disabled control; inventory, routing test, E2E acceptance, and design approval required** |
 
 Known Site IDs and existing six-site pipeline mappings are configuration facts. Program IDs, Service IDs, required fields, relationship IDs, email settings, and class inventory are **site-specific** and remain unknown wherever the table says unknown.
 
@@ -165,10 +165,14 @@ The application owns orchestration and IDs, not customer email. HubSpot owns Cou
 10. **Legacy HubSpot form workflows overlap the new app.** The old account guide and six Deal-creation workflows are ON. They remain necessary for the current form, so isolate the new API path instead of bulk-disabling production automation.
 11. **Production test records are durable.** There is no safe API-delete path; every write test needs unique tags, named owners, and a cleanup list approved by staff.
 12. **Irreversible actions need a distributed lock.** This branch prevents email scanners from mutating on GET and rejects duplicate staff POSTs within one running server instance. A durable cross-instance idempotency key/lock is still required before horizontally scaled production traffic.
+13. **`MINDBODY_WRITE_MODE=test` is not a global safety switch.** Consumer-mode `AddClient` and `AddClientToClass` reject Mindbody's `Test` flag on real sites, and the `$0` checkout is also persistent. The application now blocks those operations unless the server-wide real-write flag is true and the exact Site ID is allowlisted.
+14. **Contact-scoped IDs remain a transitional model.** The duplicate guard now refuses to use stored Mindbody IDs when the Contact's stored club differs from the requested club or when legacy IDs have no owning-club slug. Those requests stay in manual review with their original ID/site pairing preserved and automated staff action links cleared. A Deal-centric per-booking ledger is still required before repeat families can move safely across clubs without overwriting history.
 
 ## Safety changes implemented in this branch
 
-- Added all seven Site IDs to the shared location registry, with only Ridge Hill marked `trialBookingEnabled`.
+- Added all seven Site IDs to the shared location registry. All seven are now `trialBookingEnabled=false`; Ridge Hill's verified static IDs remain recorded while its missing live evidence stays explicit.
+- Added a default-off global public launch gate plus per-club dated evidence for Mindbody authorization, upcoming inventory, HubSpot routing, end-to-end acceptance, and design-owner approval. Static IDs alone can no longer expose a club.
+- Added a server-only irreversible-write gate: real Mindbody writes require `MINDBODY_REAL_WRITES_ENABLED=true` and the exact Site ID in `MINDBODY_REAL_WRITE_SITE_IDS`. Production refuses the `-99` sandbox as a write target, and all four mutation helpers enforce the guard.
 - Replaced the kids-trial studio-address and hard-coded-gender placeholders with explicit household address plus parent/child Mindbody gender intake; these private fields are written only to Mindbody, not HubSpot.
 - Replaced the fabricated HubSpot defaults (`New to Tennis` and `Other`) with required customer selections for playing level and lead source. Optional school remains explicit as `Not provided` when blank.
 - Added per-site Mindbody gender options to the readiness contract. The public form and server use only the enabled club's configured list, and the live audit fails an enabled club if any configured value is absent from its active Mindbody catalog.
@@ -181,11 +185,13 @@ The application owns orchestration and IDs, not customer email. HubSpot owns Cou
 - Re-read the selected class from Mindbody before any write, require the exact occurrence/program/start time and web-bookable capacity, and replace client-supplied class metadata with the live values.
 - Create the per-request HubSpot Deal before Mindbody `AddClient`; if the durable work item cannot be created, no Mindbody profile or claim email is attempted.
 - Block a second active request for the same Contact so Contact-level workflow fields cannot overwrite an in-flight booking. Deal-centric booking state remains the recommended long-term model.
-- Made staff confirmation fail closed on intent, booking state, enabled club, exact site/service mapping, and the correct child/adult Client ID. Adult staff-assist and kids-trial confirmations now take separate guarded branches.
+- Made staff confirmation fail closed on intent, booking state, exact operational site/service mapping, current Mindbody write authorization, the correct child/adult Client ID, and an exact match between the per-request Deal pipeline and the Contact's ID-owning club. The public-launch switch is intentionally not part of this staff gate, so stopping new intake does not strand already accepted requests.
 - Changed staff confirm/reassign links so GET only renders an explicit confirmation form; only POST mutates. Confirm, reassign, and deny share one same-instance correlation lock to absorb ordinary double clicks and cross-action races while the distributed-lock requirement remains open.
 - Added best-effort IP/email signup throttling. A distributed edge/WAF limit is still required for production-scale abuse protection.
 - Disabled adult payment offers until each displayed price is reconciled to the live Mindbody SKU; payment return now also requires signed state and an exact recent ClientService match.
 - Disabled legacy HubSpot form submission by default for both kids-trial and adult-intro routes. Direct Contact upsert + correlated Deal creation remain the durable intake path; the old form event can be restored only with explicit `HUBSPOT_SUBMIT_LEGACY_TRIAL_FORM=true`.
+- Added child age band, date of birth, and parent notes to the synchronous direct Contact upsert, so staff workflows no longer rely on the disabled legacy form to populate those tokens.
+- Made the stored Mindbody-ID duplicate guard site-aware. IDs from a Contact's previous club—or legacy IDs with no owning-site slug—are never verified or reused against a different Site ID, and the original ID/slug pairing is not overwritten by the manual-review request.
 
 ## Live HubSpot safety changes made on July 17
 
@@ -255,4 +261,4 @@ Use Ridge Hill as the control, then enable one newly authorized club for a small
 8. **Test-data cleanup:** choose who may merge/deactivate duplicates in Mindbody and how test Client IDs are logged. No automated deletion is assumed.
 9. **Rollout order:** select the first newly authorized pilot club after Ridge Hill and approve the five-family acceptance threshold.
 
-Until those decisions and the per-site tests are complete, the safe state is: **no Squarespace cutover; Ridge Hill as the authorized test control only; six additional clubs disabled; all Cedarwind workflows off; legacy form workflows unchanged.**
+Until those decisions and the per-site tests are complete, the safe state is: **no Squarespace cutover; all seven public kids-trial locations disabled; Ridge Hill retained only as the authorized test control; all Cedarwind workflows off; legacy form workflows unchanged.**

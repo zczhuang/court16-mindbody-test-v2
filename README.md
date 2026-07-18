@@ -8,7 +8,7 @@ A minimal Next.js 16 app that runs the four MindBody write calls that BLINK got 
 4. `AddClientRelationship` linking parent → child (Guardian, RelationshipId 20)
 5. `AddClientToClass` (optional, only if a ClassId is supplied)
 
-Every write call ships with `Test=true` until you explicitly flip `MINDBODY_WRITE_MODE=live`. Every run gets a short correlation ID that is stamped into every log line and returned in the response, so a single happy-path execution is trivially traceable across the four calls.
+Every run gets a short correlation ID that is stamped into every log line and returned in the response, so a single happy-path execution is traceable across the calls. Important: `MINDBODY_WRITE_MODE=test` is only honored by endpoints that accept Mindbody's `Test` flag. Consumer-mode `AddClient` and `AddClientToClass` reject that flag on real sites, so those calls are always persistent outside the `-99` sandbox. Treat site authorization and the kids-trial launch gates—not this environment value—as the production safety boundary.
 
 This is **not** the Phase 3 app — it's a test harness designed to prove the one thing that broke the previous vendor's build. Once it runs end-to-end in the sandbox, we know the risk is de-risked.
 
@@ -22,7 +22,7 @@ The ONE thing you may not have yet is a **MindBody developer API key**. The sand
 2. Create an app → copy the `Api-Key`.
 3. Activate your key against sandbox Site `-99` (free; no approval needed).
 
-If you already have a production Court 16 Api-Key, that works too — but keep `MINDBODY_WRITE_MODE=test` and point `MINDBODY_SITE_ID` at `-99` until we're ready for a live dry-run against a real site.
+If you already have a production Court 16 Api-Key, point `MINDBODY_SITE_ID` at `-99` for non-persistent sandbox work. Do not assume `MINDBODY_WRITE_MODE=test` makes a real Court 16 Site ID safe: core consumer-mode create and booking calls still persist there.
 
 > HubSpot and Squarespace creds are **not** needed for this test. The happy path we scoped is MindBody-only. I'll flag this whenever we extend scope.
 
@@ -79,7 +79,7 @@ npx vercel env add MINDBODY_API_KEY production
 npx vercel env add MINDBODY_SITE_ID production            # -99
 npx vercel env add MINDBODY_STAFF_USERNAME production     # mindbodysandboxsite@gmail.com
 npx vercel env add MINDBODY_STAFF_PASSWORD production     # Apitest1234
-npx vercel env add MINDBODY_WRITE_MODE production         # test  (flip to live later)
+npx vercel env add MINDBODY_WRITE_MODE production         # partial endpoint behavior; not a write kill switch
 npx vercel env add TEST_API_TOKEN production              # optional, recommended
 npx vercel --prod
 ```
@@ -88,7 +88,7 @@ Or, via the Vercel dashboard: Import Git repo → Project Settings → Environme
 
 **Recommended:** set `TEST_API_TOKEN` on the deployed instance so random people can't hit your endpoints. Leave it blank locally for convenience.
 
-**Safety switch default:** `MINDBODY_WRITE_MODE=test`. Site `-99` is the MindBody public sandbox and is disposable — you can flip to `live` there without risk to any real Court 16 data. That's the only way to demonstrate the dedup branch via back-to-back same-email runs (in `test` mode, `AddClient` returns `Id: null` and doesn't persist, so the second run's `GetClients` comes back empty).
+**Safe test boundary:** use Mindbody Site `-99`, which is the public disposable sandbox. `MINDBODY_WRITE_MODE=test` is not a global write switch. On a real site, `AddClient` and `AddClientToClass` omit the unsupported `Test` parameter and persist. Demonstrate the dedup branch only in the sandbox or with an explicitly approved, cleanup-ready production fixture.
 
 ---
 
@@ -177,22 +177,25 @@ curl "https://YOUR-APP.vercel.app/api/mindbody/get-clients?email=stuart+run1@ced
 
 ---
 
-## The safety switch
+## Mindbody write behavior
 
-`MINDBODY_WRITE_MODE` does exactly one thing: controls whether the client sends `Test=true` on every `Add*` call.
+`MINDBODY_WRITE_MODE` controls the `Test` flag only for write endpoints that support it. It is not a global safety switch.
 
-| Value  | Behavior                                                        |
-|--------|-----------------------------------------------------------------|
-| `test` | (default) Every write gets `Test=true`. Nothing is persisted.   |
-| `live` | Writes are real. Flip only when we're ready for a live dry-run. |
+| Value | Behavior |
+|---|---|
+| `test` | Default. Supported endpoints receive `Test=true`; consumer-mode `AddClient` and `AddClientToClass` omit it and still persist on real sites. |
+| `live` | Supported endpoints receive `Test=false`; all writes are persistent. |
 
-To flip to live on Vercel: `npx vercel env add MINDBODY_WRITE_MODE production` and paste `live`. Redeploy.
+The public kids-trial flow adds two independent controls: a default-off public
+release gate with per-club acceptance evidence, and a server-only real-write
+gate with an exact Mindbody Site-ID allowlist. See `.env.example` and
+`docs/multi-site-automation-audit.md`.
 
-Before flipping:
-- Point at a real site ID (not `-99`)
-- Use production staff credentials (not `Siteowner`)
-- Run `get-clients` with a known-real email first to confirm auth
-- Bake in a synthetic guardrail like sending writes only for emails matching `*+mbtest@*`
+Before any real-site run:
+- Require explicit approval for that exact Site ID and fixture.
+- Confirm the club remains hidden from the public kids-trial flow unless its full launch evidence passes.
+- Run `get-clients` first and use a unique, clearly labeled fixture email.
+- Have a Mindbody UI deactivation/cleanup owner; the public API does not provide a dependable delete path.
 
 ---
 
@@ -224,7 +227,7 @@ court16-mindbody-test/
 │   └── page.tsx                          # minimal UI
 ├── lib/
 │   ├── logger.ts                         # correlation-ID-aware structured logger
-│   └── mindbody.ts                       # typed client, token cache, Test=true gate
+│   └── mindbody.ts                       # typed client, token cache, endpoint-specific Test behavior
 ├── .env.example
 ├── next.config.ts
 ├── package.json
@@ -241,6 +244,6 @@ This test is the first slice of §6.3 "Account Provisioning" and §6.4 "Booking 
 - `lib/mindbody.ts` gets pulled into a shared `packages/mindbody-adapter/` and grown to include GetClientServices, GetEnrollments, AddClientToEnrollment, and webhook handlers.
 - The happy-path route becomes one of several orchestration flows (kids-trial, adult-intro, returning-member-drop-in).
 - The correlation-ID log pattern carries forward as the basis for the "observability" requirements in §6.9.
-- The `MINDBODY_WRITE_MODE` safety gate stays — in production it'll default to `live` but flip to `test` per-environment (staging is always `test`).
+- Production launch safety stays separate from `MINDBODY_WRITE_MODE`: sandbox isolation, per-site authorization, evidence-backed launch gates, fixture allowlists, and cleanup ownership are the actual controls.
 
 Once this harness successfully runs the full sequence twice in a row (second run proving the de-dup works), BLINK's failure mode is formally de-risked and we can greenlight the Phase 3 build.
