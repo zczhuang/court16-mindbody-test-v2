@@ -263,12 +263,20 @@
     </div>
     <p class="caption">Ridge Hill test shown. The parent must use the secure create/change-password link in Mindbody's own welcome email. The email template wording may change; the secure Mindbody link is what matters.</p>
 
+    <div class="shot">
+      <span class="label">Alternate valid Mindbody email</span>
+      <img src="./screenshots/family-account/07-mindbody-claim-email.png" alt="Mindbody 'Finish creating your account' email with the Complete your account button" />
+    </div>
+    <p class="caption">The parent may instead receive Mindbody's “Finish creating your account” message (from confirm@mindbodyonline.com). Both are valid — whichever the parent has, its secure button is the right way in.</p>
+
+    <div class="warning"><strong>Never resend a welcome email yourself.</strong> The tested explicit resend (Mindbody's ConsumerWelcomeEmail) produced a duplicate message whose password link was broken. If the parent cannot find any Mindbody email after checking spam/promotions, escalate — do not trigger another welcome email or reset the password for them.</div>
+
     <div class="script">
       <div class="script-head">Ready to send · Claim nudge</div>
-      <div class="script-body"><p>Hi [Parent first name] — Court 16 created your Mindbody account for [Club] when you requested [Child]’s trial. Please look for an email from @mindbodyonline.com with “Welcome” in the subject (check spam/promotions), click the create/change password link, and complete Mindbody’s verification. [Child] does not need a separate login. Reply DONE when finished and we’ll connect [Child] to your family.</p></div>
+      <div class="script-body"><p>Hi [Parent first name] — Court 16 created your Mindbody account for [Club] when you requested [Child]’s trial. Please look for an email from @mindbodyonline.com with “Welcome” or “Finish creating your account” in the subject (check spam/promotions), click the create/change password link, and complete Mindbody’s verification. [Child] does not need a separate login. Reply DONE when finished and we’ll connect [Child] to your family.</p></div>
     </div>
 
-    <div class="decision"><strong>If it says Manage Family Account:</strong> the parent has claimed the account. Continue to Step 2.</div>
+    <div class="decision"><strong>If it says Manage Family Account:</strong> the parent has claimed the account. <strong>Log it:</strong> on the trial request's HubSpot <em>Deal</em>, set <code>court16_family_account_status</code> to <code>parent_claimed</code>. Continue to Step 2.</div>
   </div>
 </section>
 
@@ -309,10 +317,18 @@
       <li>Tell the parent to select the <strong>existing</strong> child in Mindbody's secure flow.</li>
     </ul>
 
+    <div class="shot">
+      <span class="label">What the parent receives</span>
+      <img src="./screenshots/family-account/08-mindbody-child-link-email.png" alt="Mindbody 'Add Court 16 Ridge Hill to your Mindbody account' email with the Link your account button" />
+    </div>
+    <p class="caption">After the single Connect click, Mindbody emails the parent this “Add Court 16 …” message (Ridge Hill test shown). The parent clicks <strong>Link your account</strong> and selects the existing child. Staff never copies or re-sends this link.</p>
+
     <div class="script">
       <div class="script-head">Ready to send · Link nudge</div>
       <div class="script-body"><p>Thanks — we sent one final secure Mindbody email to [email]. Open the message with “Add Court 16” or “Link your account” in the subject and select the existing family member [Child]. Please do not add another child. Reply LINKED when complete.</p></div>
     </div>
+
+    <div class="decision"><strong>Log it:</strong> after clicking Connect once, set the Deal's <code>court16_family_account_status</code> to <code>child_link_pending</code>.</div>
   </div>
 </section>
 
@@ -349,9 +365,19 @@
 
     <div class="script">
       <div class="script-head">Internal log note</div>
-      <div class="script-body"><p>Set HubSpot family status to family_complete | Club: [Club] | Parent: [Parent full name] | Parent MB ID: [parent client ID] | Child: [Child full name] | Child MB ID: [original child client ID] | Manage Family Account verified: [timestamp] | Staff: [name]</p></div>
+      <div class="script-body"><p>On the trial request's HubSpot Deal: set <code>court16_family_account_status</code> = <code>family_complete</code>, then add a Deal note — Club: [Club] | Parent: [Parent full name] | Parent MB ID: [parent client ID] | Child: [Child full name] | Child MB ID: [original child client ID] | Manage Family Account verified: [timestamp] | Staff: [name]. The Deal is the record of truth; a similar dropdown on the Contact is legacy and is not read by automation.</p></div>
     </div>
   </div>
+</section>
+
+<section class="card">
+  <h2>Sending the nudges: channel, logging, and pace</h2>
+  <ul class="do-list">
+    <li><strong>Channel:</strong> send each ready-to-send message from your club's normal front-desk channel (the email address or SMS line the parent already hears from). Do not send from a personal number or mailbox.</li>
+    <li><strong>Log every touch:</strong> record each nudge you send and the parent's DONE / ADDED / LINKED reply as a note on the trial request's HubSpot Deal, and keep <code>court16_family_account_status</code> current at each step (Step 1 → <code>parent_claimed</code>, Step 3 → <code>child_link_pending</code>, Step 4 → <code>family_complete</code>). The status is what suppresses automated reminders once they are enabled.</li>
+    <li><strong>Pace:</strong> if a parent has not replied, follow up once after ~48 hours, and again before their trial class. If there is still no reply 7 days after intake, hand the request to the club manager with the Deal link. (An automated stale-pending task for this is recommended but not built yet.)</li>
+    <li><strong>Never mark ahead:</strong> a delivered/opened email, a shared email address, or a relationship row is not evidence. Only the Mindbody screens shown in this guide advance the status.</li>
+  </ul>
 </section>
 
 <section class="card">
@@ -377,7 +403,7 @@
 </section>
 
 <footer>
-  <div>Court 16 × Cedarwind · Family-account staff SOP · Updated July 17, 2026</div>
+  <div>Court 16 × Cedarwind · Family-account staff SOP · Updated July 18, 2026</div>
   <div><a href="./06-password-setup-email.html">Email + automation handoff</a> · <a href="./index.html">Package A index</a></div>
 </footer>
 
