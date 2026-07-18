@@ -918,7 +918,12 @@ export async function POST(req: Request) {
             ...bookingLedgerBase,
             bookingStatus: "manual_review",
             enrollmentStatus: "not_started",
-            mindbodyMutationStatus: "manual_review",
+            // Intake never runs checkout/enrollment; the AddClient write state
+            // lives in familyProvisioningStatus below. Stamping the confirm-
+            // stage status "manual_review" here would block the Deny link for
+            // Deals whose family records were never touched (see
+            // hasUnsafeMindbodyStateForDeny).
+            mindbodyMutationStatus: "not_started",
             familyProvisioningStatus: familyProvisioningAttempted
               ? "reconciliation_required"
               : "not_started",
