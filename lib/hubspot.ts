@@ -804,6 +804,122 @@ export async function findOtherActiveBookingDealsByParentEmail(
   return matches;
 }
 
+export interface RecordedMindbodyIdHistory {
+  /** Distinct verified-format Mindbody client IDs recorded for this exact club. */
+  ids: string[];
+  /** Ledger Deals inspected (any booking status, including terminal). */
+  dealCount: number;
+}
+
+/**
+ * Recover the Mindbody client IDs this parent's past ledger Deals recorded
+ * for one exact club — including terminal Deals (denied/failed/confirmed).
+ *
+ * Ledger v1 stopped mirroring Mindbody IDs onto the Contact, so once a Deal
+ * reaches a terminal state (releasing the active-parent fence) its recorded
+ * family would otherwise become invisible to intake's ID-first duplicate
+ * guard, leaving only Mindbody's unreliable staff-mode email search between a
+ * resubmission and a duplicate family. The caller must fail closed when this
+ * throws: truncated or out-of-scope search results are not safe evidence
+ * that no earlier family exists.
+ *
+ * A Mindbody Client.Id is site-scoped, so results are filtered — and each
+ * returned row re-validated — against the requested location slug AND Site
+ * ID; IDs recorded for any other club are never returned.
+ */
+export async function findRecordedMindbodyIdsFromDealHistory(
+  cfg: HubspotConfig,
+  log: Logger,
+  parentEmail: string,
+  locationSlug: string,
+  mindbodySiteId: string,
+): Promise<RecordedMindbodyIdHistory> {
+  const normalizedEmail = parentEmail.trim().toLowerCase();
+  if (!normalizedEmail) throw new Error("HubSpot deal-history guard: parent email is empty");
+  const slug = locationSlug.trim();
+  if (!slug) throw new Error("HubSpot deal-history guard: location slug is empty");
+  const siteId = mindbodySiteId.trim();
+  if (!siteId) throw new Error("HubSpot deal-history guard: Mindbody site ID is empty");
+
+  const response = await hsFetch<unknown>(log, {
+    url: `${cfg.apiBaseUrl}/crm/v3/objects/deals/search`,
+    method: "POST",
+    headers: { Authorization: `Bearer ${requireAccessToken(cfg)}` },
+    label: "POST /crm/v3/objects/deals/search (deal-history Mindbody ids)",
+    body: {
+      filterGroups: [
+        {
+          filters: [
+            { propertyName: "court16_booking_ledger_version", operator: "EQ", value: "1" },
+            { propertyName: "court16_parent_email", operator: "EQ", value: normalizedEmail },
+            { propertyName: "court16_location_slug", operator: "EQ", value: slug },
+            { propertyName: "court16_mindbody_site_id", operator: "EQ", value: siteId },
+          ],
+        },
+      ],
+      properties: [
+        "court16_booking_ledger_version",
+        "court16_booking_key",
+        "court16_booking_status",
+        "court16_parent_email",
+        "court16_location_slug",
+        "court16_mindbody_site_id",
+        "court16_mindbody_parent_id",
+        "court16_mindbody_child_id",
+      ],
+      limit: 200,
+    },
+  });
+
+  if (!response || typeof response !== "object") {
+    throw new Error("HubSpot deal-history guard: malformed search response");
+  }
+  const raw = response as { total?: unknown; results?: unknown; paging?: unknown };
+  if (!Number.isSafeInteger(raw.total) || (raw.total as number) < 0 || !Array.isArray(raw.results)) {
+    throw new Error("HubSpot deal-history guard: missing total or results");
+  }
+  if (raw.paging || raw.total !== raw.results.length) {
+    throw new Error("HubSpot deal-history guard: paginated or truncated search result");
+  }
+
+  const ids = new Set<string>();
+  const dealIds = new Set<string>();
+  for (const candidate of raw.results) {
+    if (!candidate || typeof candidate !== "object") {
+      throw new Error("HubSpot deal-history guard: malformed Deal result");
+    }
+    const result = candidate as { id?: unknown; properties?: unknown };
+    if (typeof result.id !== "string" || !result.id.trim() || dealIds.has(result.id)) {
+      throw new Error("HubSpot deal-history guard: missing or duplicate Deal ID");
+    }
+    dealIds.add(result.id);
+    if (!result.properties || typeof result.properties !== "object") {
+      throw new Error("HubSpot deal-history guard: missing Deal properties");
+    }
+    const properties = result.properties as Record<string, unknown>;
+    const resultEmail = properties.court16_parent_email;
+    const resultSlug = properties.court16_location_slug;
+    const resultSiteId = properties.court16_mindbody_site_id;
+    if (
+      properties.court16_booking_ledger_version !== "1" ||
+      typeof resultEmail !== "string" ||
+      resultEmail.trim().toLowerCase() !== normalizedEmail ||
+      typeof resultSlug !== "string" ||
+      resultSlug.trim() !== slug ||
+      typeof resultSiteId !== "string" ||
+      resultSiteId.trim() !== siteId
+    ) {
+      throw new Error("HubSpot deal-history guard: Deal does not match the requested club scope");
+    }
+    for (const key of ["court16_mindbody_parent_id", "court16_mindbody_child_id"] as const) {
+      const value = properties[key];
+      if (typeof value === "string" && value.trim()) ids.add(value.trim());
+    }
+  }
+
+  return { ids: [...ids], dealCount: dealIds.size };
+}
+
 /** PATCH arbitrary Deal properties without changing its pipeline stage. */
 export async function updateDealProperties(
   cfg: HubspotConfig,

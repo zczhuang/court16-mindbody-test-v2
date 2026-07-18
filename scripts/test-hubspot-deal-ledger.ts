@@ -425,4 +425,133 @@ try {
   globalThis.fetch = originalFetch;
 }
 
+// ─── Deal-history Mindbody-ID recovery (duplicate guard for terminal Deals) ──
+const { findRecordedMindbodyIdsFromDealHistory } = (await import(
+  hubspotModuleUrl
+)) as typeof import("../lib/hubspot");
+
+try {
+  // Happy path: a denied Deal with recorded IDs plus a manual_review Deal
+  // without IDs. Both count as history; only present IDs are returned.
+  let historySearchBody: unknown;
+  globalThis.fetch = async (_input, init) => {
+    historySearchBody = JSON.parse(String(init?.body ?? "null"));
+    return new Response(
+      JSON.stringify({
+        total: 2,
+        results: [
+          {
+            id: "deal-denied",
+            properties: {
+              court16_booking_ledger_version: "1",
+              court16_booking_key: "denied-key",
+              court16_booking_status: "denied",
+              court16_parent_email: "parent@example.com",
+              court16_location_slug: "ridgehill",
+              court16_mindbody_site_id: "5748154",
+              court16_mindbody_parent_id: "1001",
+              court16_mindbody_child_id: "1002",
+            },
+          },
+          {
+            id: "deal-review",
+            properties: {
+              court16_booking_ledger_version: "1",
+              court16_booking_key: "review-key",
+              court16_booking_status: "manual_review",
+              court16_parent_email: "parent@example.com",
+              court16_location_slug: "ridgehill",
+              court16_mindbody_site_id: "5748154",
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+  };
+  const history = await findRecordedMindbodyIdsFromDealHistory(
+    hubspotConfig,
+    testLogger,
+    " Parent@Example.com ",
+    "ridgehill",
+    "5748154",
+  );
+  assert.deepEqual([...history.ids].sort(), ["1001", "1002"]);
+  assert.equal(history.dealCount, 2);
+  const serializedHistorySearch = JSON.stringify(historySearchBody);
+  assert(serializedHistorySearch.includes('"court16_parent_email","operator":"EQ","value":"parent@example.com"'));
+  assert(serializedHistorySearch.includes('"court16_location_slug","operator":"EQ","value":"ridgehill"'));
+  assert(serializedHistorySearch.includes('"court16_mindbody_site_id","operator":"EQ","value":"5748154"'));
+  assert(!serializedHistorySearch.includes("court16_booking_status\",\"operator\":\"IN\""));
+
+  // Truncated results are not safe evidence that no earlier family exists.
+  globalThis.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        total: 2,
+        results: [
+          {
+            id: "deal-denied",
+            properties: {
+              court16_booking_ledger_version: "1",
+              court16_parent_email: "parent@example.com",
+              court16_location_slug: "ridgehill",
+              court16_mindbody_site_id: "5748154",
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+  await assert.rejects(
+    findRecordedMindbodyIdsFromDealHistory(
+      hubspotConfig,
+      testLogger,
+      "parent@example.com",
+      "ridgehill",
+      "5748154",
+    ),
+    /paginated or truncated/,
+  );
+
+  // A row outside the requested club scope means the server-side filter
+  // cannot be trusted; site-scoped IDs must never leak across clubs.
+  globalThis.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        total: 1,
+        results: [
+          {
+            id: "deal-cross-site",
+            properties: {
+              court16_booking_ledger_version: "1",
+              court16_parent_email: "parent@example.com",
+              court16_location_slug: "brooklyn",
+              court16_mindbody_site_id: "135479",
+              court16_mindbody_parent_id: "9001",
+            },
+          },
+        ],
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } },
+    );
+  await assert.rejects(
+    findRecordedMindbodyIdsFromDealHistory(
+      hubspotConfig,
+      testLogger,
+      "parent@example.com",
+      "ridgehill",
+      "5748154",
+    ),
+    /requested club scope/,
+  );
+
+  await assert.rejects(
+    findRecordedMindbodyIdsFromDealHistory(hubspotConfig, testLogger, "  ", "ridgehill", "5748154"),
+    /parent email is empty/,
+  );
+} finally {
+  globalThis.fetch = originalFetch;
+}
+
 console.log("HubSpot Deal booking-ledger contract passed.");

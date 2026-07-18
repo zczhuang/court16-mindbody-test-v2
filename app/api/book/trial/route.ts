@@ -13,6 +13,7 @@ import {
   createTrialDeal,
   findContactByEmail,
   findOtherActiveBookingDealsByParentEmail,
+  findRecordedMindbodyIdsFromDealHistory,
   getContactById,
   getDealByActiveParentKey,
   getDealByBookingKey,
@@ -604,7 +605,28 @@ export async function POST(req: Request) {
         const storedIds = [storedParentId, storedChildId].filter(
           (v): v is string => typeof v === "string" && v.length > 0,
         );
-        const knownIds = storedIdsBelongToThisSite ? storedIds : [];
+        // Ledger Deals — including terminal denied/failed/confirmed ones the
+        // active-parent fence no longer covers — are the durable record of the
+        // Mindbody IDs this club already created for this parent. Without this
+        // lookup a family created under ledger v1 becomes invisible to the ID
+        // guard after staff denial, and a resubmission would rely only on
+        // Mindbody's unreliable email search (the BLINK duplicate failure).
+        // A throw here falls through to the fail-closed catch below.
+        const dealHistory = await findRecordedMindbodyIdsFromDealHistory(
+          hsCfg,
+          log,
+          body.parentEmail,
+          location.id,
+          String(location.siteId),
+        );
+        trace.push({
+          step: "dealHistoryGuard",
+          status: "ok",
+          data: { dealCount: dealHistory.dealCount, recordedIds: dealHistory.ids.length },
+        });
+        const knownIds = [
+          ...new Set([...(storedIdsBelongToThisSite ? storedIds : []), ...dealHistory.ids]),
+        ];
         if (knownIds.length > 0) {
           existing = await getClientsByIds(mbCfg, log, knownIds);
           idGuardAmbiguous = existing.length === 0;
