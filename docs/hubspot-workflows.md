@@ -214,7 +214,11 @@ Which requests can be resolved where:
   Retry the same Confirm link, or Deny to resolve and release.
 - **Post-write states** (`checkout_started`, `add_to_class_started`,
   `reconciliation_required`, or a half-provisioned family status): the app
-  will not deny or re-write. A person must reconcile in this order:
+  will not deny and will never request a **second checkout/credit**. One
+  nuance: for a Deal stopped at `checkout_started`, the Confirm link can
+  still finish the remaining enrollment using the already-granted credit it
+  reads back — that completes the original booking, not a duplicate charge.
+  A person must reconcile in this order:
   1. In Mindbody, check the client's account for the trial credit
      (ClientService) and the class roster for an active Visit that matches the
      Deal's class, location, and service.
@@ -223,9 +227,13 @@ Which requests can be resolved where:
      completes the Deal without a second write.
   3. If it provably did **not** commit (no credit, no visit): correct the Deal
      by hand in HubSpot — set `court16_enrollment_status` and
-     `court16_mindbody_mutation_status` back to `not_started` — then Deny (or
-     Confirm to retry). Only do this after the Mindbody check above; these two
-     fields are what stops a double-charge.
+     `court16_mindbody_mutation_status` back to `not_started` — then either
+     Deny, or, to retry via the Confirm link, also set
+     `court16_booking_status` back to `pending_staff` (Confirm only accepts
+     `pending_staff` Deals or its own `[confirm_retry]` reconciliation
+     states; a hand-reset `manual_review`/`failed` Deal without that status
+     change is deniable but not confirmable). Only do this after the Mindbody
+     check above; these fields are what stops a double-charge.
   4. If a duplicate or partial family record was created
      (`court16_family_provisioning_status` is a `*_started` or
      `reconciliation_required` value): resolve the client records in Mindbody

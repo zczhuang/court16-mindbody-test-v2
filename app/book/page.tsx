@@ -125,7 +125,7 @@ function BookInner() {
               description="Ages 3–17. Browse real classes, pick a time, staff confirms within a few hours."
               cta="Start kids trial"
               href={`/trial${qs}`}
-              accentColor="#FFE033"
+              accentColor="#FFFA00"
             />
             <PathCard
               eyebrow="For you"

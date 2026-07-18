@@ -494,7 +494,7 @@ strong { font-weight: 800; }
 .confirmation-hero { max-width: 900px; }
 .confirmation-mark { width: 56px; height: 56px; display: grid; place-items: center; margin-bottom: 24px; border: 2px solid var(--c16-black); border-radius: 50%; background: var(--c16-yellow); box-shadow: 3px 3px 0 var(--c16-black); font-family: var(--f-display); font-size: 27px; font-weight: 800; }
 .confirmation-hero .eyebrow { margin-bottom: 13px; }
-.confirmation-hero h1 { margin: 0; font-family: var(--f-display); font-size: clamp(46px, 7vw, 86px); font-weight: 800; letter-spacing: -.055em; line-height: .94; text-wrap: balance; }
+.confirmation-hero h1 { margin: 0; font-family: var(--f-display); font-size: clamp(46px, 7vw, 86px); font-weight: 900; letter-spacing: -0.02em; line-height: .98; text-wrap: balance; }
 .confirmation-hero > p { max-width: 760px; margin: 22px 0 0; color: var(--c16-ink-2); font-size: clamp(16px, 1.7vw, 20px); }
 .confirmation-grid { display: grid; grid-template-columns: 1.45fr .8fr; gap: 18px; margin-top: 50px; }
 .confirmation-card { padding: clamp(24px, 4vw, 42px); border: 2px solid var(--c16-black); border-radius: var(--r-xl); }
@@ -535,7 +535,7 @@ strong { font-weight: 800; }
   font-family: var(--f-display);
   font-size: 34px;
   font-weight: 900;
-  letter-spacing: -.055em;
+  letter-spacing: -0.02em;
   line-height: 1;
   text-transform: uppercase;
 }

@@ -105,7 +105,7 @@ export default function PathCard({
           alignItems: "center",
           gap: 6,
           fontSize: 13,
-          fontWeight: 700,
+          fontWeight: 800,
           color: "var(--c16-black)",
         }}
       >

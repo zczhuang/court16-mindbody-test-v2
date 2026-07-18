@@ -46,7 +46,7 @@ export default function OfferPicker({ selectedKey, locationId, onSelect }: Props
                     <path
                       d="M5.5 10.5l3 3 6-7"
                       fill="none"
-                      stroke="#FFE033"
+                      stroke="#FFFA00"
                       strokeWidth="2.4"
                       strokeLinecap="round"
                       strokeLinejoin="round"

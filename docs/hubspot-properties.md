@@ -111,8 +111,11 @@ person-scoped fields after the Deal transition succeeds:
 | `firstname`, `lastname`, `email`, `phone` | Standard | Parent identity/contact details |
 
 The following Contact properties may still contain legacy values from earlier
-tests or the Squarespace form, but ledger-v1 intake and staff routes do not
-refresh them:
+tests or the Squarespace form. Ledger-v1 intake and staff routes do not
+refresh them, with one deliberate hygiene exception: a successful staff
+**denial** marks a stale-*active* legacy `court16_booking_status` mirror as
+`failed` (and stamps `court16_failure_reason`) so a pre-ledger mirror cannot
+keep routing every future request from that email into manual review:
 
 `court16_correlation_id`, `court16_intent`, `court16_booking_status`,
 `court16_class_id`, `court16_class_name`, `court16_class_day_time`,

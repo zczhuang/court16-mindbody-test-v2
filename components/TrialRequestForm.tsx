@@ -676,7 +676,7 @@ export default function TrialRequestForm({
         }
         .trf-title {
           font-family: var(--f-display);
-          font-weight: 700;
+          font-weight: 800;
           font-size: 30px;
           line-height: 1.2;
           letter-spacing: -0.03em;
@@ -762,7 +762,7 @@ export default function TrialRequestForm({
           padding: 11px 14px;
           font-size: 14px;
           font-family: var(--f-sans);
-          font-weight: 500;
+          font-weight: 600;
           color: var(--c16-black);
           background: #fff;
           border: 1.5px solid #bdbdb4;
@@ -790,7 +790,7 @@ export default function TrialRequestForm({
         }
         .trf-privacy a {
           color: var(--c16-black);
-          font-weight: 700;
+          font-weight: 800;
           text-decoration: underline;
           text-decoration-color: var(--c16-yellow);
           text-underline-offset: 3px;
@@ -855,7 +855,7 @@ function Field({
         <span
           style={{
             fontSize: 11,
-            fontWeight: 500,
+            fontWeight: 600,
             color: "var(--c16-ink-3)",
             fontFamily: "var(--f-sans)",
             letterSpacing: "0",

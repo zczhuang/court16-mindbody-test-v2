@@ -50,7 +50,7 @@ export default function Home() {
           <h2
             style={{
               fontFamily: "var(--f-display)",
-              fontWeight: 700,
+              fontWeight: 800,
               fontSize: "clamp(22px, 3vw, 28px)",
               letterSpacing: "-0.025em",
               textAlign: "center",
@@ -102,7 +102,7 @@ function Feature({ icon, title, body }: { icon: string; title: string; body: str
       <h3
         style={{
           fontFamily: "var(--f-display)",
-          fontWeight: 700,
+          fontWeight: 800,
           fontSize: 18,
           letterSpacing: "-0.02em",
           margin: "0 0 6px",

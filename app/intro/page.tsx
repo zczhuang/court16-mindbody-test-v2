@@ -248,7 +248,7 @@ function IntroInner() {
               <h2
                 style={{
                   fontFamily: "var(--f-display)",
-                  fontWeight: 700,
+                  fontWeight: 800,
                   fontSize: 20,
                   letterSpacing: "-0.025em",
                   margin: "0 0 16px",
@@ -274,7 +274,7 @@ function IntroInner() {
               <h2
                 style={{
                   fontFamily: "var(--f-display)",
-                  fontWeight: 700,
+                  fontWeight: 800,
                   fontSize: 20,
                   letterSpacing: "-0.025em",
                   margin: "0 0 16px",

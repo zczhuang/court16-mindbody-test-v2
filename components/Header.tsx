@@ -249,7 +249,7 @@ function LocationMenuPanel({
         :global(.nav-menu .nav-menu-name) {
           display: block;
           font-family: var(--f-display);
-          font-weight: 700;
+          font-weight: 800;
           font-size: 14px;
           letter-spacing: -0.02em;
           color: var(--c16-black);

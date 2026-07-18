@@ -35,7 +35,24 @@ export default function ProgressBar({ step }: Props) {
               className={`prog-step ${i <= effectiveIdx ? "on" : ""} ${i === effectiveIdx ? "current" : ""}`}
               aria-current={i === effectiveIdx ? "step" : undefined}
             >
-              <span className="prog-dot">{i < effectiveIdx ? "✓" : s.n}</span>
+              <span className="prog-dot">
+                {i < effectiveIdx ? (
+                  // Inline check: Gilroy has no ✓ glyph, and a fallback-font
+                  // checkmark renders inconsistently across platforms.
+                  <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true" focusable="false">
+                    <path
+                      d="M2 6.2 L4.8 9 L10 3.4"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                ) : (
+                  s.n
+                )}
+              </span>
               <span className="prog-lbl">{s.label}</span>
             </div>
             {i < STEPS.length - 1 && (

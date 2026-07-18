@@ -214,18 +214,23 @@ async function denyBooking(
   //    mirror the same way the legacy deny flow did ("failed"). Best-effort:
   //    a failure here never undoes the recorded denial.
   let legacyMirrorCleared = false;
+  // pending_payment is deliberately excluded: it belongs to the legacy adult
+  // payment-return flow, which still reads the Contact mirror. Clearing it
+  // here could break a live adult intro that shares the parent's email; that
+  // rare cross-flow conflict stays in manual review instead.
   const LEGACY_ACTIVE_CONTACT_STATUSES = new Set([
     "pending_staff",
     "manual_review",
     "duplicate_email_softwall",
-    "pending_payment",
     "pending_staff_assist",
   ]);
   try {
     const contactId = deal.associatedContactIds[0]!;
     const contact = await getContactById(hsCfg, log, contactId);
     const mirrorStatus = contact?.properties?.court16_booking_status;
-    if (mirrorStatus && LEGACY_ACTIVE_CONTACT_STATUSES.has(mirrorStatus)) {
+    const mirrorIntent = contact?.properties?.court16_intent;
+    const mirrorIsKidTrial = !mirrorIntent || mirrorIntent === "kid_trial";
+    if (mirrorStatus && mirrorIsKidTrial && LEGACY_ACTIVE_CONTACT_STATUSES.has(mirrorStatus)) {
       await updateContact(hsCfg, log, contactId, {
         court16_booking_status: "failed",
         court16_failure_reason: `Legacy mirror cleared by staff denial of ${payload.correlationId}: ${dealFailureReason}`.slice(
