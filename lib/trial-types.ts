@@ -83,6 +83,11 @@ export type TrialSubmissionStatus =
 
 /** Trial request form submission */
 export interface TrialRequest extends MindbodyProfileDetails, TrialReportingDetails {
+  /**
+   * Browser-generated UUID for one logical form submission. The client reuses
+   * it across network retries so the server can make booking writes idempotent.
+   */
+  submissionId: string;
   parentFirstName: string;
   /** Required — needed for MindBody client record + downstream comms. */
   parentLastName: string;

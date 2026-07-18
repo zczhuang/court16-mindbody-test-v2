@@ -1,23 +1,22 @@
 import { NextResponse } from "next/server";
 import {
   addClientToClass,
+  checkoutTrialBooking,
+  findExactActiveClientVisit,
   getClientVisits,
   getClientServices,
   isAlreadyBookedError,
   loadConfigFromEnv,
   MindbodyError,
-  purchaseTrialService,
   type ClientService,
   type ClientVisit,
   type MindbodyConfig,
 } from "@/lib/mindbody";
 import {
-  findContactByCorrelationId,
   findDealByCorrelationId,
-  HubspotError,
   loadHubspotConfig,
   moveDealStage,
-  updateContact,
+  updateDealProperties,
 } from "@/lib/hubspot";
 import { InvalidTokenError, verifyToken } from "@/lib/staff-tokens";
 import { createLogger } from "@/lib/logger";
@@ -25,8 +24,24 @@ import { getLocationById } from "@/config/locations";
 import { TRIAL_CONFIG } from "@/config/trial-config";
 import { getDealPipeline } from "@/config/hubspot-deals";
 import { getKidsTrialStaffReadiness } from "@/config/kids-trial-readiness";
-import { withLocalActionLock } from "@/lib/action-lock";
+import {
+  DistributedActionLockError,
+  withDistributedActionLock,
+} from "@/lib/distributed-action-lock";
 import { getMindbodyWriteGuard } from "@/lib/mindbody-write-guard";
+import {
+  bookingLedgerMatchesStaffToken,
+  isFamilyReadyForMindbodyMutation,
+  requiresReadOnlyEnrollmentReconciliation,
+} from "@/lib/mindbody-booking-evidence";
+import {
+  buildBookingDealProperties,
+  parseBookingDealLedger,
+  validateBookingDealLedgerForState,
+  type EnrollmentStatus,
+  type MindbodyMutationStatus,
+  type ParsedBookingDealLedger,
+} from "@/lib/hubspot-deal-ledger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,11 +51,11 @@ export const dynamic = "force-dynamic";
  * page. POST performs the booking mutation. Keeping writes off GET prevents
  * email-link scanners from enrolling a client before staff clicks the button.
  *
- * Staff clicks the confirm link from the email. We verify the HMAC, find
- * the Contact by `court16_correlation_id` in HubSpot, reject if already
- * confirmed (single-use via status, not a separate token table), call
- * MindBody AddClientToClass, then flip `court16_booking_status=confirmed`
- * which triggers the parent-confirmation workflow in HubSpot.
+ * Staff clicks the confirm link from the email. We verify the HMAC and the
+ * immutable request-scoped Deal ledger, reject terminal requests, reconcile
+ * or perform the exact Mindbody enrollment, then mark the Deal confirmed.
+ * Deal-based HubSpot workflows own notifications; shared Contact state is
+ * never used as the booking authority.
  */
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -84,10 +99,30 @@ async function handle(req: Request) {
     return html(`Wrong token action: ${payload.action}`, 400);
   }
 
-  const result = await withLocalActionLock(
-    `staff-action:${payload.correlationId}`,
-    () => confirmBooking(payload),
-  );
+  const actionLog = createLogger(payload.correlationId);
+  let result;
+  try {
+    result = await withDistributedActionLock(
+      `staff-action:${payload.correlationId}`,
+      () => confirmBooking(payload),
+      {
+        onReleaseError: (error) =>
+          actionLog.error("staff.confirm.distributed-lock.release-failed", {
+            code: error instanceof DistributedActionLockError ? error.code : "unknown",
+          }),
+      },
+    );
+  } catch (error) {
+    actionLog.error("staff.confirm.distributed-lock.acquire-failed", {
+      code: error instanceof DistributedActionLockError ? error.code : "action_failed",
+    });
+    return html(
+      error instanceof DistributedActionLockError
+        ? "The booking lock is temporarily unavailable. No changes were made; try again shortly."
+        : "The booking action failed unexpectedly. Review the Deal before retrying.",
+      503,
+    );
+  }
   if (!result.acquired) {
     return html("This booking is already being processed. Wait a moment and refresh HubSpot.", 409);
   }
@@ -103,6 +138,12 @@ async function confirmBooking(payload: ReturnType<typeof verifyToken>) {
       503,
     );
   }
+  if (process.env.HUBSPOT_DEAL_LEDGER_ENABLED !== "true") {
+    return html(
+      "The Deal booking ledger is not enabled on this deployment. No Mindbody enrollment was attempted.",
+      503,
+    );
+  }
 
   let mbCfg;
   try {
@@ -111,39 +152,96 @@ async function confirmBooking(payload: ReturnType<typeof verifyToken>) {
     return html(`Config error: ${e instanceof Error ? e.message : String(e)}`, 500);
   }
 
-  let contact: Awaited<ReturnType<typeof findContactByCorrelationId>>;
+  let bookingDeal: Awaited<ReturnType<typeof findDealByCorrelationId>>;
   try {
-    contact = await findContactByCorrelationId(hsCfg, log, payload.correlationId);
+    bookingDeal = await findDealByCorrelationId(hsCfg, log, payload.correlationId, {
+      includeBookingLedger: true,
+    });
   } catch (e) {
-    const msg = e instanceof HubspotError ? `HubSpot error (${e.status})` : "HubSpot lookup failed";
-    return html(msg, 502);
+    log.warn("staff.confirm.dealLookup.fail", {
+      error: e instanceof Error ? e.message : String(e),
+    });
+    return html("The HubSpot booking record could not be verified.", 502);
   }
-  if (!contact) {
+  if (!bookingDeal) {
     return html(`Booking not found for correlation ${payload.correlationId}`, 404);
   }
 
-  const intent = contact.properties.court16_intent;
-  const bookingStatus = contact.properties.court16_booking_status;
-  const failureReason = contact.properties.court16_failure_reason;
+  const parsedLedger = parseBookingDealLedger(bookingDeal.properties);
+  const claimsLedgerV1 = bookingDeal.properties.court16_booking_ledger_version === "1";
+  if (claimsLedgerV1 && !parsedLedger.ok) {
+    log.warn("staff.confirm.deal-ledger-incomplete", { missing: parsedLedger.missing });
+    return html(
+      "This booking's HubSpot Deal ledger is incomplete. No Mindbody enrollment was attempted; send it to manual review.",
+      409,
+    );
+  }
+  const ledger = parsedLedger.ok ? parsedLedger.value : null;
+  if (!ledger) {
+    return html(
+      "This booking does not have a verified Deal ledger. No Mindbody enrollment was attempted; migrate or review it manually.",
+      409,
+    );
+  }
+  if (!bookingLedgerMatchesStaffToken(ledger, payload.correlationId)) {
+    log.warn("staff.confirm.deal-token-mismatch", {
+      dealBookingKey: ledger.bookingKey,
+      dealCorrelationId: ledger.correlationId,
+    });
+    return html(
+      "The signed staff link does not match this Deal's booking identity. No Mindbody enrollment was attempted.",
+      409,
+    );
+  }
+  if (!isFamilyReadyForMindbodyMutation(ledger)) {
+    return html(
+      "The child Mindbody record has not been durably verified on this Deal. No service or enrollment was created.",
+      409,
+    );
+  }
+  const missingForState = validateBookingDealLedgerForState(ledger);
+  if (missingForState.length > 0) {
+    log.warn("staff.confirm.deal-ledger-state-incomplete", { missing: missingForState });
+    return html(
+      "This booking's Deal is missing required class, service, family, or action evidence. No Mindbody enrollment was attempted.",
+      409,
+    );
+  }
+  const readOnlyReconciliation = requiresReadOnlyEnrollmentReconciliation(ledger);
+
+  if (bookingDeal.associatedContactIds.length !== 1) {
+    log.warn("staff.confirm.deal-contact-cardinality", {
+      dealId: bookingDeal.id,
+      contactIds: bookingDeal.associatedContactIds,
+    });
+    return html(
+      "This booking must be associated with exactly one HubSpot Contact. No Mindbody enrollment was attempted.",
+      409,
+    );
+  }
+
+  const intent = ledger.intent;
+  const bookingStatus = ledger.bookingStatus;
+  const failureReason = ledger.failureReason;
   const isKidTrial = intent === "kid_trial";
   const isAdultIntro = intent === "adult_intro";
-  const isResumableKidConfirm =
-    isKidTrial &&
+  const isResumableConfirm =
     bookingStatus === "manual_review" &&
-    failureReason?.startsWith("[confirm_retry]");
+    failureReason?.startsWith("[confirm_retry]") &&
+    readOnlyReconciliation;
   if (!isKidTrial && !isAdultIntro) {
     return html("This booking has an unknown intent. No Mindbody enrollment was attempted.", 409);
   }
   if (bookingStatus === "confirmed") {
-    return html("This booking is already confirmed. Thank you.", 410);
+    return html("This booking is already confirmed on its Deal. Thank you.", 410);
   }
-  if (isKidTrial && bookingStatus !== "pending_staff" && !isResumableKidConfirm) {
+  if (isKidTrial && bookingStatus !== "pending_staff" && !isResumableConfirm) {
     return html(
       "This kids trial is not in Pending Staff state. No Mindbody enrollment was attempted; review the request in HubSpot.",
       409,
     );
   }
-  if (isAdultIntro && bookingStatus !== "pending_staff_assist") {
+  if (isAdultIntro && bookingStatus !== "pending_staff_assist" && !isResumableConfirm) {
     return html(
       "This adult intro is not awaiting staff assistance. No Mindbody enrollment was attempted; review the request in HubSpot.",
       409,
@@ -154,7 +252,7 @@ async function confirmBooking(payload: ReturnType<typeof verifyToken>) {
   // Never fall back to the deployment's default MINDBODY_SITE_ID: a missing
   // or stale HubSpot location could otherwise enroll a child at the wrong
   // studio.
-  const locationSlug = contact.properties.court16_location_slug;
+  const locationSlug = ledger.locationSlug;
   const location = locationSlug ? getLocationById(locationSlug) : undefined;
   const pipeline = location ? getDealPipeline(location.id) : null;
   const kidTrialReadiness = location
@@ -191,27 +289,23 @@ async function confirmBooking(payload: ReturnType<typeof verifyToken>) {
     );
   }
 
-  // The Deal is the immutable per-request location ledger. A Contact can be
-  // reused across clubs, while Mindbody client IDs are site-scoped. Refuse to
-  // enroll when the Deal pipeline and the Contact's ID-owning club disagree.
-  let bookingDeal: Awaited<ReturnType<typeof findDealByCorrelationId>>;
-  try {
-    bookingDeal = await findDealByCorrelationId(hsCfg, log, payload.correlationId);
-  } catch (e) {
-    log.warn("staff.confirm.dealLookup.fail", {
-      error: e instanceof Error ? e.message : String(e),
-    });
-    return html(
-      "The HubSpot booking record could not be verified. No Mindbody enrollment was attempted.",
-      502,
-    );
-  }
-  if (!bookingDeal || bookingDeal.properties.pipeline !== pipeline.pipelineId) {
+  // A Contact can be reused across clubs, while Mindbody client IDs are
+  // site-scoped. Refuse to enroll when the Deal's pipeline or explicit Site ID
+  // disagrees with its location configuration.
+  if (
+    bookingDeal.properties.pipeline !== pipeline.pipelineId ||
+    ledger.mindbodySiteId !== String(location.siteId) ||
+    (isKidTrial && ledger.mindbodyProgramId !== String(location.kidTrialProgramId)) ||
+    (isKidTrial && ledger.mindbodyServiceId !== String(trialConfig?.trialServiceId)) ||
+    (isKidTrial && ledger.mindbodyServiceName !== trialConfig?.trialServiceName)
+  ) {
     log.warn("staff.confirm.deal-location-mismatch", {
       correlationId: payload.correlationId,
-      contactLocationSlug: location.id,
+      bookingLocationSlug: location.id,
       expectedPipeline: pipeline.pipelineId,
-      actualPipeline: bookingDeal?.properties.pipeline ?? null,
+      actualPipeline: bookingDeal.properties.pipeline ?? null,
+      expectedSiteId: String(location.siteId),
+      actualSiteId: ledger.mindbodySiteId ?? null,
     });
     return html(
       "The request's HubSpot Deal does not match the club that owns these Mindbody client IDs. No enrollment was attempted; review the family and club manually.",
@@ -232,19 +326,24 @@ async function confirmBooking(payload: ReturnType<typeof verifyToken>) {
     );
   }
 
-  const classId = contact.properties.court16_class_id
-    ? Number(contact.properties.court16_class_id)
-    : undefined;
-  const clientId = isKidTrial
-    ? contact.properties.court16_mindbody_child_id
-    : contact.properties.court16_mindbody_parent_id;
+  const classId = positiveNumber(ledger.classId);
+  const clientId = isKidTrial ? ledger.mindbodyChildId : ledger.mindbodyParentId;
 
   if (!classId || !clientId) {
-    await updateContact(hsCfg, log, contact.id, {
-      court16_booking_status: "failed",
-      court16_failure_reason: `Missing court16_class_id or ${isKidTrial ? "child" : "adult"} MindBody client ID on contact`,
+    // This validation failure happens before any checkout or enrollment call.
+    // Preserve the ledger's real pre-write statuses so the Deny link can still
+    // terminally resolve the request and release the parent's booking fence.
+    await updateDealProperties(hsCfg, log, bookingDeal.id, {
+      ...buildBookingDealProperties({
+        ...ledger,
+        bookingStatus: "failed",
+        failureReason: `Missing class ID or ${isKidTrial ? "child" : "adult"} Mindbody client ID on booking Deal`,
+      }),
     });
-    return html("Booking record is missing class or client — flagged as failed.", 422);
+    return html(
+      "Booking record is missing class or client — flagged as failed. Use the Deny link to resolve the request and release the parent's booking hold.",
+      422,
+    );
   }
 
   // The readiness gate above guarantees this exact site's verified $0 sale
@@ -252,124 +351,366 @@ async function confirmBooking(payload: ReturnType<typeof verifyToken>) {
   // we read the granted instance back before enrollment.
   const trialServiceId = isKidTrial ? trialConfig!.trialServiceId : undefined;
   const trialServiceName = isKidTrial ? trialConfig!.trialServiceName : undefined;
+  const mindbodyLocationId = positiveNumber(ledger.mindbodyLocationId);
+  if (isKidTrial && !mindbodyLocationId) {
+    return html(
+      "The Deal does not contain a verified physical Mindbody Location ID. No checkout or enrollment was attempted.",
+      409,
+    );
+  }
 
   let enrollmentError: unknown;
   let retryableError: unknown;
+  let verifiedVisit: ClientVisit | undefined;
+  let verifiedClientService: ClientService | undefined;
+  // True once this attempt persists a checkout/enrollment write-ahead marker.
+  // While the prior ledger state is pre-write AND no marker was persisted in
+  // this attempt, a failure is provably pre-write: no Checkout or
+  // AddClientToClass call was ever issued for this request, so the Deal must
+  // keep its retryable pre-write statuses instead of being frozen into
+  // read-only reconciliation (which would also block the Deny link).
+  let mindbodyWriteMarked = false;
+  const priorLedgerPreWrite =
+    (ledger.enrollmentStatus === "not_started" ||
+      ledger.enrollmentStatus === "service_verified") &&
+    ledger.mindbodyMutationStatus === "not_started";
+  let purchaseSaleId = positiveNumber(ledger.mindbodySaleId);
+  const visitWindow = visitWindowFromClassDate(ledger.classDate);
+  if (!visitWindow) {
+    return html(
+      "The Deal class date is invalid. No Mindbody enrollment was attempted; review the booking manually.",
+      409,
+    );
+  }
 
   if (isKidTrial && trialServiceId && trialServiceName) {
-    let alreadyEnrolled = false;
     try {
-      const visits = await getClientVisits(mbCfg, log, {
+      verifiedVisit = await readExactActiveVisit(
+        mbCfg,
+        log,
         clientId,
-        startDate: utcDateOffset(-30),
-        endDate: utcDateOffset(60),
-      });
-      const existingVisit = visits.find((visit) => isActiveClassVisit(visit, classId));
-      if (existingVisit) {
-        const exactService =
-          Number(existingVisit.ProductId) === trialServiceId &&
-          existingVisit.ServiceName === trialServiceName;
-        if (exactService) {
-          alreadyEnrolled = true;
-          log.info("staff.confirm.visitAlreadyExists", { clientId, classId });
-        } else {
-          enrollmentError = new Error(
-            "Existing class visit is attached to an unexpected service; manual Mindbody review required",
-          );
-        }
-      }
+        classId,
+        trialServiceId,
+        trialServiceName,
+        undefined,
+        location.siteId,
+        mindbodyLocationId,
+        visitWindow,
+        readOnlyReconciliation ? 3 : 1,
+      );
     } catch (e) {
       retryableError = e;
     }
 
-    if (!alreadyEnrolled && !retryableError && !enrollmentError) {
-      let clientService: ClientService | undefined;
+    if (verifiedVisit) {
+      verifiedClientService = clientServiceFromVisit(verifiedVisit, trialServiceName);
+      log.info("staff.confirm.visitAlreadyExists", { clientId, classId, visitId: verifiedVisit.Id });
+    } else if (!retryableError) {
       try {
-        clientService = await readExactClientService(
+        verifiedClientService = await readExactClientService(
           mbCfg,
           log,
           clientId,
           trialServiceId,
           trialServiceName,
-          1,
+          location.siteId,
+          readOnlyReconciliation ? 3 : 1,
         );
       } catch (e) {
         retryableError = e;
       }
 
-      if (!clientService && !retryableError) {
-        let purchaseError: unknown;
-        try {
-          await purchaseTrialService(mbCfg, log, {
-            ClientId: clientId,
-            ServiceId: trialServiceId,
-            Notes: `Court 16 trial · ${payload.correlationId}`,
-          });
-        } catch (e) {
-          purchaseError = e;
-          log.warn("staff.confirm.purchase-trial.fail", {
-            clientId,
-            trialServiceId,
-            error: serializeError(e).slice(0, 500),
-          });
-        }
-
-        // A checkout can commit before its response fails. Always retry the
-        // exact read-back before deciding whether another staff attempt is
-        // needed; never purchase a second credit in this request.
-        try {
-          clientService = await readExactClientService(
-            mbCfg,
-            log,
-            clientId,
-            trialServiceId,
-            trialServiceName,
-            3,
+      if (readOnlyReconciliation && !retryableError) {
+        retryableError = new Error(
+          "A prior enrollment outcome is unresolved; this retry performed read-only reconciliation and did not call Checkout or AddClientToClass",
+        );
+      } else if (!verifiedClientService && !retryableError) {
+        const checkoutWasAlreadyAttempted =
+          ledger?.mindbodyMutationStatus === "checkout_started" ||
+          ledger?.mindbodyMutationStatus === "reconciliation_required" ||
+          ledger?.enrollmentStatus === "checkout_started" ||
+          ledger?.enrollmentStatus === "reconciliation_required";
+        if (checkoutWasAlreadyAttempted) {
+          retryableError = new Error(
+            "A prior checkout outcome is unresolved; this retry performed read-only reconciliation and did not request another credit",
           );
-        } catch (e) {
-          retryableError = purchaseError ?? e;
+        } else {
+          try {
+            await persistMutationMarker(hsCfg, log, bookingDeal.id, ledger, {
+              enrollmentStatus: "checkout_started",
+              mutationStatus: "checkout_started",
+            });
+            mindbodyWriteMarked = true;
+          } catch (e) {
+            retryableError = new Error(
+              `HubSpot could not persist the checkout write-ahead marker: ${e instanceof Error ? e.message : String(e)}`,
+            );
+          }
         }
-        if (!clientService && !retryableError) {
-          retryableError =
-            purchaseError ??
-            new Error(`Exact ClientService not visible after checkout: ${trialServiceName}`);
-        }
-      }
 
-      if (clientService?.Id != null && !retryableError) {
-        try {
-          await addClientToClass(mbCfg, log, {
-            ClientId: clientId,
-            ClassId: classId,
-            ClientServiceId: Number(clientService.Id),
-          });
-        } catch (e) {
-          if (isAlreadyBookedError(e)) {
-            log.info("staff.confirm.alreadyBooked", { clientId, classId });
-          } else {
-            enrollmentError = e;
+        let checkoutError: unknown;
+        if (!retryableError) {
+          try {
+            const checkout = await checkoutTrialBooking(mbCfg, log, {
+              ClientId: clientId,
+              ServiceId: trialServiceId,
+              ClassId: classId,
+              LocationId: mindbodyLocationId!,
+              CorrelationId: payload.correlationId,
+            });
+            purchaseSaleId = checkout.saleId > 0 ? checkout.saleId : undefined;
+            if (checkout.visit) {
+              verifiedVisit = findExactActiveClientVisit([checkout.visit], {
+                clientId,
+                classId,
+                siteId: location.siteId,
+                locationId: mindbodyLocationId,
+                productId: trialServiceId,
+                serviceName: trialServiceName,
+              });
+              if (verifiedVisit) {
+                verifiedClientService = clientServiceFromVisit(
+                  verifiedVisit,
+                  trialServiceName,
+                );
+                log.info("staff.confirm.checkout.direct-visit-verified", {
+                  visitId: verifiedVisit.Id,
+                });
+              }
+            }
+          } catch (e) {
+            checkoutError = e;
+            log.warn("staff.confirm.checkout-trial.fail", {
+              clientId,
+              trialServiceId,
+              error: serializeError(e).slice(0, 500),
+            });
+          }
+
+          // Checkout can commit before its response is lost. Reconcile the
+          // exact Visit and ClientService before deciding whether Add is needed.
+          if (!verifiedVisit) {
+            try {
+              verifiedVisit = await readExactActiveVisit(
+                mbCfg,
+                log,
+                clientId,
+                classId,
+                trialServiceId,
+                trialServiceName,
+                undefined,
+                location.siteId,
+                mindbodyLocationId,
+                visitWindow,
+                3,
+              );
+              if (!verifiedVisit) {
+                verifiedClientService = await readExactClientService(
+                  mbCfg,
+                  log,
+                  clientId,
+                  trialServiceId,
+                  trialServiceName,
+                  location.siteId,
+                  3,
+                );
+              }
+            } catch (e) {
+              retryableError = checkoutError ?? e;
+            }
+          }
+          if (!verifiedVisit && !verifiedClientService && !retryableError) {
+            retryableError =
+              checkoutError ??
+              new Error("Checkout returned without an exact Visit or ClientService readback");
           }
         }
       }
+
+      if (verifiedClientService?.Id != null && !verifiedVisit && !retryableError) {
+        try {
+          await persistMutationMarker(hsCfg, log, bookingDeal.id, ledger, {
+            enrollmentStatus: "enrollment_started",
+            mutationStatus: "add_to_class_started",
+            mindbodyClientServiceId: verifiedClientService.Id,
+            mindbodySaleId: purchaseSaleId,
+          });
+          mindbodyWriteMarked = true;
+        } catch (e) {
+          retryableError = new Error(
+            `HubSpot could not persist the enrollment write-ahead marker: ${e instanceof Error ? e.message : String(e)}`,
+          );
+        }
+
+        if (!retryableError) {
+          try {
+            const addResult = await addClientToClass(mbCfg, log, {
+              ClientId: clientId,
+              ClassId: classId,
+              ClientServiceId: Number(verifiedClientService.Id),
+            });
+            if (addResult.Visit) {
+              verifiedVisit = findExactActiveClientVisit([addResult.Visit], {
+                clientId,
+                classId,
+                siteId: location.siteId,
+                locationId: mindbodyLocationId,
+                productId: trialServiceId,
+                serviceName: trialServiceName,
+                clientServiceId: verifiedClientService.Id,
+              });
+              if (verifiedVisit) {
+                log.info("staff.confirm.add.direct-visit-verified", {
+                  visitId: verifiedVisit.Id,
+                });
+              }
+            }
+          } catch (e) {
+            if (isAlreadyBookedError(e)) {
+              log.info("staff.confirm.alreadyBooked", { clientId, classId });
+            } else {
+              enrollmentError = e;
+            }
+          }
+        }
+      }
+
+    if (!retryableError && !verifiedVisit) {
+      try {
+        verifiedVisit = await readExactActiveVisit(
+          mbCfg,
+          log,
+          clientId,
+          classId,
+          trialServiceId,
+          trialServiceName,
+          verifiedClientService?.Id,
+          location.siteId,
+          mindbodyLocationId,
+          visitWindow,
+          3,
+        );
+        if (!verifiedVisit?.Id) {
+          retryableError = new Error("Exact active Mindbody visit was not visible after enrollment");
+        } else {
+          enrollmentError = undefined;
+        }
+      } catch (e) {
+        retryableError = e;
+      }
+    }
     }
   } else {
-    try {
-      await addClientToClass(mbCfg, log, { ClientId: clientId, ClassId: classId });
-    } catch (e) {
-      if (isAlreadyBookedError(e)) {
-        log.info("staff.confirm.alreadyBooked", { clientId, classId });
-      } else {
-        enrollmentError = e;
+    if (!readOnlyReconciliation) {
+      try {
+        await persistMutationMarker(hsCfg, log, bookingDeal.id, ledger, {
+          enrollmentStatus: "enrollment_started",
+          mutationStatus: "add_to_class_started",
+        });
+        mindbodyWriteMarked = true;
+      } catch (e) {
+        retryableError = e;
+      }
+      try {
+        if (!retryableError) {
+          const addResult = await addClientToClass(mbCfg, log, {
+            ClientId: clientId,
+            ClassId: classId,
+          });
+          if (addResult.Visit) {
+            verifiedVisit = findExactActiveClientVisit([addResult.Visit], {
+              clientId,
+              classId,
+              siteId: location.siteId,
+              locationId: mindbodyLocationId,
+            });
+            if (verifiedVisit) {
+              log.info("staff.confirm.add.direct-visit-verified", {
+                visitId: verifiedVisit.Id,
+              });
+            }
+          }
+        }
+      } catch (e) {
+        if (isAlreadyBookedError(e)) {
+          log.info("staff.confirm.alreadyBooked", { clientId, classId });
+        } else {
+          enrollmentError = e;
+        }
+      }
+    }
+    if (!retryableError) {
+      try {
+        verifiedVisit = await readExactActiveVisit(
+          mbCfg,
+          log,
+          clientId,
+          classId,
+          undefined,
+          undefined,
+          undefined,
+          location.siteId,
+          mindbodyLocationId,
+          visitWindow,
+          3,
+        );
+        if (!verifiedVisit?.Id) {
+          retryableError = new Error("Exact active Mindbody visit was not visible after enrollment");
+        } else {
+          enrollmentError = undefined;
+        }
+      } catch (e) {
+        retryableError = e;
       }
     }
   }
 
   if (retryableError) {
     const serialized = serializeError(retryableError);
-    await updateContact(hsCfg, log, contact.id, {
-      court16_booking_status: "manual_review",
-      court16_failure_reason: `[confirm_retry] ${serialized}`.slice(0, 4000),
-    });
+    // A failure is provably pre-write when the ledger entered this attempt in
+    // a pre-write state and no write-ahead marker was persisted before the
+    // failure: no Checkout or AddClientToClass call was issued. Freezing such
+    // a Deal into reconciliation_required would make every later Confirm
+    // read-only (a livelock, since there is nothing to read back) and block
+    // the Deny link. Keep the Deal exactly as it was, with the failure noted.
+    const preWriteFailure = priorLedgerPreWrite && !mindbodyWriteMarked;
+    let dealStateRecorded = false;
+    try {
+      await updateDealProperties(hsCfg, log, bookingDeal.id, {
+        ...buildBookingDealProperties({
+          ...ledger,
+          bookingStatus: preWriteFailure ? ledger.bookingStatus : "manual_review",
+          ...(preWriteFailure
+            ? {}
+            : {
+                enrollmentStatus: "reconciliation_required" as const,
+                mindbodyMutationStatus: "reconciliation_required" as const,
+              }),
+          failureReason: `[confirm_retry] ${serialized}`.slice(0, 4000),
+          mindbodyServiceId: trialServiceId,
+          mindbodyClientServiceId: verifiedClientService?.Id,
+          mindbodySaleId: purchaseSaleId,
+          mindbodyVisitId: verifiedVisit?.Id,
+        }),
+      });
+      dealStateRecorded = true;
+    } catch (e) {
+      log.error("staff.confirm.deal-retry-state.fail", {
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+    if (!dealStateRecorded) {
+      return html(
+        "Mindbody needs reconciliation, but HubSpot could not save that state on the Deal. Review the request by correlation ID.",
+        503,
+      );
+    }
+    if (preWriteFailure) {
+      return html(
+        "A pre-write check failed before any Mindbody write was attempted, so nothing was charged or enrolled. The request is unchanged: wait one minute and use this Confirm link again, or use the Deny link to resolve the request and release the parent's booking hold.",
+        503,
+      );
+    }
     return html(
       "Mindbody could not verify the exact trial credit or enrollment state. No second credit was requested. Wait one minute, then use this Confirm link again; if it still fails, review the child in Mindbody.",
       503,
@@ -378,10 +719,33 @@ async function confirmBooking(payload: ReturnType<typeof verifyToken>) {
 
   if (enrollmentError) {
     const serialized = serializeError(enrollmentError);
-    await updateContact(hsCfg, log, contact.id, {
-      court16_booking_status: "failed",
-      court16_failure_reason: `Staff confirm: ${serialized}`.slice(0, 4000),
-    });
+    let dealStateRecorded = false;
+    try {
+      await updateDealProperties(hsCfg, log, bookingDeal.id, {
+        ...buildBookingDealProperties({
+          ...ledger,
+          bookingStatus: "failed",
+          enrollmentStatus: "reconciliation_required",
+          mindbodyMutationStatus: "reconciliation_required",
+          failureReason: `Staff confirm: ${serialized}`.slice(0, 4000),
+          mindbodyServiceId: trialServiceId,
+          mindbodyClientServiceId: verifiedClientService?.Id,
+          mindbodySaleId: purchaseSaleId,
+          mindbodyVisitId: verifiedVisit?.Id,
+        }),
+      });
+      dealStateRecorded = true;
+    } catch (e) {
+      log.error("staff.confirm.deal-failure-state.fail", {
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+    if (!dealStateRecorded) {
+      return html(
+        "Mindbody declined or could not verify the booking, but HubSpot could not save that state on the Deal.",
+        503,
+      );
+    }
     let reason = "Mindbody declined the booking.";
     if (enrollmentError instanceof MindbodyError) {
       const errorBody = enrollmentError.toJSON().body as
@@ -399,24 +763,48 @@ async function confirmBooking(payload: ReturnType<typeof verifyToken>) {
     );
   }
 
-  await updateContact(hsCfg, log, contact.id, { court16_booking_status: "confirmed" });
+  if (!verifiedVisit?.Id) {
+    return html(
+      "Mindbody enrollment could not be read back with a Visit ID. The request remains in manual review.",
+      503,
+    );
+  }
 
-  // Advance the already-verified Deal in the Trials pipeline. Soft-failure:
-  // log + continue.
-  // The Contact-side status flip above is the canonical signal staff
-  // workflows trigger on; the Deal move is for reporting / kanban.
+  // The Deal is authoritative. Persist exact readback evidence, release the
+  // active-parent uniqueness key, and let reviewed Deal workflows notify.
   try {
-    await moveDealStage(hsCfg, log, bookingDeal.id, pipeline.stages.scheduled);
+    await moveDealStage(hsCfg, log, bookingDeal.id, pipeline.stages.scheduled, {
+      ...buildBookingDealProperties({
+        ...ledger,
+        activeParentKey: undefined,
+        bookingStatus: "confirmed",
+        enrollmentStatus: "enrollment_verified",
+        mindbodyMutationStatus: "verified",
+        mindbodyServiceId: trialServiceId,
+        mindbodyClientServiceId: verifiedClientService?.Id ?? verifiedVisit.ServiceId,
+        mindbodySaleId: purchaseSaleId,
+        mindbodyVisitId: verifiedVisit.Id,
+        enrollmentVerifiedAt: new Date(),
+      }),
+      court16_active_parent_key: "",
+      court16_failure_reason: "",
+    });
     log.info("staff.confirm.dealMoved", {
       dealId: bookingDeal.id,
       stage: pipeline.stages.scheduled,
     });
   } catch (e) {
-    log.warn("staff.confirm.dealMove.fail", { error: e instanceof Error ? e.message : String(e) });
+    log.error("staff.confirm.deal-evidence.fail", {
+      error: e instanceof Error ? e.message : String(e),
+    });
+    return html(
+      "Mindbody enrollment is verified, but HubSpot could not save its evidence. No second enrollment will be attempted; retry this link to reconcile HubSpot.",
+      503,
+    );
   }
 
   return html(
-    `Confirmed. Parent will receive a confirmation email shortly. (correlation: ${payload.correlationId})`,
+    `Confirmed in Mindbody and on the HubSpot Deal. The reviewed Deal workflow controls parent notification. (correlation: ${payload.correlationId})`,
     200,
   );
 }
@@ -450,6 +838,7 @@ function findAvailableClientService(
   services: ClientService[],
   expectedProductId: number,
   expectedName: string,
+  expectedSiteId: number,
 ): ClientService | undefined {
   const now = Date.now();
   return services
@@ -460,6 +849,7 @@ function findAvailableClientService(
         service.Id != null &&
         Number(service.ProductId) === expectedProductId &&
         service.Name === expectedName &&
+        Number(service.SiteId) === expectedSiteId &&
         remaining > 0 &&
         (!Number.isFinite(expirationMs) || expirationMs >= now)
       );
@@ -473,6 +863,7 @@ async function readExactClientService(
   clientId: string | number,
   productId: number,
   name: string,
+  siteId: number,
   attempts: number,
 ): Promise<ClientService | undefined> {
   let lastError: unknown;
@@ -482,6 +873,7 @@ async function readExactClientService(
         await getClientServices(cfg, log, clientId),
         productId,
         name,
+        siteId,
       );
       if (match) return match;
       lastError = undefined;
@@ -496,15 +888,104 @@ async function readExactClientService(
   return undefined;
 }
 
-function utcDateOffset(days: number): string {
-  const date = new Date();
-  date.setUTCDate(date.getUTCDate() + days);
-  return date.toISOString().slice(0, 10);
+async function readExactActiveVisit(
+  cfg: MindbodyConfig,
+  log: ReturnType<typeof createLogger>,
+  clientId: string | number,
+  classId: number,
+  expectedProductId: number | undefined,
+  expectedServiceName: string | undefined,
+  expectedClientServiceId: string | number | undefined,
+  expectedSiteId: number,
+  expectedLocationId: number | undefined,
+  window: { startDate: string; endDate: string },
+  attempts: number,
+): Promise<ClientVisit | undefined> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      const visits = await getClientVisits(cfg, log, {
+        clientId,
+        startDate: window.startDate,
+        endDate: window.endDate,
+      });
+      const match = findExactActiveClientVisit(visits, {
+        clientId,
+        classId,
+        siteId: expectedSiteId,
+        locationId: expectedLocationId,
+        productId: expectedProductId,
+        serviceName: expectedServiceName,
+        clientServiceId: expectedClientServiceId,
+      });
+      if (match) return match;
+      lastError = undefined;
+    } catch (e) {
+      lastError = e;
+    }
+    if (attempt < attempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, 300 * (attempt + 1)));
+    }
+  }
+  if (lastError) throw lastError;
+  return undefined;
 }
 
-function isActiveClassVisit(visit: ClientVisit, classId: number): boolean {
-  const state = `${visit.AppointmentStatus ?? ""} ${visit.Status ?? ""}`.toLowerCase();
-  return Number(visit.ClassId) === classId && !visit.LateCancelled && !state.includes("cancel");
+async function persistMutationMarker(
+  hsCfg: NonNullable<ReturnType<typeof loadHubspotConfig>>,
+  log: ReturnType<typeof createLogger>,
+  dealId: string,
+  ledger: ParsedBookingDealLedger,
+  args: {
+    enrollmentStatus: EnrollmentStatus;
+    mutationStatus: MindbodyMutationStatus;
+    mindbodyClientServiceId?: string | number;
+    mindbodySaleId?: string | number;
+  },
+): Promise<void> {
+  await updateDealProperties(hsCfg, log, dealId, {
+    ...buildBookingDealProperties({
+      ...ledger,
+      bookingStatus: ledger.bookingStatus,
+      enrollmentStatus: args.enrollmentStatus,
+      mindbodyMutationStatus: args.mutationStatus,
+      mindbodyMutationStartedAt: new Date(),
+      failureReason: ledger.failureReason,
+      mindbodyClientServiceId: args.mindbodyClientServiceId ?? ledger.mindbodyClientServiceId,
+      mindbodySaleId: args.mindbodySaleId ?? ledger.mindbodySaleId,
+    }),
+  });
+}
+
+function visitWindowFromClassDate(
+  value: string | undefined,
+): { startDate: string; endDate: string } | null {
+  if (!value) return null;
+  const milliseconds = /^\d+$/.test(value) ? Number(value) : Date.parse(value);
+  if (!Number.isFinite(milliseconds)) return null;
+  const start = new Date(milliseconds);
+  const end = new Date(milliseconds);
+  start.setUTCDate(start.getUTCDate() - 2);
+  end.setUTCDate(end.getUTCDate() + 2);
+  return { startDate: start.toISOString().slice(0, 10), endDate: end.toISOString().slice(0, 10) };
+}
+
+function clientServiceFromVisit(visit: ClientVisit, name: string): ClientService | undefined {
+  const id = positiveNumber(visit.ServiceId);
+  if (!id) return undefined;
+  return {
+    Id: id,
+    ProductId: positiveNumber(visit.ProductId),
+    Name: name,
+    SiteId: positiveNumber(visit.SiteId),
+    Remaining: 0,
+  };
+}
+
+function positiveNumber(value: string | number | undefined): number | undefined {
+  if (value === undefined) return undefined;
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : undefined;
 }
 
 function serializeError(error: unknown): string {

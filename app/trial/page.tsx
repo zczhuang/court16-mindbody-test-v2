@@ -67,6 +67,7 @@ function TrialInner() {
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedClass, setSelectedClass] = useState<TrialClass | null>(null);
   const [showFormModal, setShowFormModal] = useState(false);
+  const [submissionId, setSubmissionId] = useState<string | null>(null);
   const [submittedRequest, setSubmittedRequest] = useState<TrialRequest | null>(null);
   const [submittedCorrelationId, setSubmittedCorrelationId] = useState<string | undefined>(
     undefined,
@@ -88,6 +89,7 @@ function TrialInner() {
     // modal or class state from the page we just left. Forward navigation may
     // restore the club/calendar, but never a stale, previously open form.
     setShowFormModal(false);
+    setSubmissionId(null);
     setSelectedClass(null);
     setSelectedDate(null);
     setAgeFilter(null);
@@ -191,6 +193,7 @@ function TrialInner() {
     setStep("location");
     setLocation(null);
     setShowFormModal(false);
+    setSubmissionId(null);
     setSelectedDate(null);
     setSelectedClass(null);
     setAgeFilter(null);
@@ -204,6 +207,7 @@ function TrialInner() {
 
   function handleClassSelect(tc: TrialClass) {
     setSelectedClass(tc);
+    setSubmissionId(window.crypto.randomUUID());
     setShowFormModal(true);
   }
 
@@ -278,6 +282,7 @@ function TrialInner() {
     setSubmittedCorrelationId(data.correlationId);
     setSubmittedStatus(status);
     setShowFormModal(false);
+    setSubmissionId(null);
     setStep("confirmed");
   }
 
@@ -452,8 +457,9 @@ function TrialInner() {
         )}
       </main>
 
-      {showFormModal && selectedClass && location && (
+      {showFormModal && selectedClass && location && submissionId && (
         <TrialRequestForm
+          submissionId={submissionId}
           trialClass={selectedClass}
           kids={DEFAULT_KIDS}
           locationId={location.id}
@@ -462,6 +468,7 @@ function TrialInner() {
           onSubmit={handleTrialSubmit}
           onCancel={() => {
             setShowFormModal(false);
+            setSubmissionId(null);
             setSelectedClass(null);
           }}
         />

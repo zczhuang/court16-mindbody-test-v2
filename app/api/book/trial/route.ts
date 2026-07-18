@@ -12,12 +12,21 @@ import {
 import {
   createTrialDeal,
   findContactByEmail,
+  findOtherActiveBookingDealsByParentEmail,
+  getContactById,
+  getDealByActiveParentKey,
+  getDealByBookingKey,
+  HubspotActiveBookingConflictError,
   HubspotError,
   loadHubspotConfig,
   submitTrialForm,
+  updateContact,
+  updateDealProperties,
   upsertContactByEmail,
+  type DealRecord,
 } from "@/lib/hubspot";
 import { buildStaffUrl } from "@/lib/staff-tokens";
+import { buildActiveParentKey } from "@/lib/booking-identity";
 import { classifyIntent } from "@/lib/intent";
 import { createLogger, makeCorrelationId } from "@/lib/logger";
 import {
@@ -32,8 +41,18 @@ import { getDealPipeline, getHubspotPreferredLocation } from "@/config/hubspot-d
 import { getKidsTrialReadiness } from "@/config/kids-trial-readiness";
 import type { MindBodyClass, TrialRequest } from "@/lib/trial-types";
 import { consumeSignupRateLimit } from "@/lib/request-rate-limit";
-import { tryAcquireLocalActionLock } from "@/lib/action-lock";
+import {
+  acquireDistributedActionLock,
+  DistributedActionLockError,
+  type DistributedActionLockHandle,
+} from "@/lib/distributed-action-lock";
 import { getMindbodyWriteGuard } from "@/lib/mindbody-write-guard";
+import {
+  buildBookingDealProperties,
+  parseBookingDealLedger,
+  type BookingDealLedgerPatch,
+  type FamilyProvisioningStatus,
+} from "@/lib/hubspot-deal-ledger";
 import {
   MAX_KIDS_TRIAL_AGE,
   MIN_KIDS_TRIAL_AGE,
@@ -65,8 +84,8 @@ function ageToBand(age: number): string {
 }
 
 export async function POST(req: Request) {
-  const correlationId = makeCorrelationId();
-  const log = createLogger(correlationId);
+  let correlationId = makeCorrelationId();
+  let log = createLogger(correlationId);
 
   const auth = checkCallerToken(req);
   if (!auth.ok) {
@@ -85,6 +104,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, correlationId, errors }, { status: 400 });
   }
   body = normalizeValidatedRequest(body);
+  correlationId = body.submissionId;
+  log = createLogger(correlationId);
 
   const rateLimit = consumeSignupRateLimit(req, "kid-trial", body.parentEmail);
   if (!rateLimit.ok) {
@@ -102,10 +123,26 @@ export async function POST(req: Request) {
     );
   }
 
-  const releaseSignupLock = tryAcquireLocalActionLock(
-    `kid-trial:${body.parentEmail.trim().toLowerCase()}`,
-  );
-  if (!releaseSignupLock) {
+  let signupLock: DistributedActionLockHandle | null;
+  try {
+    signupLock = await acquireDistributedActionLock(
+      `kid-trial:${body.parentEmail.trim().toLowerCase()}`,
+    );
+  } catch (error) {
+    log.error("trial.distributed-lock.unavailable", {
+      code: error instanceof DistributedActionLockError ? error.code : "unknown",
+    });
+    return NextResponse.json(
+      {
+        ok: false,
+        correlationId,
+        code: "mutation_lock_unavailable",
+        error: "Trial requests are temporarily unavailable. Please try again shortly.",
+      },
+      { status: 503 },
+    );
+  }
+  if (!signupLock) {
     return NextResponse.json(
       {
         ok: false,
@@ -148,6 +185,29 @@ export async function POST(req: Request) {
       { status: 409 },
     );
   }
+  if (process.env.HUBSPOT_DEAL_LEDGER_ENABLED !== "true") {
+    return NextResponse.json(
+      {
+        ok: false,
+        correlationId,
+        code: "hubspot_deal_ledger_not_enabled",
+        error: "Trial requests are not enabled until the booking ledger is verified.",
+      },
+      { status: 503 },
+    );
+  }
+  if (process.env.HUBSPOT_SUBMIT_LEGACY_TRIAL_FORM === "true") {
+    return NextResponse.json(
+      {
+        ok: false,
+        correlationId,
+        code: "hubspot_legacy_form_conflict",
+        error:
+          "Trial requests are disabled while the legacy HubSpot form workflow is enabled. Disable it before using the Deal ledger.",
+      },
+      { status: 503 },
+    );
+  }
   const { preferredLocation, programId, trialConfig } = trialReadiness;
   const siteProfileErrors = validateMindbodyProfileDetails(
     body,
@@ -161,6 +221,7 @@ export async function POST(req: Request) {
   }
 
   let mbCfg;
+  let verifiedMindbodyLocationId: number | undefined;
   try {
     const base = loadConfigFromEnv();
     // Match /api/mindbody/calendar: in sandbox-fallback mode use the -99
@@ -252,6 +313,13 @@ export async function POST(req: Request) {
         Number(candidate.ClassScheduleId) === body.classScheduleId,
     );
     const liveProgramId = Number(liveClass?.ClassDescription?.Program?.Id);
+    const liveLocationId = Number(liveClass?.Location?.Id);
+    const liveSiteId = Number(liveClass?.Location?.SiteID);
+    const expectedLiveSiteId = Number(mbCfg.siteId);
+    const locationMatches =
+      Number.isInteger(liveLocationId) &&
+      liveLocationId > 0 &&
+      liveSiteId === expectedLiveSiteId;
     const spotsRemaining = liveClass
       ? typeof liveClass.WebCapacity === "number"
         ? Number(liveClass.WebCapacity) - Number(liveClass.WebBooked ?? 0)
@@ -261,6 +329,7 @@ export async function POST(req: Request) {
       !liveClass ||
       liveProgramId !== programId ||
       liveClass.StartDateTime !== body.classStartsAt ||
+      !locationMatches ||
       liveClass.IsCanceled ||
       !liveClass.IsAvailable ||
       spotsRemaining <= 0
@@ -271,6 +340,10 @@ export async function POST(req: Request) {
         classScheduleId: body.classScheduleId,
         found: Boolean(liveClass),
         programMatches: liveProgramId === programId,
+        expectedSiteId: expectedLiveSiteId,
+        liveSiteId: Number.isFinite(liveSiteId) ? liveSiteId : null,
+        liveLocationId: Number.isFinite(liveLocationId) ? liveLocationId : null,
+        locationMatches,
         startMatches: liveClass?.StartDateTime === body.classStartsAt,
         canceled: liveClass?.IsCanceled ?? null,
         available: liveClass?.IsAvailable ?? null,
@@ -289,6 +362,7 @@ export async function POST(req: Request) {
 
     const canonicalClassName =
       liveClass.ClassDescription?.Name || liveClass.ClassName || body.className;
+    verifiedMindbodyLocationId = liveLocationId;
     const canonicalAgeErrors = validateClassAge(body, canonicalClassName);
     if (canonicalAgeErrors.length > 0) {
       return NextResponse.json(
@@ -328,6 +402,35 @@ export async function POST(req: Request) {
     ? siteLocalToUtcIso(body.classStartsAt, location.timezone)
     : undefined;
 
+  const bookingLedgerBase: Omit<BookingDealLedgerPatch, "bookingStatus"> = {
+    correlationId,
+    activeParentKey: buildActiveParentKey(body.parentEmail),
+    intent: "kid_trial",
+    locationSlug: location.id,
+    mindbodySiteId: mbCfg.siteId,
+    mindbodyLocationId: verifiedMindbodyLocationId,
+    mindbodyProgramId: programId,
+    mindbodyServiceId: trialConfig.trialServiceId,
+    mindbodyServiceName: trialConfig.trialServiceName,
+    classId: body.classId,
+    classScheduleId: body.classScheduleId,
+    className: body.className,
+    classDayTime: body.classStartsAt
+      ? formatClassDayTime(body.classStartsAt, location.timezone)
+      : `${body.classDay} ${body.classTime}`,
+    coachName: body.coachName,
+    parentEmail: body.parentEmail,
+    childFirstName: primaryKid.firstName,
+    childLastName,
+    childBirthDate: childDob,
+    childPlayingLevel: body.childPlayingLevel,
+    childSchool: body.childSchool,
+    waiverVersion: WAIVER_VERSION,
+    staffConfirmUrl: buildStaffUrl({ action: "confirm", correlationId, baseUrl }),
+    staffReassignUrl: buildStaffUrl({ action: "reassign", correlationId, baseUrl }),
+    staffDenyUrl: buildStaffUrl({ action: "deny", correlationId, baseUrl }),
+  };
+
   log.info("trial.start", {
     writeMode: mbCfg.writeMode,
     location: location.id,
@@ -349,6 +452,106 @@ export async function POST(req: Request) {
     parentId?: string;
     childId?: string;
   } | null = null;
+
+  // Create the immutable Deal work item before any Mindbody write. A browser
+  // retry carries the same submission UUID, so a cached Deal is a read-only
+  // replay signal: never repeat AddClient from that request.
+  const intakeResult = await createIntakeDealSafely(
+    hsCfg,
+    log,
+    {
+      email: body.parentEmail,
+      correlationId,
+      locationId: location.id,
+      classStartsAt: classStartsAtUtc,
+      dealProperties: buildBookingDealProperties({
+        ...bookingLedgerBase,
+        bookingStatus: "intake_started",
+        enrollmentStatus: "not_started",
+        mindbodyMutationStatus: "not_started",
+        familyProvisioningStatus: "not_started",
+      }),
+      dealName: `${primaryKid.firstName} ${childLastName} - ${body.parentEmail}`,
+      amount: 0,
+    },
+    trace,
+  );
+  if (!intakeResult) return hubspotWorkItemFailure(correlationId);
+  if ("activeDeal" in intakeResult) {
+    return activeBookingConflictResponse(correlationId);
+  }
+  const intakeWorkItem = intakeResult;
+  if (intakeWorkItem.cached) {
+    return handleCachedBookingSafely(
+      hsCfg,
+      log,
+      intakeWorkItem,
+      bookingLedgerBase,
+      correlationId,
+    );
+  }
+
+  // A browser can generate a different submission UUID for the same parent.
+  // Guard the normalized email against all other active Deal work items before
+  // any Mindbody mutation. Search ambiguity is a hard stop: preserve the new
+  // Deal for staff review instead of guessing that no prior request exists.
+  try {
+    const otherActiveDeals = await findOtherActiveBookingDealsByParentEmail(
+      hsCfg,
+      log,
+      body.parentEmail,
+      intakeWorkItem.dealId,
+    );
+    trace.push({
+      step: "hubspot.activeBookingGuard",
+      status: "ok",
+      data: {
+        excludedDealId: intakeWorkItem.dealId,
+        otherDealIds: otherActiveDeals.map((deal) => deal.id),
+      },
+    });
+    if (otherActiveDeals.length > 0) {
+      log.warn("trial.active-deal.exists", {
+        dealId: intakeWorkItem.dealId,
+        otherDeals: otherActiveDeals.map((deal) => ({
+          id: deal.id,
+          status: deal.properties.court16_booking_status,
+          bookingKey: deal.properties.court16_booking_key,
+        })),
+      });
+      const recorded = await markWorkItemManualSafely(
+        hsCfg,
+        log,
+        intakeWorkItem.dealId,
+        bookingLedgerBase,
+        `Another active booking Deal exists for this parent (${otherActiveDeals
+          .map((deal) => deal.id)
+          .join(", ")}); no Mindbody write was attempted.`,
+      );
+      return recorded
+        ? durableManualReviewResponse(correlationId)
+        : hubspotWorkItemFailure(correlationId);
+    }
+  } catch (e) {
+    log.error("trial.active-deal.guard-failed", { error: serialize(e) });
+    trace.push({
+      step: "hubspot.activeBookingGuard",
+      status: "error",
+      error: serialize(e),
+    });
+    const recorded = await markWorkItemManualSafely(
+      hsCfg,
+      log,
+      intakeWorkItem.dealId,
+      bookingLedgerBase,
+      `The active booking Deal check was unavailable or ambiguous; no Mindbody write was attempted. ${
+        e instanceof Error ? e.message : String(e)
+      }`.slice(0, 4000),
+    );
+    return recorded
+      ? durableManualReviewResponse(correlationId)
+      : hubspotWorkItemFailure(correlationId);
+  }
 
   try {
     let existing: Awaited<ReturnType<typeof getClientsByEmail>> = [];
@@ -382,16 +585,16 @@ export async function POST(req: Request) {
             activeStatus,
             activeCorrelationId: contact.properties.court16_correlation_id ?? null,
           });
-          return NextResponse.json(
-            {
-              ok: false,
-              correlationId,
-              code: "active_trial_request_exists",
-              error:
-                "A trial or intro request is already active for this email. Court 16 staff will follow up; please do not submit another request.",
-            },
-            { status: 409 },
+          const recorded = await markWorkItemManualSafely(
+            hsCfg,
+            log,
+            intakeWorkItem.dealId,
+            bookingLedgerBase,
+            "Another active request exists on the shared Contact; review the per-request Deals before any Mindbody write.",
           );
+          return recorded
+            ? durableManualReviewResponse(correlationId)
+            : hubspotWorkItemFailure(correlationId);
         }
         const storedLocationSlug = contact?.properties?.court16_location_slug?.trim() || undefined;
         const storedIdsBelongToThisSite = storedLocationSlug === location.id;
@@ -450,6 +653,13 @@ export async function POST(req: Request) {
         // stored-ID verification read fails, stop before creating records.
         log.error("trial.idguard.fail", { error: serialize(e) });
         trace.push({ step: "idFirstGuard", status: "error", error: serialize(e) });
+        await markWorkItemManualSafely(
+          hsCfg,
+          log,
+          intakeWorkItem.dealId,
+          bookingLedgerBase,
+          "The duplicate-family safety check failed before any Mindbody write.",
+        );
         return NextResponse.json(
           {
             ok: false,
@@ -480,31 +690,6 @@ export async function POST(req: Request) {
       }
     }
 
-    // Establish a durable, per-booking HubSpot Deal before any AddClient
-    // write. If HubSpot is unavailable, stop here so the parent can retry
-    // without leaving orphan Mindbody records or triggering claim emails.
-    const intakeDealCreated = await createDealSafely(
-      hsCfg,
-      log,
-      {
-        email: body.parentEmail,
-        correlationId,
-        locationId: location.id,
-        contactProperties: {
-          firstname: body.parentFirstName,
-          lastname: body.parentLastName,
-          phone: body.parentPhone,
-          preferred_location: preferredLocation,
-          ...buildHubspotTrialReportingFields(body),
-        },
-        classStartsAt: classStartsAtUtc,
-        dealName: `${primaryKid.firstName} ${childLastName} - ${body.parentEmail}`,
-        amount: 0,
-      },
-      trace,
-    );
-    if (!intakeDealCreated) return hubspotWorkItemFailure(correlationId);
-
     const intent = classifyIntent({
       bookingFor: "kid",
       mindbodyClientExists: existing.length > 0,
@@ -528,21 +713,29 @@ export async function POST(req: Request) {
         baseUrl,
       });
       await submitFormSafely(hsCfg, log, fields, trace, "hubspot.submitTrialForm (softwall)", hsContext);
-      const dealCreated = await createDealSafely(
+      const finalized = await finalizeWorkItemSafely(
         hsCfg,
         log,
+        intakeWorkItem,
         {
-          email: body.parentEmail,
-          correlationId,
-          locationId: location.id,
           contactProperties: contactPropertiesFromFields(fields),
-          classStartsAt: classStartsAtUtc,
-          dealName: `${primaryKid.firstName} ${childLastName} - ${body.parentEmail} (softwall)`,
-          amount: 0,
+          dealProperties: buildBookingDealProperties({
+            ...bookingLedgerBase,
+            bookingStatus: "duplicate_email_softwall",
+            enrollmentStatus: "not_started",
+            mindbodyMutationStatus: "not_started",
+            familyProvisioningStatus: "not_started",
+            mindbodyParentId: existingParent?.Id,
+            mindbodyParentUniqueId: existingParent?.UniqueId,
+            familyAccountStatus: "manual_review",
+            failureReason: "Existing Mindbody email requires staff to resolve the original child record.",
+          }),
         },
         trace,
       );
-      if (!dealCreated) return durableManualReviewResponse(correlationId);
+      if (!finalized.dealUpdated) {
+        return durableManualReviewResponse(correlationId);
+      }
       return NextResponse.json({ ok: true, correlationId, status: "duplicate_email_softwall" });
     }
 
@@ -550,12 +743,26 @@ export async function POST(req: Request) {
     // manual_review degrade-out at the bottom of this block.
     let parent: Awaited<ReturnType<typeof addClient>> | null = null;
     let child: Awaited<ReturnType<typeof addClient>> | null = null;
+    let familyProvisioningStartedAt: Date | undefined;
+    let familyProvisioningAttempted = false;
     if (!mbDegraded) {
       try {
         // Mindbody requires these fields at Ridge Hill. The Court 16 form
         // collects the household values explicitly so neither profile is
         // created with the club address or a guessed demographic value.
         const householdAddress = buildMindbodyHouseholdAddress(mindbodyProfile);
+
+        familyProvisioningStartedAt = new Date();
+        familyProvisioningAttempted = true;
+        await persistFamilyProvisioningMarker(
+          hsCfg,
+          log,
+          intakeWorkItem.dealId,
+          {
+            status: "parent_create_started",
+            startedAt: familyProvisioningStartedAt,
+          },
+        );
 
         parent = await addClient(mbCfg, log, {
           FirstName: body.parentFirstName,
@@ -574,6 +781,17 @@ export async function POST(req: Request) {
           SendScheduleEmails: true,
         });
         trace.push({ step: "addClient (parent)", status: "ok", data: { id: parent.Id } });
+        await persistFamilyProvisioningMarker(
+          hsCfg,
+          log,
+          intakeWorkItem.dealId,
+          {
+            status: "parent_created",
+            startedAt: familyProvisioningStartedAt,
+            parentId: parent.Id,
+            parentUniqueId: parent.UniqueId,
+          },
+        );
 
         // Child AddClient with INLINE Parent/Guardian relationship to parent
         // — saves the round-trip and works in consumer mode (the standalone
@@ -588,6 +806,17 @@ export async function POST(req: Request) {
         // child's enrollments carry the parent's reachable address. The
         // Parent/Guardian relationship below links the two records; the
         // account-claim flow means no duplicate profiles are ever created.
+        await persistFamilyProvisioningMarker(
+          hsCfg,
+          log,
+          intakeWorkItem.dealId,
+          {
+            status: "child_create_started",
+            startedAt: familyProvisioningStartedAt,
+            parentId: parent.Id,
+            parentUniqueId: parent.UniqueId,
+          },
+        );
         child = await addClient(mbCfg, log, {
           FirstName: primaryKid.firstName,
           LastName: childLastName,
@@ -615,6 +844,19 @@ export async function POST(req: Request) {
           status: "ok",
           data: { id: child.Id, email: "parent" },
         });
+        await persistFamilyProvisioningMarker(
+          hsCfg,
+          log,
+          intakeWorkItem.dealId,
+          {
+            status: "child_created",
+            startedAt: familyProvisioningStartedAt,
+            parentId: parent.Id,
+            parentUniqueId: parent.UniqueId,
+            childId: child.Id,
+            childUniqueId: child.UniqueId,
+          },
+        );
       } catch (e) {
         log.warn("trial.mindbody.degraded", { step: "addClient", error: serialize(e) });
         mbDegraded = true;
@@ -661,26 +903,39 @@ export async function POST(req: Request) {
         hsContext,
       );
       const contactProperties = contactPropertiesFromFields(safeFields);
-      if (protectedMindbodyOwnership) {
-        contactProperties.court16_failure_reason = protectedMindbodyOwnership.locationSlug
+      const manualFailureReason = protectedMindbodyOwnership
+        ? protectedMindbodyOwnership.locationSlug
           ? `[cross_site_request] Requested ${location.id}; stored Mindbody IDs remain owned by ${protectedMindbodyOwnership.locationSlug}. Manual review required.`
-          : `[mindbody_site_unknown] Requested ${location.id}; stored Mindbody IDs have no owning-site slug. Manual review required.`;
-      }
-      const dealCreated = await createDealSafely(
+          : `[mindbody_site_unknown] Requested ${location.id}; stored Mindbody IDs have no owning-site slug. Manual review required.`
+        : "Mindbody intake needs staff review.";
+      const finalized = await finalizeWorkItemSafely(
         hsCfg,
         log,
+        intakeWorkItem,
         {
-          email: body.parentEmail,
-          correlationId,
-          locationId: location.id,
           contactProperties,
-          classStartsAt: classStartsAtUtc,
-          dealName: `${primaryKid.firstName} ${childLastName} - ${body.parentEmail} (manual review)`,
-          amount: 0,
+          dealProperties: buildBookingDealProperties({
+            ...bookingLedgerBase,
+            bookingStatus: "manual_review",
+            enrollmentStatus: "not_started",
+            mindbodyMutationStatus: "manual_review",
+            familyProvisioningStatus: familyProvisioningAttempted
+              ? "reconciliation_required"
+              : "not_started",
+            familyProvisioningStartedAt,
+            mindbodyParentId: protectedMindbodyOwnership ? undefined : parent?.Id,
+            mindbodyParentUniqueId: protectedMindbodyOwnership ? undefined : parent?.UniqueId,
+            mindbodyChildId: protectedMindbodyOwnership ? undefined : child?.Id,
+            mindbodyChildUniqueId: protectedMindbodyOwnership ? undefined : child?.UniqueId,
+            familyAccountStatus: "manual_review",
+            failureReason: manualFailureReason,
+          }),
         },
         trace,
       );
-      if (!dealCreated) return durableManualReviewResponse(correlationId);
+      if (!finalized.dealUpdated) {
+        return durableManualReviewResponse(correlationId);
+      }
       return NextResponse.json({
         ok: true,
         correlationId,
@@ -711,23 +966,31 @@ export async function POST(req: Request) {
       baseUrl,
     });
     await submitFormSafely(hsCfg, log, fields, trace, "hubspot.submitTrialForm", hsContext);
-    const dealCreated = await createDealSafely(
+    const finalized = await finalizeWorkItemSafely(
       hsCfg,
       log,
+      intakeWorkItem,
       {
-        email: body.parentEmail,
-        correlationId,
-        locationId: location.id,
         contactProperties: contactPropertiesFromFields(fields),
-        classStartsAt: classStartsAtUtc,
-        // Deal-name house convention (Ibtissam Jun 11): child's full name +
-        // parent's email — matches the legacy workflow-created deals.
-        dealName: `${primaryKid.firstName} ${childLastName} - ${body.parentEmail}`,
-        amount: 0,
+        dealProperties: buildBookingDealProperties({
+          ...bookingLedgerBase,
+          bookingStatus: "pending_staff",
+          enrollmentStatus: "not_started",
+          mindbodyMutationStatus: "not_started",
+          familyProvisioningStatus: "child_created",
+          familyProvisioningStartedAt,
+          mindbodyParentId: parent.Id,
+          mindbodyParentUniqueId: parent.UniqueId,
+          mindbodyChildId: child.Id,
+          mindbodyChildUniqueId: child.UniqueId,
+          familyAccountStatus: "parent_claim_pending",
+        }),
       },
       trace,
     );
-    if (!dealCreated) return durableManualReviewResponse(correlationId);
+    if (!finalized.dealUpdated) {
+      return durableManualReviewResponse(correlationId);
+    }
 
     log.info("trial.done", { trace: trace.map((t) => ({ step: t.step, status: t.status })) });
 
@@ -738,6 +1001,14 @@ export async function POST(req: Request) {
     });
   } catch (e) {
     log.error("trial.fail", { error: serialize(e) });
+    const recorded = await markWorkItemManualSafely(
+      hsCfg,
+      log,
+      intakeWorkItem.dealId,
+      bookingLedgerBase,
+      `Unexpected intake failure: ${e instanceof Error ? e.message : String(e)}`.slice(0, 4000),
+    );
+    if (recorded) return durableManualReviewResponse(correlationId);
     return NextResponse.json(
       {
         ok: false,
@@ -749,8 +1020,73 @@ export async function POST(req: Request) {
     );
   }
   } finally {
-    releaseSignupLock();
+    try {
+      await signupLock.release();
+    } catch (error) {
+      log.error("trial.distributed-lock.release-failed", {
+        code: error instanceof DistributedActionLockError ? error.code : "unknown",
+      });
+    }
   }
+}
+
+async function markWorkItemManualSafely(
+  hsCfg: NonNullable<ReturnType<typeof loadHubspotConfig>>,
+  log: ReturnType<typeof createLogger>,
+  dealId: string,
+  ledgerBase: Omit<BookingDealLedgerPatch, "bookingStatus">,
+  failureReason: string,
+  options: { familyProvisioningStatus?: FamilyProvisioningStatus } = {},
+): Promise<boolean> {
+  try {
+    // Intake never runs checkout or class enrollment, so the confirm-stage
+    // mutation status stays "not_started"; the AddClient write state lives in
+    // court16_family_provisioning_status. Stamping "manual_review" here would
+    // make hasUnsafeMindbodyStateForDeny block the staff Deny link for Deals
+    // whose own failure reason says no Mindbody write was attempted.
+    await updateDealProperties(hsCfg, log, dealId, {
+      ...buildBookingDealProperties({
+        ...ledgerBase,
+        bookingStatus: "manual_review",
+        enrollmentStatus: "not_started",
+        mindbodyMutationStatus: "not_started",
+        familyAccountStatus: "manual_review",
+        familyProvisioningStatus: options.familyProvisioningStatus,
+        failureReason,
+      }),
+    });
+    return true;
+  } catch (e) {
+    log.error("trial.deal.manual-review.fail", { dealId, error: serialize(e) });
+    return false;
+  }
+}
+
+async function persistFamilyProvisioningMarker(
+  hsCfg: NonNullable<ReturnType<typeof loadHubspotConfig>>,
+  log: ReturnType<typeof createLogger>,
+  dealId: string,
+  args: {
+    status: FamilyProvisioningStatus;
+    startedAt: Date;
+    parentId?: string | number;
+    parentUniqueId?: string | number;
+    childId?: string | number;
+    childUniqueId?: string | number;
+  },
+): Promise<void> {
+  await updateDealProperties(hsCfg, log, dealId, {
+    court16_family_provisioning_status: args.status,
+    court16_family_provisioning_started_at: String(args.startedAt.getTime()),
+    court16_mindbody_parent_id:
+      args.parentId === undefined ? undefined : String(args.parentId),
+    court16_mindbody_parent_unique_id:
+      args.parentUniqueId === undefined ? undefined : String(args.parentUniqueId),
+    court16_mindbody_child_id:
+      args.childId === undefined ? undefined : String(args.childId),
+    court16_mindbody_child_unique_id:
+      args.childUniqueId === undefined ? undefined : String(args.childUniqueId),
+  });
 }
 
 interface BuildFieldsArgs {
@@ -828,45 +1164,16 @@ function buildFormFields(args: BuildFieldsArgs) {
 }
 
 /**
- * Subset of buildFormFields output that maps to verified HubSpot Contact
- * CRM properties. Used by createDealSafely below as the primary Contact write;
- * it gives us a synchronous Contact ID for the Deal association. The optional
- * legacy form event is a separate compatibility path.
+ * Person-scoped profile fields that are safe to refresh on a reused Contact.
+ * Child, class, family-account, Mindbody, action-URL, and booking-state fields
+ * stay exclusively on the request-scoped Deal so one sibling/request cannot
+ * overwrite another. The optional legacy form path is disabled for ledger v1.
  */
 function contactPropertiesFromFields(fields: ReturnType<typeof buildFormFields>): Record<string, string | undefined> {
   return {
     firstname: fields.firstname,
     lastname: fields.lastname,
     phone: fields.phone,
-    preferred_location: fields.preferred_location,
-    // Child identity must ride the synchronous CRM upsert. The staff workflow
-    // enrolls on the booking-status flip in this same write and renders its
-    // email immediately (verified Jun 11 after a form-only race produced a
-    // blank Child line).
-    child_name: fields.child_name,
-    child_1___last_name: fields.child_1___last_name,
-    childage: fields.childage,
-    child_date_of_birth: fields.child_date_of_birth,
-    child_1___playing_level: fields.child_1___playing_level,
-    school: fields.school,
-    lead_source: fields.lead_source,
-    any_question_just_let_us_know: fields.any_question_just_let_us_know,
-    court16_correlation_id: fields.court16_correlation_id,
-    court16_intent: fields.court16_intent,
-    court16_booking_status: fields.court16_booking_status,
-    court16_class_id: fields.court16_class_id,
-    court16_location_slug: fields.court16_location_slug,
-    court16_class_name: fields.court16_class_name,
-    court16_class_day_time: fields.court16_class_day_time,
-    court16_coach_name: fields.court16_coach_name,
-    court16_location_full: fields.court16_location_full,
-    court16_waiver_version: fields.court16_waiver_version,
-    court16_mindbody_parent_id: fields.court16_mindbody_parent_id,
-    court16_mindbody_child_id: fields.court16_mindbody_child_id,
-    court16_family_account_status: fields.court16_family_account_status,
-    court16_staff_confirm_url: fields.court16_staff_confirm_url,
-    court16_staff_reassign_url: fields.court16_staff_reassign_url,
-    court16_staff_deny_url: fields.court16_staff_deny_url,
   };
 }
 
@@ -876,23 +1183,34 @@ function contactPropertiesFromFields(fields: ReturnType<typeof buildFormFields>)
  * the location-specific Trials pipeline. Idempotent on correlation
  * ID. Soft-failure: never throws — degraded result lands in trace.
  */
-async function createDealSafely(
+interface IntakeWorkItem {
+  contactId: string;
+  dealId: string;
+  cached: boolean;
+  existing?: DealRecord;
+}
+
+interface ActiveIntakeConflict {
+  activeDeal: DealRecord;
+}
+
+async function createIntakeDealSafely(
   hsCfg: ReturnType<typeof loadHubspotConfig>,
   log: ReturnType<typeof createLogger>,
   args: {
     email: string;
     correlationId: string;
     locationId: string;
-    contactProperties: Record<string, string | undefined>;
     dealName: string;
     amount: number;
     classStartsAt?: string;
+    dealProperties: Record<string, string | undefined>;
   },
   trace: Array<{ step: string; status: "ok" | "skipped" | "error"; data?: unknown; error?: unknown }>,
-): Promise<boolean> {
+): Promise<IntakeWorkItem | ActiveIntakeConflict | null> {
   if (!hsCfg) {
     trace.push({ step: "hubspot.createTrialDeal", status: "skipped", data: { reason: "HubSpot not configured" } });
-    return false;
+    return null;
   }
   const pipeline = getDealPipeline(args.locationId);
   if (!pipeline) {
@@ -901,35 +1219,243 @@ async function createDealSafely(
       status: "skipped",
       data: { reason: `no pipeline mapped for location ${args.locationId}` },
     });
-    return false;
+    return null;
   }
   try {
-    const contact = await upsertContactByEmail(hsCfg, log, args.email, args.contactProperties);
+    const normalizedEmail = args.email.trim().toLowerCase();
+    const bookingKeyDeal = await getDealByBookingKey(hsCfg, log, args.correlationId);
+    const activeParentKey = args.dealProperties.court16_active_parent_key?.trim();
+    const activeDeal = !bookingKeyDeal && activeParentKey
+      ? await getDealByActiveParentKey(hsCfg, log, activeParentKey)
+      : null;
+    if (
+      activeDeal &&
+      activeDeal.properties.court16_booking_key !== args.correlationId
+    ) {
+      trace.push({
+        step: "hubspot.activeBookingFence",
+        status: "skipped",
+        data: {
+          reason: "another Deal holds the active parent key",
+          activeDealId: activeDeal.id,
+        },
+      });
+      return { activeDeal };
+    }
+    const replayDeal = bookingKeyDeal ?? activeDeal;
+    let contactId: string;
+
+    if (replayDeal) {
+      if (replayDeal.associatedContactIds.length !== 1) {
+        throw new Error(
+          `HubSpot replay Deal ${replayDeal.id} must have exactly one associated Contact`,
+        );
+      }
+      const replayContact = await getContactById(
+        hsCfg,
+        log,
+        replayDeal.associatedContactIds[0],
+      );
+      if (
+        !replayContact ||
+        replayContact.properties.email?.trim().toLowerCase() !== normalizedEmail
+      ) {
+        throw new Error(
+          `HubSpot replay Deal ${replayDeal.id} is not associated with the requested parent email`,
+        );
+      }
+      contactId = replayContact.id;
+    } else {
+      // Avoid changing an existing shared Contact until this request has its
+      // own Deal and has passed the Deal-history active-request guard. A new
+      // Contact is created email-only because HubSpot requires an association
+      // target when the immutable Deal work item is created.
+      const existingContact = await findContactByEmail(hsCfg, log, normalizedEmail, ["email"]);
+      if (
+        existingContact &&
+        existingContact.properties.email?.trim().toLowerCase() !== normalizedEmail
+      ) {
+        throw new Error("HubSpot email lookup returned a mismatched Contact");
+      }
+      contactId = existingContact
+        ? existingContact.id
+        : (await upsertContactByEmail(hsCfg, log, normalizedEmail, {})).id;
+    }
+
     const deal = await createTrialDeal(hsCfg, log, {
-      contactId: contact.id,
+      contactId,
       correlationId: args.correlationId,
       pipelineId: pipeline.pipelineId,
       stageId: pipeline.stages.requested,
       dealName: args.dealName,
       amount: args.amount,
       classStartsAt: args.classStartsAt,
+      dealProperties: args.dealProperties,
     });
     trace.push({
       step: "hubspot.createTrialDeal",
       status: "ok",
       data: {
-        contactId: contact.id,
+        contactId,
         dealId: deal.id,
         cached: deal.cached,
         pipeline: pipeline.pipelineId,
       },
     });
-    return true;
+    return {
+      contactId,
+      dealId: deal.id,
+      cached: deal.cached,
+      existing: deal.existing,
+    };
   } catch (e) {
+    if (e instanceof HubspotActiveBookingConflictError) {
+      trace.push({
+        step: "hubspot.activeBookingFence",
+        status: "skipped",
+        data: {
+          reason: "another Deal won the active parent key",
+          activeDealId: e.existingDeal.id,
+        },
+      });
+      return { activeDeal: e.existingDeal };
+    }
     log.warn("trial.deal.fail", { error: serialize(e) });
     trace.push({ step: "hubspot.createTrialDeal", status: "error", error: serialize(e) });
-    return false;
+    return null;
   }
+}
+
+async function finalizeWorkItemSafely(
+  hsCfg: ReturnType<typeof loadHubspotConfig>,
+  log: ReturnType<typeof createLogger>,
+  workItem: IntakeWorkItem,
+  args: {
+    contactProperties: Record<string, string | undefined>;
+    dealProperties: Record<string, string | undefined>;
+  },
+  trace: Array<{ step: string; status: "ok" | "skipped" | "error"; data?: unknown; error?: unknown }>,
+): Promise<{ dealUpdated: boolean; contactProfileUpdated: boolean }> {
+  if (!hsCfg) return { dealUpdated: false, contactProfileUpdated: false };
+  try {
+    await updateDealProperties(hsCfg, log, workItem.dealId, args.dealProperties);
+    trace.push({
+      step: "hubspot.updateTrialDeal",
+      status: "ok",
+      data: { dealId: workItem.dealId },
+    });
+  } catch (e) {
+    log.warn("trial.deal.finalize.fail", { error: serialize(e), dealId: workItem.dealId });
+    trace.push({ step: "hubspot.updateTrialDeal", status: "error", error: serialize(e) });
+    return { dealUpdated: false, contactProfileUpdated: false };
+  }
+
+  try {
+    await updateContact(hsCfg, log, workItem.contactId, args.contactProperties);
+    trace.push({
+      step: "hubspot.updateContactProfile",
+      status: "ok",
+      data: { contactId: workItem.contactId },
+    });
+    return { dealUpdated: true, contactProfileUpdated: true };
+  } catch (e) {
+    log.warn("trial.contact-profile.fail", {
+      error: serialize(e),
+      contactId: workItem.contactId,
+      dealId: workItem.dealId,
+    });
+    trace.push({ step: "hubspot.updateContactProfile", status: "error", error: serialize(e) });
+    return { dealUpdated: true, contactProfileUpdated: false };
+  }
+}
+
+async function handleCachedBookingSafely(
+  hsCfg: NonNullable<ReturnType<typeof loadHubspotConfig>>,
+  log: ReturnType<typeof createLogger>,
+  workItem: IntakeWorkItem,
+  ledgerBase: Omit<BookingDealLedgerPatch, "bookingStatus">,
+  correlationId: string,
+) {
+  const existing = workItem.existing;
+  if (!existing) {
+    return NextResponse.json(
+      {
+        ok: false,
+        correlationId,
+        code: "booking_retry_unverified",
+        error: "The prior booking request could not be read back safely.",
+      },
+      { status: 409 },
+    );
+  }
+  const parsed = parseBookingDealLedger(existing.properties);
+  if (!parsed.ok) {
+    return NextResponse.json(
+      {
+        ok: false,
+        correlationId,
+        code: "booking_ledger_incomplete",
+        error: "The prior booking work item needs staff review; no Mindbody write was repeated.",
+      },
+      { status: 409 },
+    );
+  }
+  if (parsed.value.bookingStatus === "intake_started") {
+    // The email-scoped distributed lock was acquired before this read. No
+    // concurrent intake can still own this Deal, so `intake_started` is an
+    // abandoned work item, not a permanent "request in progress" response.
+    // Never replay AddClient. If either create marker advanced, force explicit
+    // reconciliation of the recorded Mindbody IDs.
+    const familyProvisioningAdvanced =
+      parsed.value.familyProvisioningStatus !== undefined &&
+      parsed.value.familyProvisioningStatus !== "not_started";
+    const recorded = await markWorkItemManualSafely(
+      hsCfg,
+      log,
+      workItem.dealId,
+      ledgerBase,
+      familyProvisioningAdvanced
+        ? "Recovered an abandoned intake after Mindbody family provisioning began. Do not repeat AddClient; reconcile the recorded parent and child IDs."
+        : "Recovered an abandoned intake before Mindbody family provisioning began. No AddClient call was repeated.",
+      {
+        familyProvisioningStatus: familyProvisioningAdvanced
+          ? "reconciliation_required"
+          : "not_started",
+      },
+    );
+    return recorded
+      ? durableManualReviewResponse(correlationId)
+      : hubspotWorkItemFailure(correlationId);
+  }
+  const accepted = new Set([
+    "pending_staff",
+    "pending_staff_assist",
+    "pending_payment",
+    "duplicate_email_softwall",
+    "manual_review",
+    "confirmed",
+  ]);
+  if (!accepted.has(parsed.value.bookingStatus)) {
+    return NextResponse.json(
+      {
+        ok: false,
+        correlationId,
+        code: "booking_not_retryable",
+        status: parsed.value.bookingStatus,
+        error: "This request already reached a staff-managed state; no Mindbody write was repeated.",
+      },
+      { status: 409 },
+    );
+  }
+  return NextResponse.json(
+    {
+      ok: true,
+      correlationId,
+      status: parsed.value.bookingStatus,
+      cached: true,
+    },
+    { status: parsed.value.bookingStatus === "manual_review" ? 202 : 200 },
+  );
 }
 
 function hubspotWorkItemFailure(correlationId: string) {
@@ -942,6 +1468,19 @@ function hubspotWorkItemFailure(correlationId: string) {
         "Your request could not be added to the staff review queue. Please try again or contact Court 16 with the request reference.",
     },
     { status: 502 },
+  );
+}
+
+function activeBookingConflictResponse(correlationId: string) {
+  return NextResponse.json(
+    {
+      ok: false,
+      correlationId,
+      code: "active_trial_request_exists",
+      error:
+        "A trial request is already active for this email. Court 16 staff will follow up; please do not submit another request.",
+    },
+    { status: 409 },
   );
 }
 
@@ -1011,6 +1550,14 @@ function sanitizeHsContext(
 function validate(body: TrialRequest | undefined): string[] {
   if (!body) return ["Body is required"];
   const errors: string[] = [];
+  if (
+    typeof body.submissionId !== "string" ||
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      body.submissionId,
+    )
+  ) {
+    errors.push("submissionId must be a UUID v4");
+  }
   if (typeof body.parentFirstName !== "string" || body.parentFirstName.trim().length === 0) {
     errors.push("parentFirstName is required");
   }

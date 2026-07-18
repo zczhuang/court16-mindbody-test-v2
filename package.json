@@ -13,10 +13,15 @@
     "test:trial-intake": "node --no-warnings --experimental-strip-types scripts/test-trial-intake.ts",
     "test:trial-reporting": "node --no-warnings --experimental-strip-types scripts/test-trial-reporting.ts",
     "test:hubspot-config": "node --no-warnings --experimental-strip-types scripts/test-hubspot-config.ts",
+    "test:hubspot-deal-ledger": "node --no-warnings --experimental-strip-types scripts/test-hubspot-deal-ledger.ts",
+    "test:distributed-action-lock": "node --no-warnings --experimental-strip-types scripts/test-distributed-action-lock.ts",
+    "test:mindbody-booking-evidence": "node --no-warnings --experimental-strip-types scripts/test-mindbody-booking-evidence.ts",
     "test:kids-trial-readiness": "node --no-warnings --experimental-strip-types scripts/test-kids-trial-readiness.ts",
     "test:mindbody-write-guard": "node --no-warnings --experimental-strip-types scripts/test-mindbody-write-guard.ts",
     "validate:trial-config": "node --no-warnings --experimental-strip-types scripts/validate-trial-config.ts",
-    "audit:mindbody-sites": "node --env-file-if-exists=.env.local --no-warnings --experimental-strip-types scripts/audit-mindbody-sites.ts"
+    "audit:mindbody-sites": "node --env-file-if-exists=.env.local --no-warnings --experimental-strip-types scripts/audit-mindbody-sites.ts",
+    "hubspot:deal-ledger-schema": "node --env-file-if-exists=.env.local --no-warnings --experimental-strip-types scripts/sync-hubspot-deal-ledger-schema.ts",
+    "hubspot:deal-ledger-schema:verify": "node --env-file-if-exists=.env.local --no-warnings --experimental-strip-types scripts/sync-hubspot-deal-ledger-schema.ts --verify"
   },
   "dependencies": {
     "@vercel/functions": "^3.6.1",

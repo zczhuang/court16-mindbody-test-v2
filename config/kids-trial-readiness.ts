@@ -9,6 +9,8 @@ export type KidsTrialReadinessRequirement =
   | "mindbody_site_authorized"
   | "upcoming_trial_inventory_verified"
   | "hubspot_routing_verified"
+  | "hubspot_deal_ledger_verified"
+  | "durable_mutation_lock_verified"
   | "end_to_end_acceptance_passed"
   | "design_owner_approved"
   | "mindbody_program_id"
@@ -21,6 +23,8 @@ export type KidsTrialReadinessRequirement =
 
 export type KidsTrialStaffReadinessRequirement =
   | "mindbody_site_authorized"
+  | "hubspot_deal_ledger_verified"
+  | "durable_mutation_lock_verified"
   | "end_to_end_acceptance_passed"
   | "mindbody_program_id"
   | "mindbody_service_id"
@@ -135,6 +139,8 @@ export function getKidsTrialReadiness({
     missing.push("upcoming_trial_inventory_verified");
   }
   if (!evidence?.hubspotRoutingVerified) missing.push("hubspot_routing_verified");
+  if (!evidence?.hubspotDealLedgerVerified) missing.push("hubspot_deal_ledger_verified");
+  if (!evidence?.durableMutationLockVerified) missing.push("durable_mutation_lock_verified");
   if (!evidence?.endToEndAcceptancePassed) missing.push("end_to_end_acceptance_passed");
   if (!evidence?.designOwnerApproved) missing.push("design_owner_approved");
   if (!isPositiveInteger(location.kidTrialProgramId)) missing.push("mindbody_program_id");
@@ -183,6 +189,8 @@ export function getKidsTrialStaffReadiness({
   const evidence = location.trialLaunchEvidence;
 
   if (!evidence?.mindbodySiteAuthorized) missing.push("mindbody_site_authorized");
+  if (!evidence?.hubspotDealLedgerVerified) missing.push("hubspot_deal_ledger_verified");
+  if (!evidence?.durableMutationLockVerified) missing.push("durable_mutation_lock_verified");
   if (!evidence?.endToEndAcceptancePassed) missing.push("end_to_end_acceptance_passed");
   if (!isPositiveInteger(location.kidTrialProgramId)) missing.push("mindbody_program_id");
   if (!isPositiveInteger(trialConfig?.trialServiceId)) missing.push("mindbody_service_id");

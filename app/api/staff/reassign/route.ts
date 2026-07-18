@@ -1,13 +1,21 @@
 import { NextResponse } from "next/server";
 import {
-  findContactByCorrelationId,
+  findDealByCorrelationId,
   HubspotError,
   loadHubspotConfig,
-  updateContact,
+  updateDealProperties,
 } from "@/lib/hubspot";
 import { InvalidTokenError, verifyToken } from "@/lib/staff-tokens";
 import { createLogger } from "@/lib/logger";
-import { withLocalActionLock } from "@/lib/action-lock";
+import {
+  DistributedActionLockError,
+  withDistributedActionLock,
+} from "@/lib/distributed-action-lock";
+import {
+  buildBookingDealProperties,
+  parseBookingDealLedger,
+} from "@/lib/hubspot-deal-ledger";
+import { bookingLedgerMatchesStaffToken } from "@/lib/mindbody-booking-evidence";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -17,9 +25,9 @@ export const dynamic = "force-dynamic";
  * page. POST performs the HubSpot mutation. Keeping writes off GET prevents
  * email-link scanners from changing request state before staff clicks.
  *
- * Flips the contact to `court16_booking_status=manual_review`. No MindBody
- * write. Staff completes the reassignment manually in Mindbody and records
- * the outcome in HubSpot; this app does not expose a nonexistent retry URL.
+ * Moves the request-scoped Deal to `manual_review` without changing its
+ * Mindbody provenance or active-parent key. Notification is owned by Deal-based
+ * HubSpot workflows; this route performs no Contact or Mindbody write.
  */
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -39,7 +47,7 @@ export async function GET(req: Request) {
 
   return actionHtml(
     "Move this request to manual review?",
-    "This will flag the request in HubSpot so staff can choose a different class in Mindbody.",
+    "This will flag the Deal in HubSpot so staff can choose a different class in Mindbody. Any notification depends on the Deal-based workflow being enabled.",
     "Move to manual review",
   );
 }
@@ -63,10 +71,30 @@ async function handle(req: Request) {
     return html(`Wrong token action: ${payload.action}`, 400);
   }
 
-  const result = await withLocalActionLock(
-    `staff-action:${payload.correlationId}`,
-    () => reassignBooking(payload),
-  );
+  const actionLog = createLogger(payload.correlationId);
+  let result;
+  try {
+    result = await withDistributedActionLock(
+      `staff-action:${payload.correlationId}`,
+      () => reassignBooking(payload),
+      {
+        onReleaseError: (error) =>
+          actionLog.error("staff.reassign.distributed-lock.release-failed", {
+            code: error instanceof DistributedActionLockError ? error.code : "unknown",
+          }),
+      },
+    );
+  } catch (error) {
+    actionLog.error("staff.reassign.distributed-lock.acquire-failed", {
+      code: error instanceof DistributedActionLockError ? error.code : "action_failed",
+    });
+    return html(
+      error instanceof DistributedActionLockError
+        ? "The booking lock is temporarily unavailable. No changes were made; try again shortly."
+        : "The booking action failed unexpectedly. Review the Deal before retrying.",
+      503,
+    );
+  }
   if (!result.acquired) {
     return html("This request is already being updated. Wait a moment and refresh HubSpot.", 409);
   }
@@ -77,27 +105,60 @@ async function reassignBooking(payload: ReturnType<typeof verifyToken>) {
   const log = createLogger(payload.correlationId);
   const hsCfg = loadHubspotConfig();
   if (!hsCfg) return html("HubSpot is not configured on this deployment.", 503);
+  if (process.env.HUBSPOT_DEAL_LEDGER_ENABLED !== "true") {
+    return html("The Deal booking ledger is not enabled on this deployment.", 503);
+  }
 
-  let contact: Awaited<ReturnType<typeof findContactByCorrelationId>>;
+  let deal: Awaited<ReturnType<typeof findDealByCorrelationId>>;
   try {
-    contact = await findContactByCorrelationId(hsCfg, log, payload.correlationId);
+    deal = await findDealByCorrelationId(hsCfg, log, payload.correlationId, {
+      includeBookingLedger: true,
+    });
   } catch (e) {
     const msg = e instanceof HubspotError ? `HubSpot error (${e.status})` : "HubSpot lookup failed";
     return html(msg, 502);
   }
-  if (!contact) return html(`Booking not found for correlation ${payload.correlationId}`, 404);
-  if (contact.properties.court16_booking_status === "confirmed") {
+  if (!deal) return html(`Booking not found for correlation ${payload.correlationId}`, 404);
+
+  const parsed = parseBookingDealLedger(deal.properties);
+  const claimsLedgerV1 = deal.properties.court16_booking_ledger_version === "1";
+  if (claimsLedgerV1 && !parsed.ok) {
+    return html("This Deal ledger is incomplete. No state was changed.", 409);
+  }
+  const ledger = parsed.ok ? parsed.value : null;
+  if (!ledger) {
+    return html("This request does not have a verified Deal ledger. Migrate or review it manually.", 409);
+  }
+  if (!bookingLedgerMatchesStaffToken(ledger, payload.correlationId)) {
+    return html("The signed staff link does not match this Deal's booking identity. No state was changed.", 409);
+  }
+  if (deal.associatedContactIds.length !== 1 || !deal.associatedContactIds[0]?.trim()) {
+    return html("This Deal must have exactly one associated Contact. No state was changed.", 409);
+  }
+  if (ledger.bookingStatus === "confirmed") {
     return html("This booking is already confirmed and cannot be reassigned here.", 410);
   }
+  if (ledger.bookingStatus === "denied") return html("This booking has already been denied.", 410);
 
-  await updateContact(hsCfg, log, contact.id, {
-    court16_booking_status: "manual_review",
-    court16_failure_reason: "Staff reassign requested — complete enrollment in Mindbody and record the outcome in HubSpot.",
-  });
-  // Intentionally do NOT move the Deal stage here. Reassign means manual
-  // review; the Contact status is the workflow trigger for staff follow-up.
+  const failureReason =
+    "Staff reassign requested — complete enrollment in Mindbody and record the outcome in HubSpot.";
+  try {
+    await updateDealProperties(hsCfg, log, deal.id, {
+      ...buildBookingDealProperties({
+        ...ledger,
+        bookingStatus: "manual_review",
+        failureReason,
+      }),
+      court16_failure_reason: failureReason,
+    });
+  } catch (e) {
+    log.warn("staff.reassign.deal.fail", { error: e instanceof Error ? e.message : String(e) });
+    return html("HubSpot could not save the Deal state. No state was changed.", 502);
+  }
+
+  // Intentionally do not move the Deal stage. Reassign means manual review.
   return html(
-    `Flagged for manual review. Reassign the class in Mindbody, then record the final outcome in HubSpot. (correlation: ${payload.correlationId})`,
+    `Flagged on the Deal for manual review. Reassign the class in Mindbody, then record the final outcome in HubSpot. No notification is guaranteed while the Deal-based workflow is off. (correlation: ${payload.correlationId})`,
     200,
   );
 }

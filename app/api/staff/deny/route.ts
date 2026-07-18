@@ -1,15 +1,26 @@
 import { NextResponse } from "next/server";
 import {
-  findContactByCorrelationId,
   findDealByCorrelationId,
+  getContactById,
   HubspotError,
   loadHubspotConfig,
-  moveDealStage,
   updateContact,
+  updateDealProperties,
 } from "@/lib/hubspot";
 import { InvalidTokenError, verifyToken } from "@/lib/staff-tokens";
 import { createLogger } from "@/lib/logger";
-import { withLocalActionLock } from "@/lib/action-lock";
+import {
+  DistributedActionLockError,
+  withDistributedActionLock,
+} from "@/lib/distributed-action-lock";
+import {
+  buildBookingDealProperties,
+  parseBookingDealLedger,
+} from "@/lib/hubspot-deal-ledger";
+import {
+  bookingLedgerMatchesStaffToken,
+  hasUnsafeMindbodyStateForDeny,
+} from "@/lib/mindbody-booking-evidence";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,20 +37,17 @@ const REASONS: { value: string; label: string }[] = [
  * GET /api/staff/deny?token=…   → render a 5-radio-button form
  * POST /api/staff/deny           → execute the denial
  *
- * Single-use enforced via the Contact's status field (same pattern as
- * confirm/reassign). Once denied, the Contact's `court16_booking_status`
- * is `failed` — repeat clicks return 410.
+ * Single-use and notification state are enforced by the request-scoped Deal.
+ * Parent notification is owned by a Deal-based HubSpot workflow; this route
+ * does not claim that an email was sent while that workflow is disabled.
  *
  * On submit:
  *  1. Mark the Deal: denial_reason + denial_note (does NOT move stage —
  *     Court 16's existing per-location pipelines don't have a "Denied"
  *     stage, and adding one would fragment Ibtissam's existing data).
- *  2. Flip the Contact's `court16_booking_status` → "failed" so the
- *     existing failure-notification workflow can fire.
- *  3. MindBody booking-cancellation is documented as a TODO; the
- *     Public API `Class/RemoveClientFromClass` endpoint requires a
- *     visit-id we don't currently capture from AddClientToClass. Staff
- *     manually removes the client in MindBody admin for now.
+ *  2. Release the Deal's active-parent key because denial is terminal.
+ *  3. Mindbody booking cancellation remains manual. Confirm now persists the
+ *     Visit ID on the Deal, but deny intentionally performs no Mindbody write.
  */
 export async function GET(req: Request) {
   const url = new URL(req.url);
@@ -83,10 +91,30 @@ export async function POST(req: Request) {
     return html("'Other' requires a note describing why.", 400);
   }
 
-  const result = await withLocalActionLock(
-    `staff-action:${payload.correlationId}`,
-    () => denyBooking(payload, reason, note),
-  );
+  const actionLog = createLogger(payload.correlationId);
+  let result;
+  try {
+    result = await withDistributedActionLock(
+      `staff-action:${payload.correlationId}`,
+      () => denyBooking(payload, reason, note),
+      {
+        onReleaseError: (error) =>
+          actionLog.error("staff.deny.distributed-lock.release-failed", {
+            code: error instanceof DistributedActionLockError ? error.code : "unknown",
+          }),
+      },
+    );
+  } catch (error) {
+    actionLog.error("staff.deny.distributed-lock.acquire-failed", {
+      code: error instanceof DistributedActionLockError ? error.code : "action_failed",
+    });
+    return html(
+      error instanceof DistributedActionLockError
+        ? "The booking lock is temporarily unavailable. No changes were made; try again shortly."
+        : "The booking action failed unexpectedly. Review the Deal before retrying.",
+      503,
+    );
+  }
   if (!result.acquired) {
     return html("This request is already being processed. Wait a moment and refresh HubSpot.", 409);
   }
@@ -101,61 +129,130 @@ async function denyBooking(
   const log = createLogger(payload.correlationId);
   const hsCfg = loadHubspotConfig();
   if (!hsCfg) return html("HubSpot is not configured on this deployment.", 503);
+  if (process.env.HUBSPOT_DEAL_LEDGER_ENABLED !== "true") {
+    return html("The Deal booking ledger is not enabled on this deployment.", 503);
+  }
 
-  // 1. Find Contact — needed to flip its status
-  let contact: Awaited<ReturnType<typeof findContactByCorrelationId>>;
+  // 1. Find the authoritative request-scoped Deal.
+  let deal: Awaited<ReturnType<typeof findDealByCorrelationId>>;
   try {
-    contact = await findContactByCorrelationId(hsCfg, log, payload.correlationId);
+    deal = await findDealByCorrelationId(hsCfg, log, payload.correlationId, {
+      includeBookingLedger: true,
+    });
   } catch (e) {
     const msg = e instanceof HubspotError ? `HubSpot error (${e.status})` : "HubSpot lookup failed";
     return html(msg, 502);
   }
-  if (!contact) return html(`Booking not found for correlation ${payload.correlationId}`, 404);
-  if (contact.properties.court16_booking_status === "confirmed") {
+  if (!deal) return html(`Booking not found for correlation ${payload.correlationId}`, 404);
+
+  const parsed = parseBookingDealLedger(deal.properties);
+  const claimsLedgerV1 = deal.properties.court16_booking_ledger_version === "1";
+  if (claimsLedgerV1 && !parsed.ok) {
+    return html("This Deal ledger is incomplete. No state was changed.", 409);
+  }
+  const ledger = parsed.ok ? parsed.value : null;
+  if (!ledger) {
+    return html("This request does not have a verified Deal ledger. Migrate or review it manually.", 409);
+  }
+  if (!bookingLedgerMatchesStaffToken(ledger, payload.correlationId)) {
+    return html("The signed staff link does not match this Deal's booking identity. No state was changed.", 409);
+  }
+  if (deal.associatedContactIds.length !== 1 || !deal.associatedContactIds[0]?.trim()) {
+    return html("This Deal must have exactly one associated Contact. No state was changed.", 409);
+  }
+  if (ledger.bookingStatus === "confirmed") {
     return html(
       "This booking is already confirmed. Cancel it in MindBody admin instead of denying.",
       410,
     );
   }
-  if (contact.properties.court16_booking_status === "failed") {
+  if (ledger.bookingStatus === "denied") {
     return html("This booking has already been denied.", 410);
   }
-
-  // 2. Patch the Deal (find by correlation, set denial properties)
-  try {
-    const deal = await findDealByCorrelationId(hsCfg, log, payload.correlationId);
-    if (deal) {
-      await moveDealStage(hsCfg, log, deal.id, deal.properties.dealstage ?? "", {
-        denial_reason: reason,
-        denial_note: reason === "other" ? note : undefined,
-      });
-      log.info("staff.deny.dealAnnotated", { dealId: deal.id, reason });
-    }
-  } catch (e) {
-    log.warn("staff.deny.deal.fail", { error: e instanceof Error ? e.message : String(e) });
+  if (hasUnsafeMindbodyStateForDeny(ledger)) {
+    const familyUnsettled =
+      ledger.intent === "kid_trial" &&
+      ledger.familyProvisioningStatus !== "not_started" &&
+      ledger.familyProvisioningStatus !== "child_created";
+    return html(
+      familyUnsettled
+        ? "This request's Mindbody family records are in an unresolved state (a parent or child create may have partially run). Reconcile the recorded client IDs in Mindbody and on the Deal before denying; no state was changed."
+        : "This booking has a started or unresolved Mindbody checkout/enrollment. Reconcile the enrollment before denying it; no state was changed.",
+      409,
+    );
   }
 
-  // 3. Flip the Contact. `court16_failure_reason` is the human-readable
-  //    label + optional note — also the value the denial workflow
-  //    (1820568681) branches on to pick the right per-reason email
-  //    asset (Stage K Option B, May 20). One asset per reason lives
-  //    in TRIAL_DENIAL_EMAILS_BY_REASON in config/hubspot-emails.ts;
-  //    Ibtissam owns each body in HubSpot UI.
+  // 2. Persist the canonical Deal transition. A Deal-based workflow can branch
+  //    on this failure reason when notification automation is enabled.
   const failureReason =
     REASONS.find((r) => r.value === reason)!.label + (note ? ` — ${note}` : "");
-  await updateContact(hsCfg, log, contact.id, {
-    court16_booking_status: "failed",
-    court16_failure_reason: `Denied: ${failureReason}`.slice(0, 4000),
-  });
+  const dealFailureReason = `Denied: ${failureReason}`.slice(0, 4000);
+  try {
+    await updateDealProperties(hsCfg, log, deal.id, {
+      ...buildBookingDealProperties({
+        ...ledger,
+        activeParentKey: undefined,
+        bookingStatus: "denied",
+        failureReason: dealFailureReason,
+      }),
+      court16_active_parent_key: "",
+      denial_reason: reason,
+      denial_note: reason === "other" ? note : undefined,
+      court16_failure_reason: dealFailureReason,
+    });
+    log.info("staff.deny.dealAnnotated", { dealId: deal.id, reason });
+  } catch (e) {
+    log.warn("staff.deny.deal.fail", { error: e instanceof Error ? e.message : String(e) });
+    return html("HubSpot could not save the denial on the Deal. No state was changed.", 502);
+  }
 
-  // 4. MindBody cancellation — TODO: requires the visit-id from the
-  //    AddClientToClass response, which we don't currently persist.
-  //    Track 2 enhancement. For now staff cancels in MindBody admin.
+  // 3. Legacy Contact mirror hygiene. Ledger-v1 code never updates the old
+  //    Contact-level court16_booking_status, but intake still fails closed
+  //    into manual_review whenever that mirror holds an active value — so a
+  //    stale pre-ledger mirror would keep fencing every future booking from
+  //    this email. Denial is terminal for this request; clear a stale-active
+  //    mirror the same way the legacy deny flow did ("failed"). Best-effort:
+  //    a failure here never undoes the recorded denial.
+  let legacyMirrorCleared = false;
+  const LEGACY_ACTIVE_CONTACT_STATUSES = new Set([
+    "pending_staff",
+    "manual_review",
+    "duplicate_email_softwall",
+    "pending_payment",
+    "pending_staff_assist",
+  ]);
+  try {
+    const contactId = deal.associatedContactIds[0]!;
+    const contact = await getContactById(hsCfg, log, contactId);
+    const mirrorStatus = contact?.properties?.court16_booking_status;
+    if (mirrorStatus && LEGACY_ACTIVE_CONTACT_STATUSES.has(mirrorStatus)) {
+      await updateContact(hsCfg, log, contactId, {
+        court16_booking_status: "failed",
+        court16_failure_reason: `Legacy mirror cleared by staff denial of ${payload.correlationId}: ${dealFailureReason}`.slice(
+          0,
+          4000,
+        ),
+      });
+      legacyMirrorCleared = true;
+      log.info("staff.deny.legacy-mirror-cleared", { contactId, previousStatus: mirrorStatus });
+    }
+  } catch (e) {
+    log.warn("staff.deny.legacy-mirror.fail", {
+      error: e instanceof Error ? e.message : String(e),
+    });
+  }
+
+  // 4. Mindbody cancellation remains manual. The Deal now preserves the exact
+  //    Visit ID for a future remove-client implementation, but this action
+  //    intentionally performs no Mindbody write.
   log.info("staff.deny.done", { correlationId: payload.correlationId, reason });
 
   return html(
-    `Denied. Parent will be notified via the denial workflow. ` +
+    `Denied on the HubSpot Deal. Parent notification requires the Deal-based denial workflow; no email is guaranteed while it is off. ` +
       `Reason: ${REASONS.find((r) => r.value === reason)!.label}. ` +
+      (legacyMirrorCleared
+        ? `The Contact's stale legacy booking status was also marked failed so future requests from this parent are not auto-held. `
+        : ``) +
       `(correlation: ${payload.correlationId})`,
     200,
   );
@@ -180,7 +277,7 @@ button:hover { background: #94250e; }
 .cancel { color: #666; text-decoration: none; margin-left: 12px; font-size: 13px; }
 </style></head><body>
 <h1>Deny trial booking</h1>
-<p class="sub">Pick a reason. The parent will be notified via the denial workflow.</p>
+<p class="sub">Pick a reason. This records the denial on the HubSpot Deal. Parent notification requires the Deal-based workflow to be enabled.</p>
 <form method="POST">
   <fieldset>
     <legend>Reason</legend>
@@ -188,9 +285,9 @@ button:hover { background: #94250e; }
   </fieldset>
   <label style="display:block;margin-top:16px;font-size:13px;color:#666">
     Note (required for "Other"):
-    <textarea name="note" placeholder="Anything the parent should know about why."></textarea>
+    <textarea name="note" placeholder="Anything staff should record about why."></textarea>
   </label>
-  <button type="submit">Deny + send email</button>
+  <button type="submit">Deny request</button>
   <a class="cancel" href="javascript:window.close()">Cancel</a>
 </form>
 </body></html>`;

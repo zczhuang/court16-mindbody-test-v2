@@ -18,7 +18,13 @@
 // layer — this file is the MindBody adapter, not the app's business logic.
 
 import type { Logger } from "./logger";
-import { assertMindbodyWriteAllowed } from "./mindbody-write-guard";
+import { assertMindbodyWriteAllowed } from "./mindbody-write-guard.ts";
+import {
+  findExactActiveClientVisit,
+  parseCheckoutTrialBookingResponse,
+} from "./mindbody-booking-evidence.ts";
+
+export { findExactActiveClientVisit, parseCheckoutTrialBookingResponse };
 
 export interface MindbodyConfig {
   apiKey: string;
@@ -772,6 +778,10 @@ export interface AddClientToClassInput {
   CrossRegionalBookingClientId?: string | number;
 }
 
+export interface AddClientToClassResponse {
+  Visit?: ClientVisit;
+}
+
 /**
  * Book a client into a class.
  *
@@ -785,9 +795,9 @@ export async function addClientToClass(
   cfg: MindbodyConfig,
   log: Logger,
   input: AddClientToClassInput,
-): Promise<unknown> {
+): Promise<AddClientToClassResponse> {
   assertMindbodyWriteAllowed(cfg.siteId, "AddClientToClass");
-  return authedFetch(cfg, log, {
+  return authedFetch<AddClientToClassResponse>(cfg, log, {
     method: "POST",
     path: "/class/addclienttoclass",
     body: input,
@@ -796,15 +806,46 @@ export async function addClientToClass(
   });
 }
 
-export interface PurchaseTrialServiceInput {
+export interface CheckoutTrialBookingInput {
   ClientId: string | number;
   ServiceId: number;
-  Notes?: string;
+  ClassId: number;
+  LocationId: number;
+  CorrelationId: string;
 }
 
-export interface PurchaseTrialServiceResult {
+export interface CheckoutTrialBookingResult {
   saleId: number;
   serviceName: string;
+  visit?: ClientVisit;
+}
+
+export function buildCheckoutTrialBookingBody(input: CheckoutTrialBookingInput) {
+  if (!Number.isInteger(input.LocationId) || input.LocationId <= 0) {
+    throw new Error("CheckoutShoppingCart requires a positive Mindbody LocationId.");
+  }
+  return {
+    ClientId: String(input.ClientId),
+    Test: false,
+    InStore: true,
+    LocationId: input.LocationId,
+    EnforceLocationRestrictions: true,
+    Items: [
+      {
+        Item: { Type: "Service", Metadata: { Id: input.ServiceId } },
+        DiscountAmount: 0,
+        Quantity: 1,
+        ClassIds: [input.ClassId],
+        SalesNotes: `Court16:${input.CorrelationId}`,
+      },
+    ],
+    Payments: [
+      {
+        Type: "Comp",
+        Metadata: { Amount: 0 },
+      },
+    ],
+  };
 }
 
 /**
@@ -828,31 +869,14 @@ export interface PurchaseTrialServiceResult {
  * Consumer mode is rejected by /sale/checkoutshoppingcart with
  * `InvalidPermissionConfiguration`.
  */
-export async function purchaseTrialService(
+export async function checkoutTrialBooking(
   cfg: MindbodyConfig,
   log: Logger,
-  input: PurchaseTrialServiceInput,
-): Promise<PurchaseTrialServiceResult> {
+  input: CheckoutTrialBookingInput,
+): Promise<CheckoutTrialBookingResult> {
   assertMindbodyWriteAllowed(cfg.siteId, "CheckoutShoppingCart");
   const bearer = await issueSourceStaffToken(cfg, log);
-  const body = {
-    ClientId: String(input.ClientId),
-    Test: false,
-    InStore: true,
-    Items: [
-      {
-        Item: { Type: "Service", Metadata: { Id: input.ServiceId } },
-        DiscountAmount: 0,
-        Quantity: 1,
-      },
-    ],
-    Payments: [
-      {
-        Type: "Comp",
-        Metadata: { Amount: 0, Notes: input.Notes ?? "Court 16 trial — Cedarwind staff confirm" },
-      },
-    ],
-  };
+  const body = buildCheckoutTrialBookingBody(input);
   const started = Date.now();
   const res = await fetch(`${cfg.baseUrl}/sale/checkoutshoppingcart`, {
     method: "POST",
@@ -876,24 +900,27 @@ export async function purchaseTrialService(
     log.error("mindbody.purchase-trial.fail", {
       clientId: input.ClientId,
       serviceId: input.ServiceId,
+      locationId: input.LocationId,
       status: res.status,
       ms,
       body: parsed,
     });
     throw new MindbodyError(`purchase trial service → ${res.status}`, res.status, parsed);
   }
-  const cart = (parsed as { ShoppingCart?: { SaleId?: number; CartItems?: Array<{ Item?: { Name?: string } }> } })
-    .ShoppingCart;
-  const saleId = cart?.SaleId ?? 0;
-  const serviceName = cart?.CartItems?.[0]?.Item?.Name ?? "trial service";
+  const { saleId, serviceName, visit } = parseCheckoutTrialBookingResponse<ClientVisit>(
+    parsed,
+    input,
+  );
   log.info("mindbody.purchase-trial.ok", {
     clientId: input.ClientId,
     serviceId: input.ServiceId,
+    locationId: input.LocationId,
     saleId,
     serviceName,
+    visitId: visit?.Id,
     ms,
   });
-  return { saleId, serviceName };
+  return { saleId, serviceName, visit };
 }
 
 /**
@@ -923,13 +950,25 @@ export interface ClientService {
   PaymentDate?: string;
   ActiveDate?: string;
   ExpirationDate?: string;
+  SiteId?: number;
+  LocationId?: number;
   [k: string]: unknown;
 }
 
 export interface GetClientServicesResponse {
   ClientServices?: ClientService[];
-  PaginationResponse?: unknown;
+  PaginationResponse?: {
+    RequestedLimit?: number;
+    RequestedOffset?: number;
+    PageSize?: number;
+    TotalResults?: number;
+  };
 }
+
+const CLIENT_SERVICES_START_DATE = "2000-01-01";
+const CLIENT_SERVICES_END_DATE = "2100-01-01";
+const CLIENT_SERVICES_PAGE_LIMIT = 200;
+const CLIENT_SERVICES_MAX_PAGES = 10;
 
 /**
  * List the pricing options / service credits on a client. Used after an
@@ -941,15 +980,58 @@ export async function getClientServices(
   log: Logger,
   clientId: string | number,
 ): Promise<ClientService[]> {
-  const res = await staffFetch<GetClientServicesResponse>(cfg, log, {
-    path: "/client/clientservices",
-    query: { ClientId: String(clientId), Limit: 50 },
+  const services: ClientService[] = [];
+  let offset = 0;
+
+  for (let page = 0; page < CLIENT_SERVICES_MAX_PAGES; page += 1) {
+    const res = await staffFetch<GetClientServicesResponse>(cfg, log, {
+      path: "/client/clientservices",
+      query: {
+        ClientId: String(clientId),
+        StartDate: CLIENT_SERVICES_START_DATE,
+        EndDate: CLIENT_SERVICES_END_DATE,
+        CrossRegionalLookup: true,
+        Limit: CLIENT_SERVICES_PAGE_LIMIT,
+        Offset: offset,
+      },
+    });
+    const pageServices = res.ClientServices ?? [];
+    services.push(...pageServices);
+
+    const pagination = res.PaginationResponse;
+    const requestedOffset = nonNegativeInteger(pagination?.RequestedOffset) ?? offset;
+    const pageSize = nonNegativeInteger(pagination?.PageSize) ?? pageServices.length;
+    const totalResults = nonNegativeInteger(pagination?.TotalResults);
+    const nextOffset = requestedOffset + pageSize;
+
+    if (pageServices.length === 0) return services;
+    if (totalResults !== undefined && nextOffset >= totalResults) return services;
+    if (totalResults === undefined && pageServices.length < CLIENT_SERVICES_PAGE_LIMIT) {
+      return services;
+    }
+    if (nextOffset <= offset) {
+      throw new Error("Mindbody GetClientServices pagination did not advance");
+    }
+    offset = nextOffset;
+  }
+
+  log.error("mindbody.client-services.pagination-cap", {
+    clientId,
+    pages: CLIENT_SERVICES_MAX_PAGES,
+    services: services.length,
   });
-  return res.ClientServices ?? [];
+  throw new Error("Mindbody GetClientServices exceeded the safe pagination cap");
+}
+
+function nonNegativeInteger(value: number | undefined): number | undefined {
+  return Number.isInteger(value) && Number(value) >= 0 ? Number(value) : undefined;
 }
 
 export interface ClientVisit {
   Id?: number;
+  ClientId?: string | number;
+  SiteId?: number;
+  LocationId?: number;
   ClassId?: number;
   ClassScheduleId?: number;
   ProductId?: number;
@@ -959,6 +1041,8 @@ export interface ClientVisit {
   AppointmentStatus?: string;
   Status?: string;
   LateCancelled?: boolean;
+  Missed?: boolean;
+  WaitlistEntryId?: number;
   [k: string]: unknown;
 }
 

@@ -25,6 +25,8 @@ const location: Location = {
     mindbodySiteAuthorized: true,
     upcomingTrialInventoryVerified: false,
     hubspotRoutingVerified: false,
+    hubspotDealLedgerVerified: true,
+    durableMutationLockVerified: true,
     endToEndAcceptancePassed: true,
     designOwnerApproved: false,
     reviewedAt: "2026-07-18",

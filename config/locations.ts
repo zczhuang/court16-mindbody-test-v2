@@ -47,6 +47,8 @@ export interface Location {
     mindbodySiteAuthorized: boolean;
     upcomingTrialInventoryVerified: boolean;
     hubspotRoutingVerified: boolean;
+    hubspotDealLedgerVerified: boolean;
+    durableMutationLockVerified: boolean;
     endToEndAcceptancePassed: boolean;
     designOwnerApproved: boolean;
     reviewedAt: string;
@@ -184,6 +186,8 @@ export const LOCATIONS: Location[] = [
       mindbodySiteAuthorized: true,
       upcomingTrialInventoryVerified: false,
       hubspotRoutingVerified: false,
+      hubspotDealLedgerVerified: false,
+      durableMutationLockVerified: false,
       endToEndAcceptancePassed: false,
       designOwnerApproved: false,
       reviewedAt: "2026-07-18",

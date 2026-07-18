@@ -19,6 +19,7 @@ import {
 } from "@/lib/trial-reporting";
 
 interface Props {
+  submissionId: string;
   trialClass: TrialClass;
   kids: ChildEntry[];
   locationId: string;
@@ -38,6 +39,7 @@ const TRIAL_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
 });
 
 export default function TrialRequestForm({
+  submissionId,
   trialClass,
   locationId,
   locationName,
@@ -175,6 +177,7 @@ export default function TrialRequestForm({
 
     try {
       await onSubmit({
+        submissionId,
         parentFirstName,
         parentLastName,
         parentEmail,

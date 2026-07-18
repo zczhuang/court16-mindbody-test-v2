@@ -32,3 +32,7 @@ tsconfig.tsbuildinfo
 
 # Claude Code internals
 .claude/worktrees/
+
+# Local workspace artifacts
+tmp/
+AGENTS.md.png
