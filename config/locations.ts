@@ -147,6 +147,19 @@ export const LOCATIONS: Location[] = [
     publicBookingEnabled: true,
     trialBookingEnabled: false,
     trialUnavailableReason: "Kids trial scheduling is being connected for this club.",
+    // Live read-only audit 2026-07-20: source token + all six probes 200
+    // after the owner approved the activation link. Authorization only —
+    // trial inventory, routing, and acceptance remain unverified.
+    trialLaunchEvidence: {
+      mindbodySiteAuthorized: true,
+      upcomingTrialInventoryVerified: false,
+      hubspotRoutingVerified: false,
+      hubspotDealLedgerVerified: false,
+      durableMutationLockVerified: false,
+      endToEndAcceptancePassed: false,
+      designOwnerApproved: false,
+      reviewedAt: "2026-07-20",
+    },
     loginUrl: LOGIN_URLS.brooklyn,
   },
   {
@@ -162,6 +175,19 @@ export const LOCATIONS: Location[] = [
     publicBookingEnabled: true,
     trialBookingEnabled: false,
     trialUnavailableReason: "Kids trial scheduling is being connected for this club.",
+    // Live read-only audit 2026-07-20: source token + all six probes 200
+    // after the owner approved the activation link. Authorization only —
+    // trial inventory, routing, and acceptance remain unverified.
+    trialLaunchEvidence: {
+      mindbodySiteAuthorized: true,
+      upcomingTrialInventoryVerified: false,
+      hubspotRoutingVerified: false,
+      hubspotDealLedgerVerified: false,
+      durableMutationLockVerified: false,
+      endToEndAcceptancePassed: false,
+      designOwnerApproved: false,
+      reviewedAt: "2026-07-20",
+    },
     loginUrl: LOGIN_URLS.lic,
   },
   {
@@ -177,6 +203,19 @@ export const LOCATIONS: Location[] = [
     publicBookingEnabled: true,
     trialBookingEnabled: false,
     trialUnavailableReason: "Kids trial scheduling is being connected for this club.",
+    // Live read-only audit 2026-07-20: source token + all six probes 200
+    // after the owner approved the activation link. Authorization only —
+    // trial inventory, routing, and acceptance remain unverified.
+    trialLaunchEvidence: {
+      mindbodySiteAuthorized: true,
+      upcomingTrialInventoryVerified: false,
+      hubspotRoutingVerified: false,
+      hubspotDealLedgerVerified: false,
+      durableMutationLockVerified: false,
+      endToEndAcceptancePassed: false,
+      designOwnerApproved: false,
+      reviewedAt: "2026-07-20",
+    },
     loginUrl: LOGIN_URLS.fidi,
   },
   {
@@ -205,7 +244,7 @@ export const LOCATIONS: Location[] = [
       durableMutationLockVerified: false,
       endToEndAcceptancePassed: false,
       designOwnerApproved: false,
-      reviewedAt: "2026-07-18",
+      reviewedAt: "2026-07-20",
     },
     loginUrl: LOGIN_URLS.ridgehill,
     // Ibtissam created Program 61 + 4 ClassDescriptions on May 20-21:
@@ -227,6 +266,19 @@ export const LOCATIONS: Location[] = [
     publicBookingEnabled: true,
     trialBookingEnabled: false,
     trialUnavailableReason: "Kids trial scheduling is being connected for this club.",
+    // Live read-only audit 2026-07-20: source token + all six probes 200
+    // after the owner approved the activation link. Authorization only —
+    // trial inventory, routing, and acceptance remain unverified.
+    trialLaunchEvidence: {
+      mindbodySiteAuthorized: true,
+      upcomingTrialInventoryVerified: false,
+      hubspotRoutingVerified: false,
+      hubspotDealLedgerVerified: false,
+      durableMutationLockVerified: false,
+      endToEndAcceptancePassed: false,
+      designOwnerApproved: false,
+      reviewedAt: "2026-07-20",
+    },
     loginUrl: LOGIN_URLS.fishtown,
   },
   {
@@ -242,6 +294,19 @@ export const LOCATIONS: Location[] = [
     publicBookingEnabled: true,
     trialBookingEnabled: false,
     trialUnavailableReason: "Kids trial scheduling is being connected for this club.",
+    // Live read-only audit 2026-07-20: source token + all six probes 200
+    // after the owner approved the activation link. Authorization only —
+    // trial inventory, routing, and acceptance remain unverified.
+    trialLaunchEvidence: {
+      mindbodySiteAuthorized: true,
+      upcomingTrialInventoryVerified: false,
+      hubspotRoutingVerified: false,
+      hubspotDealLedgerVerified: false,
+      durableMutationLockVerified: false,
+      endToEndAcceptancePassed: false,
+      designOwnerApproved: false,
+      reviewedAt: "2026-07-20",
+    },
     loginUrl: LOGIN_URLS.newton,
   },
   {
@@ -260,6 +325,19 @@ export const LOCATIONS: Location[] = [
     publicBookingEnabled: false,
     trialBookingEnabled: false,
     trialUnavailableReason: "Opening details and kids trial scheduling are being finalized.",
+    // Live read-only audit 2026-07-20: source token + all six probes 200
+    // after the owner approved the activation link. Authorization only —
+    // trial inventory, routing, and acceptance remain unverified.
+    trialLaunchEvidence: {
+      mindbodySiteAuthorized: true,
+      upcomingTrialInventoryVerified: false,
+      hubspotRoutingVerified: false,
+      hubspotDealLedgerVerified: false,
+      durableMutationLockVerified: false,
+      endToEndAcceptancePassed: false,
+      designOwnerApproved: false,
+      reviewedAt: "2026-07-20",
+    },
   },
 ];
 

@@ -14,7 +14,11 @@
 | Mindbody — six rollout sites | Site-specific activation links were generated on July 17, 2026; source and configuration reads still return `403` | Each site's owner must open its private link and approve Cedarwind | The six clubs remain disabled; Cedarwind cannot discover or safely configure their Program, Service, relationship, or class IDs until approval |
 | HubSpot portal `4832170` | CRM Contact/Deal read-write, Marketing Email, properties, and Workflows | No access blocker | The trusted family-status property and a new nudge workflow were saved; every Cedarwind workflow remains off |
 
-## Action 1 — authorize the six Mindbody sites
+## Action 1 — authorize the six Mindbody sites ✅ COMPLETED 2026-07-20
+
+> All six owners approved their activation links; Cedarwind re-verified the
+> same day (source token + all six reads `200` per site). The steps below are
+> retained for reference and for any future site.
 
 The existing Public API v6 key belongs to Cedarwind's developer application and can be reused. **Do not request or create six new API keys.** Mindbody access is approved separately for each business Site ID.
 

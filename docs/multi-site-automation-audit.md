@@ -9,6 +9,37 @@ The copy/paste owner and admin steps are in [the access-authorization handoff](.
 
 ## Executive status
 
+> [!IMPORTANT]
+> **Re-audit 2026-07-20 — all seven sites are now authorized.** Every club's
+> owner approved the Cedarwind activation link; the source token and all six
+> read probes return `200` at all seven Site IDs (evidence:
+> `npm run audit:mindbody-sites`, 2026-07-20). The July 17/18 `403` statements
+> below are historical. Authorization changes nothing else: no club has a
+> verified Kid's Trials Program, schedule, or acceptance evidence yet, and all
+> seven remain disabled for public booking.
+>
+> New per-site facts from the 20 Jul readback:
+>
+> - **Required fields** are identical at six sites (`AddressLine1`, `City`,
+>   `State`, `PostalCode`, `MobilePhone`, `BirthDate`, `Email`, `IsMale`);
+>   **Allston additionally requires `EmergContact`**, which the current form
+>   does not collect — Allston needs form/config work before intake.
+> - **Family relationships** `-6` Parent/Guardian↔Child and `-4` Is Paid For
+>   By↔Pays For are present at all seven sites — the Ridge Hill family model
+>   ports everywhere (still record each site's values explicitly).
+> - **Genders**: Male/Female/Undisclosed everywhere; **LIC additionally has
+>   `Not Specified` (id 6)** — per-site catalogs must still drive each form.
+> - **$0 kids service**: `Complimentary Child Intro Session` (`100183`)
+>   exists at Ridge Hill, Newton, and Allston. No other club has any $0
+>   kids-trial service yet.
+> - **Kids-trial Program**: only Ridge Hill has one (`61 Kid's Trials`). No
+>   expansion club has a trial program or trial schedule yet.
+> - **Class inventory (60-day census)**: Brooklyn/LIC/FiDi/Fishtown/Newton
+>   each run 1,400–2,800+ upcoming classes (children's programs exist at
+>   Brooklyn, Ridge Hill, and Newton); **Allston's schedule is completely
+>   empty (0 classes)** — the club is not yet operating in Mindbody.
+
+
 Ridge Hill is the only authorized control site. Its Mindbody source-token probe returned `200`, and its known trial configuration is Program `61` plus $0 Service `100328`. The same source-token probe returned `403` (no site access) for the other six clubs. Consumer/API-key read probes on those six clubs also returned `403`, so consumer mode is **not** a safe fallback.
 
 This proves authorization and configuration visibility only; it does not prove a club is ready for families. The reusable 30-day audit on July 17 found Program `61`, Service `100328`, required fields, and family relationships at Ridge Hill, but returned **zero upcoming Program 61 occurrences**. Ridge Hill is therefore also disabled from public trial requests. The live HubSpot family-status dropdown now exists, but a trustworthy Mindbody claim/link completion readback still does not.

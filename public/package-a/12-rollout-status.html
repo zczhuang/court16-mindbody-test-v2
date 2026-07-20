@@ -42,7 +42,7 @@
 
 <header class="doc-head">
   <a class="back-link" href="./index.html">Back to Package A</a>
-  <div class="brand">Court 16 × Cedarwind · Rollout status · 18 Jul 2026</div>
+  <div class="brand">Court 16 × Cedarwind · Rollout status · updated 20 Jul 2026</div>
   <h1>What's built, and the path to all six new clubs</h1>
   <p class="subtitle">One page for the whole picture: the booking product and documents that are finished, the automation that exists (and what's deliberately off), and the exact remaining steps — with owners — to activate kids-trial booking at Allston, Downtown Brooklyn, Fishtown, Long Island City, FiDi, and Newton, with Ridge Hill as the proving ground.</p>
 </header>
@@ -50,7 +50,7 @@
 <section class="summary-pkg">
   <dl>
     <dt>Where we are</dt><dd>The product, safety architecture, and staff playbook are <strong>built, reviewed, and deployed to the demo URLs</strong> (not yet linked from court16.com). Ridge Hill's calendar is viewable there in preview. No club can take a live booking yet — every remaining step is a known, owned task below; most are short tasks (estimates below), a few need staged testing.</dd>
-    <dt>The gating action</dt><dd>Every <em>per-club</em> step chains behind one action: <strong>each club's Mindbody owner approving Cedarwind's activation link (~2 minutes per club)</strong>. Until then the six sites return 403 and nothing site-specific can even be read. The global tasks (workflows, ops switches, Ridge Hill proof) can proceed in parallel and are listed below.</dd>
+    <dt>Gate cleared 20 Jul</dt><dd><strong>All seven Mindbody sites are now authorized</strong> — every owner approved the activation link, and the same-day re-audit confirms the source token and all six read probes return 200 at every club. Per-club discovery is unblocked; the remaining work is club setup, HubSpot workflows, ops switches, and staged testing below.</dd>
     <dt>Decision recorded</dt><dd>Option 1 (17 Jul): Mindbody owns every password and account-link email; HubSpot only reminds; family completion is staff-verified on the original child record.</dd>
   </dl>
 </section>
@@ -90,7 +90,7 @@
 <table>
   <tr><th>System</th><th>State</th><th>Meaning</th></tr>
   <tr><td>Mindbody — Ridge Hill <code>5748154</code></td><td><span class="state live">AUTHORIZED</span></td><td>All read probes pass; Program <code>61</code> + $0 Service <code>100328</code> verified. <strong>Zero upcoming trial-class occurrences in the next 120 days</strong> (live probe 18 Jul; June's trial times were the last scheduled), so the calendar honestly shows "No online trial times are posted right now."</td></tr>
-  <tr><td>Mindbody — six new clubs</td><td><span class="state blocked">403 · UNAUTHORIZED</span></td><td>Re-verified 18 Jul. Programs, services, required fields, and auto-email settings are unreadable until each owner approves their activation link.</td></tr>
+  <tr><td>Mindbody — six new clubs</td><td><span class="state live">AUTHORIZED 20 JUL</span></td><td>Owners approved all activation links; every read probe passes. Discovery so far: required fields match Ridge Hill (Allston additionally requires an emergency contact), Parent/Guardian + Pays For relationships exist everywhere, the $0 "Complimentary Child Intro Session" already exists at Newton and Allston — but <strong>no expansion club has a Kid's Trials program or trial schedule yet</strong>, and Allston's Mindbody schedule is entirely empty.</td></tr>
   <tr><td>HubSpot — legacy form workflows</td><td><span class="state live">ON · CONTAINED</span></td><td>The old form's step-by-step account email and six per-club Deal creators still serve the current website form — it remains the production intake until cutover. The new app doesn't trigger them while the compatibility switch stays off (its default).</td></tr>
   <tr><td>HubSpot — new trial workflows</td><td><span class="state pending">OFF · TO REBUILD</span></td><td>All Cedarwind workflows are off by design. They must be rebuilt on Deals (specs written): staff notification first — until it exists, no email delivers the confirm/deny links to staff.</td></tr>
   <tr><td>App booking pipeline</td><td><span class="state ready">BUILT · DARK</span></td><td>Ledger flag off, Redis lock not operationally verified, Deal schema apply not yet verified, and most per-club evidence flags false (Ridge Hill's authorization is the exception). Intentional: these switches are part of the launch checklist, not the whole of it — inventory, routing tests, acceptance, and design sign-off gate readiness too.</td></tr>
@@ -100,12 +100,12 @@
 <table class="site-table">
   <tr><th>Club</th><th>Site ID</th><th>Mindbody access</th><th>Trial program / $0 service</th><th>HubSpot routing</th><th>Still needed</th></tr>
   <tr><td>Ridge Hill (control)</td><td>5748154</td><td><span class="state live">YES</span></td><td><span class="state live">VERIFIED</span></td><td><span class="state ready">MAPPED · TEST PENDING</span></td><td>Schedule trial classes · routing test · end-to-end family test</td></tr>
-  <tr><td>Downtown Brooklyn</td><td>135479</td><td><span class="state blocked">403</span></td><td><span class="state pending">UNKNOWN</span></td><td><span class="state pending">RECORDED, UNVERIFIED</span></td><td>Owner approval → audit → club setup → test</td></tr>
-  <tr><td>Long Island City</td><td>985499</td><td><span class="state blocked">403</span></td><td><span class="state pending">UNKNOWN</span></td><td><span class="state pending">RECORDED, UNVERIFIED</span></td><td>Owner approval → audit → club setup → test</td></tr>
-  <tr><td>Manhattan–FiDi</td><td>5728093</td><td><span class="state blocked">403</span></td><td><span class="state pending">UNKNOWN</span></td><td><span class="state pending">RECORDED, UNVERIFIED</span></td><td>Owner approval → audit → club setup → test</td></tr>
-  <tr><td>Fishtown</td><td>5742169</td><td><span class="state blocked">403</span></td><td><span class="state pending">UNKNOWN</span></td><td><span class="state pending">RECORDED, UNVERIFIED</span></td><td>Owner approval → audit → club setup → test</td></tr>
-  <tr><td>Newton</td><td>5751422</td><td><span class="state blocked">403</span></td><td><span class="state pending">UNKNOWN</span></td><td><span class="state pending">RECORDED, UNVERIFIED</span></td><td>Owner approval → audit → club setup → test</td></tr>
-  <tr><td>Allston</td><td>5754600</td><td><span class="state blocked">403</span></td><td><span class="state pending">UNKNOWN</span></td><td><span class="state blocked">NO VERIFIED PIPELINE</span></td><td>All of the above <em>plus</em> a verified HubSpot pipeline/stages, staff owner, and the club's public address</td></tr>
+  <tr><td>Downtown Brooklyn</td><td>135479</td><td><span class="state live">YES · 20 JUL</span></td><td><span class="state blocked">NOT BUILT</span></td><td><span class="state pending">RECORDED, UNVERIFIED</span></td><td>Club setup (Program + classes + $0 service) → routing test → E2E test</td></tr>
+  <tr><td>Long Island City</td><td>985499</td><td><span class="state live">YES · 20 JUL</span></td><td><span class="state blocked">NOT BUILT</span></td><td><span class="state pending">RECORDED, UNVERIFIED</span></td><td>Club setup (Program + classes + $0 service) → routing test → E2E test</td></tr>
+  <tr><td>Manhattan–FiDi</td><td>5728093</td><td><span class="state live">YES · 20 JUL</span></td><td><span class="state blocked">NOT BUILT</span></td><td><span class="state pending">RECORDED, UNVERIFIED</span></td><td>Club setup (Program + classes + $0 service) → routing test → E2E test</td></tr>
+  <tr><td>Fishtown</td><td>5742169</td><td><span class="state live">YES · 20 JUL</span></td><td><span class="state blocked">NOT BUILT</span></td><td><span class="state pending">RECORDED, UNVERIFIED</span></td><td>Club setup (Program + classes + $0 service) → routing test → E2E test</td></tr>
+  <tr><td>Newton</td><td>5751422</td><td><span class="state live">YES · 20 JUL</span></td><td><span class="state blocked">NOT BUILT</span></td><td><span class="state pending">RECORDED, UNVERIFIED</span></td><td>Club setup (Program + classes + $0 service) → routing test → E2E test</td></tr>
+  <tr><td>Allston</td><td>5754600</td><td><span class="state live">YES · 20 JUL</span></td><td><span class="state blocked">NOT BUILT · SCHEDULE EMPTY</span></td><td><span class="state blocked">NO VERIFIED PIPELINE</span></td><td>Everything the other clubs need <em>plus</em>: its Mindbody schedule is empty (0 classes), it uniquely requires an emergency-contact field the form doesn't collect yet, and it needs a verified HubSpot pipeline, staff owner, and public address</td></tr>
 </table>
 
 <h2>4 · The path to activation</h2>
@@ -113,23 +113,23 @@
 <div class="unlock">
   <strong>Three unlocks this week would set everything else in motion:</strong>
   <ol>
-    <li><strong>Owners click six activation links</strong> (~2 min each; links exist, sent individually through a secure channel). Unblocks every per-club step.</li>
+    <li><strong>Done 20 Jul — owners approved all six activation links.</strong> Every site verified same-day; per-club discovery is complete and recorded.</li>
     <li><strong>Ridge Hill staff schedules the Kid's Trials classes</strong> in Mindbody (four age-band trial classes were created May 20–21 per our records; the schedule simply has no upcoming occurrences). Eligible, in-window times then appear in the calendar preview automatically.</li>
     <li><strong>Ibtissam green-lights the Deal-based staff-notification workflow</strong> so pending requests reach staff inboxes with the confirm/deny links.</li>
   </ol>
 </div>
 
 <div class="phase"><div class="phase-num">0</div><div>
-  <h3>Access &amp; decisions <span class="state pending">IN FLIGHT</span></h3>
+  <h3>Access &amp; decisions <span class="state live">ACCESS DONE · DECISIONS OPEN</span></h3>
   <p class="who">Owners: Anthony / club owners · Ibtissam</p>
   <ul>
-    <li>Approve the six Mindbody activation links (Cedarwind verifies each the same day and returns that club's configuration evidence).</li>
+    <li><strong>Done 20 Jul:</strong> all six activation links approved and re-verified; each club's readable configuration is recorded in the audit.</li>
     <li>Ibtissam: approve the single-owner message map, review the reminder-email copy, name a staff owner + backup per club, and provide Allston's HubSpot pipeline.</li>
   </ul>
 </div></div>
 
 <div class="phase"><div class="phase-num">1</div><div>
-  <h3>Configure each club <span class="state pending">BLOCKED ON PHASE 0</span></h3>
+  <h3>Configure each club <span class="state pending">NOW UNBLOCKED — THE CRITICAL PATH</span></h3>
   <p class="who">Owners: club staff + Cedarwind · est. ~1–2 hours per club</p>
   <ul>
     <li>Cedarwind re-runs the read-only audit and records the club's own Program, $0 Service, required fields, relationship and gender catalogs — nothing is copied from Ridge Hill.</li>
@@ -161,7 +161,8 @@
 <h2>5 · Honest gap list</h2>
 <table class="gap-table">
   <tr><th>Gap</th><th>Why it matters</th><th>Owner</th></tr>
-  <tr><td>Six clubs unauthorized</td><td>Blocks all per-club discovery, configuration, and testing</td><td>Club owners (2 min each)</td></tr>
+  <tr><td>No Kid's Trials program at any expansion club</td><td>Nothing exists to schedule, preview, or book — each club needs its Program, age-band classes, schedule, and $0 service built (Newton and Allston already have a usable $0 SKU)</td><td>Club staff, per club</td></tr>
+  <tr><td>Allston not operating in Mindbody</td><td>Schedule is entirely empty and the site uniquely requires an emergency-contact field the form doesn't collect</td><td>Allston staff · Cedarwind (form/config)</td></tr>
   <tr><td>Ridge Hill trial schedule empty</td><td>Nothing to preview, test, or book at the control club</td><td>Ridge Hill staff</td></tr>
   <tr><td>Staff-notification workflow not built</td><td>New requests would sit unseen — no email carries the staff links</td><td>Cedarwind builds · Ibtissam approves</td></tr>
   <tr><td>Redis lock + Deal schema not provisioned/applied</td><td>Booking pipeline stays intentionally dark until these ops steps run</td><td>Cedarwind</td></tr>
