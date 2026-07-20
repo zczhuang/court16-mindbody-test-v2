@@ -43,7 +43,7 @@
 <section role="alert" style="margin: 0 0 24px; padding: 18px 20px; border: 4px solid #a12828; border-radius: 10px; background: #f9e3e3; color: #241b1b;">
   <div style="font: 700 13px/1.2 'Geist Mono', monospace; letter-spacing: .08em; color: #a12828;">ARCHIVED · DO NOT RUN</div>
   <p style="margin: 8px 0 10px; font-weight: 600;">This May 2026 smoke log is historical evidence, not a current test plan or launch checklist.</p>
-  <p style="margin: 0; font-size: 13px;">Its consumer-mode, sandbox expiry, live-write, launch, and cleanup assumptions are superseded. Current Mindbody writes can create durable records. Ridge Hill is only an authorized control and currently has no upcoming Program 61 occurrences; the other six clubs return <code>403</code>. Use the
+  <p style="margin: 0; font-size: 13px;">Its consumer-mode, sandbox expiry, live-write, launch, and cleanup assumptions are superseded. Current Mindbody writes can create durable records. All seven sites are now API-authorized, while every public kids-trial location remains disabled; Ridge Hill currently has no upcoming Program 61 occurrences. Use the
     <a href="https://github.com/zczhuang/court16-mindbody-test-v2/blob/agent/family-account-handoff/docs/multi-site-automation-audit.md"><strong>current multi-site audit</strong></a>,
     <a href="./06-password-setup-email.html"><strong>spec 06</strong></a>, and
     <a href="./10-family-account-staff-guide.html"><strong>spec 10</strong></a> instead.
@@ -88,7 +88,7 @@
     <tr>
       <td class="layer">MindBody</td>
       <td class="item"><strong>Historical May experiment — not a current authorization rule.</strong> A consumer-mode write created Ridge Hill Clients <code>100002047</code> and <code>100002048</code>. It did not prove that consumer mode is a safe fallback, that the then-recorded required-field list remains accurate, or that the same behavior applies to another site.
-        <div class="why-gate"><strong>Current rule</strong>Use the source-token and read-preflight matrix in the current audit. The six expansion clubs fail both source and consumer reads with <code>403</code>; no blocked site may be bypassed or enabled from this observation.</div>
+        <div class="why-gate"><strong>Current rule</strong>Use the source-token and read-preflight matrix in the current audit. Authorization now succeeds at all seven sites, but no site may be enabled until its remaining configuration, write, routing, and acceptance gates pass.</div>
       </td>
       <td class="owner">Anthony</td>
       <td><span class="check gated">HISTORICAL</span></td>
@@ -157,7 +157,7 @@
     <tr><td style="padding:6px 10px;">#9 Duplicate-email softwall</td><td><span class="check pending">⊘ PARTIAL</span></td><td><strong>Bug H</strong> (<a href="https://github.com/zczhuang/court16-mindbody-test-v2/issues/3" target="_blank">#3</a>): MindBody <code>/client/clients?SearchText=&lt;email&gt;</code> doesn't index newly-created clients fast enough. Second submit doesn't detect the duplicate, creates a 2nd MindBody Client, then degrades to manual_review. End-user UX is acceptable (Deal lands in HubSpot) but documented softwall path isn't hit. Fix path: dedup via HubSpot Contact lookup instead of MindBody.</td></tr>
     <tr><td style="padding:6px 10px;">#10 24h reminder timing</td><td><span class="check pending">⊘ BLOCKED</span></td><td>Needs #3 (Scheduled Deal); same Bug G blocker (<a href="https://github.com/zczhuang/court16-mindbody-test-v2/issues/2" target="_blank">#2</a>)</td></tr>
   </table>
-  <p style="margin:14px 0 0; font-size:13px;"><strong>Historical conclusion, now superseded:</strong> this run recorded 4 clean passes, 1 partial, 1 deferred, and 4 blocked scenarios. It does <strong>not</strong> prove production readiness. The current audit found zero upcoming Ridge Hill Program 61 occurrences, no trustworthy HubSpot family-status gate, and six unauthorized expansion sites. Do not flip <code>MINDBODY_WRITE_MODE</code> or launch from this result.</p>
+  <p style="margin:14px 0 0; font-size:13px;"><strong>Historical conclusion, now superseded:</strong> this run recorded 4 clean passes, 1 partial, 1 deferred, and 4 blocked scenarios. It does <strong>not</strong> prove production readiness. The current audit found zero upcoming Ridge Hill Program 61 occurrences, no trustworthy HubSpot family-status gate, and six authorized expansion sites that still lack launch-ready trial configuration. Do not flip <code>MINDBODY_WRITE_MODE</code> or launch from this result.</p>
 </div>
 
 <div style="margin-top: 24px; padding: 14px 18px; background: #fff5e6; border-left: 4px solid #f59e0b; border-radius: 0 8px 8px 0;">

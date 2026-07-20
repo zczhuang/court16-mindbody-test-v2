@@ -1,6 +1,8 @@
 # Court 16 kids-trial automation: multi-site readiness and handoff
 
-**Audit date:** 2026-07-18
+**Original audit:** 2026-07-18
+
+**Activation re-audit:** 2026-07-20
 
 **Scope:** Allston, Downtown Brooklyn, Fishtown, Long Island City, Manhattan–FiDi, Newton, and Ridge Hill.
 **Decision rule:** do not enable a club because its Site ID is known. Enable it only after Mindbody authorization, the club's own trial configuration, HubSpot routing, and the full parent/child test all pass.
@@ -13,10 +15,11 @@ The copy/paste owner and admin steps are in [the access-authorization handoff](.
 > **Re-audit 2026-07-20 — all seven sites are now authorized.** Every club's
 > owner approved the Cedarwind activation link; the source token and all six
 > read probes return `200` at all seven Site IDs (evidence:
-> `npm run audit:mindbody-sites`, 2026-07-20). The July 17/18 `403` statements
-> below are historical. Authorization changes nothing else: no club has a
-> verified Kid's Trials Program, schedule, or acceptance evidence yet, and all
-> seven remain disabled for public booking.
+> `npm run audit:mindbody-sites`, 2026-07-20). The July 17/18 `403` results are
+> historical. Authorization clears only the access gate: Ridge Hill's known
+> Program and Service remain the control configuration, no site has verified
+> upcoming trial inventory or end-to-end acceptance, and all seven remain
+> disabled for public booking.
 >
 > New per-site facts from the 20 Jul readback:
 >
@@ -27,11 +30,13 @@ The copy/paste owner and admin steps are in [the access-authorization handoff](.
 > - **Family relationships** `-6` Parent/Guardian↔Child and `-4` Is Paid For
 >   By↔Pays For are present at all seven sites — the Ridge Hill family model
 >   ports everywhere (still record each site's values explicitly).
-> - **Genders**: Male/Female/Undisclosed everywhere; **LIC additionally has
->   `Not Specified` (id 6)** — per-site catalogs must still drive each form.
-> - **$0 kids service**: `Complimentary Child Intro Session` (`100183`)
->   exists at Ridge Hill, Newton, and Allston. No other club has any $0
->   kids-trial service yet.
+> - **Genders**: None/Male/Female/Undisclosed everywhere; **LIC additionally
+>   has `Not Specified` (id 6)** — per-site catalogs must still drive each form.
+> - **Kids-service candidates**: `Complimentary Child Intro Session`
+>   (`100183`) appears at Ridge Hill, Newton, and Allston. The read-only audit
+>   does not verify its price, Program/location applicability, or checkout
+>   behavior. Ridge Hill's separately configured trial Service remains
+>   `100328` (`Kid's Trial`).
 > - **Kids-trial Program**: only Ridge Hill has one (`61 Kid's Trials`). No
 >   expansion club has a trial program or trial schedule yet.
 > - **Class inventory (60-day census)**: Brooklyn/LIC/FiDi/Fishtown/Newton
@@ -40,9 +45,9 @@ The copy/paste owner and admin steps are in [the access-authorization handoff](.
 >   empty (0 classes)** — the club is not yet operating in Mindbody.
 
 
-Ridge Hill is the only authorized control site. Its Mindbody source-token probe returned `200`, and its known trial configuration is Program `61` plus $0 Service `100328`. The same source-token probe returned `403` (no site access) for the other six clubs. Consumer/API-key read probes on those six clubs also returned `403`, so consumer mode is **not** a safe fallback.
+All seven sites are now API-authorized. Ridge Hill remains the configuration control because it is the only site with a discovered Kid's Trials Program (`61`) and a separately verified trial Service (`100328`). The expansion sites are readable but still lack verified trial Programs, Services, schedules, routing, and acceptance evidence.
 
-This proves authorization and configuration visibility only; it does not prove a club is ready for families. The reusable 30-day audit on July 17 found Program `61`, Service `100328`, required fields, and family relationships at Ridge Hill, but returned **zero upcoming Program 61 occurrences**. Ridge Hill is therefore also disabled from public trial requests. The live HubSpot family-status dropdown now exists, but a trustworthy Mindbody claim/link completion readback still does not.
+This proves authorization and configuration visibility only; it does not prove a club is ready for families. The 30-day re-audit found **zero upcoming Program 61 occurrences** at Ridge Hill. Ridge Hill is therefore also disabled from public trial requests. The live HubSpot family-status dropdown now exists, but a trustworthy Mindbody claim/link completion readback still does not.
 
 Labels used below:
 
@@ -52,19 +57,19 @@ Labels used below:
 
 ## Seven-club readiness matrix
 
-The live API evidence used source `CedarWindSolutionsLLC`. For the six blocked sites, both the source-token request and the consumer read probes failed with `403`.
+The live API evidence used source `CedarWindSolutionsLLC`. On July 20, source-token issuance and all six configuration reads succeeded for every Site ID.
 
-| Club | Mindbody Site ID | Live API authorization | Kids-trial Program / $0 Service | HubSpot Deal routing in code | Readiness |
+| Club | Mindbody Site ID | Live API authorization | Kids-trial Program / Service discovery | HubSpot Deal routing in code | Readiness |
 |---|---:|---|---|---|---|
-| **Allston** | `5754600` | **Verified blocked:** source `403`; consumer reads `403` | **Unknown / unknown** | **Partial:** live `preferred_location` value is `Allston - Massachusetts`; no verified pipeline or stages | **Blocked** |
-| **Downtown Brooklyn** | `135479` | **Verified blocked:** source `403`; consumer reads `403` | **Unknown / unknown** | **Recorded:** pipeline `default`; `appointmentscheduled` → `qualifiedtobuy` | **Blocked** |
-| **Fishtown** | `5742169` | **Verified blocked:** source `403`; consumer reads `403` | **Unknown / unknown** | **Recorded:** pipeline `1818411`; `6445996` → `1031324174` | **Blocked** |
-| **Long Island City** | `985499` | **Verified blocked:** source `403`; consumer reads `403` | **Unknown / unknown** | **Recorded:** pipeline `1460258`; `5321400` → `11096161` | **Blocked** |
-| **Manhattan–FiDi** | `5728093` | **Verified blocked:** source `403`; consumer reads `403` | **Unknown / unknown** | **Recorded:** pipeline `2477627`; `8517561` → `8517634` | **Blocked** |
-| **Newton** | `5751422` | **Verified blocked:** source `403`; consumer reads `403` | **Unknown / unknown** | **Recorded:** pipeline `873061120`; `1307706690` → `1307706693` | **Blocked** |
+| **Allston** | `5754600` | **Verified:** source token + six reads `200` | No trial Program; Service-name candidate `100183`; price/applicability unverified | **Partial:** live `preferred_location` value is `Allston - Massachusetts`; no verified pipeline or stages | **Blocked:** empty schedule, required `EmergContact`, routing/config/test gaps |
+| **Downtown Brooklyn** | `135479` | **Verified:** source token + six reads `200` | No trial Program or Service-name candidate found | **Recorded:** pipeline `default`; `appointmentscheduled` → `qualifiedtobuy` | **Blocked:** trial inventory/config/test gaps |
+| **Fishtown** | `5742169` | **Verified:** source token + six reads `200` | No trial Program or Service-name candidate found | **Recorded:** pipeline `1818411`; `6445996` → `1031324174` | **Blocked:** trial inventory/config/test gaps |
+| **Long Island City** | `985499` | **Verified:** source token + six reads `200` | No trial Program or Service-name candidate found | **Recorded:** pipeline `1460258`; `5321400` → `11096161` | **Blocked:** trial inventory/config/test gaps; extra gender option requires mapping |
+| **Manhattan–FiDi** | `5728093` | **Verified:** source token + six reads `200` | No trial Program or Service-name candidate found | **Recorded:** pipeline `2477627`; `8517561` → `8517634` | **Blocked:** trial inventory/config/test gaps |
+| **Newton** | `5751422` | **Verified:** source token + six reads `200` | No trial Program; Service-name candidate `100183`; price/applicability unverified | **Recorded:** pipeline `873061120`; `1307706690` → `1307706693` | **Blocked:** trial inventory/config/test gaps |
 | **Ridge Hill** | `5748154` | **Verified:** source token and all six read probes `200`; zero Program 61 occurrences in the next 30 days | **Verified live:** Program `61`; Service `100328`; required fields and family relationships visible | **Verified live:** pipeline `830977386`; `1231873814` → `1231873816`; customer workflows remain off | **Disabled control; inventory, routing test, E2E acceptance, and design approval required** |
 
-Known Site IDs and existing six-site pipeline mappings are configuration facts. Program IDs, Service IDs, required fields, relationship IDs, email settings, and class inventory are **site-specific** and remain unknown wherever the table says unknown.
+Known Site IDs and existing six-site pipeline mappings are configuration facts. The required-field, relationship, gender, Program, Service-name, and current class catalogs are now readable per site. Price/Program/location applicability, email settings, staff write permissions, checkout, and end-to-end behavior still require explicit per-site verification.
 
 The July 17 Ridge Hill readback returned required fields `AddressLine1`, `City`, `State`, `PostalCode`, `MobilePhone`, `BirthDate`, `Email`, and `IsMale`; family candidates `-6` (`Parent/Guardian` ↔ `Child`) and `-4` (`Is Paid For By` ↔ `Pays For`); and two service-name candidates: `100183` (`Complimentary Child Intro Session`) and the configured `100328` (`Kid's Trial`). This is evidence for Ridge Hill only, not a template of IDs for another site.
 
@@ -184,11 +189,11 @@ The application owns orchestration and IDs, not customer email. HubSpot owns Cou
 
 ## Current blockers and unsafe fallbacks
 
-1. **Six sites are unauthorized.** Source and consumer read paths both return `403`; retrying consumer mode cannot make them launch-ready.
-2. **Unknown per-site IDs.** Program, Service, relationship, required-field, and class inventory values are unknown outside Ridge Hill. Hard-coding Ridge Hill IDs across sites would corrupt relationships or fail checkout/enrollment.
+1. **Authorization is complete; launch configuration is not.** All seven source tokens and read probes succeed, but authorization alone does not verify any write, checkout, notification, or family-account behavior.
+2. **Trial inventory is absent outside Ridge Hill.** No expansion club exposes a Kid's Trials Program. Brooklyn, Fishtown, LIC, and FiDi expose no kids-trial Service-name candidate; Newton and Allston expose `100183`, but its price and applicability remain unverified. Hard-coding Ridge Hill IDs across sites would corrupt relationships or fail checkout/enrollment.
 3. **Unsafe calendar fallback was present and is now blocked in this branch.** Previously, a site without `kidTrialProgramId` fell back to a broad “children” filter that could expose regular classes. The current branch adds an explicit `trialBookingEnabled` gate and requires both Program and Service IDs before either calendar retrieval or client creation. Keep every non-verified club disabled.
-4. **Per-site intake can still differ.** The kids-trial route now collects a real household address and separate parent/child Mindbody gender values instead of writing the studio address or a hard-coded value. Ridge Hill's current readback does not require an emergency contact, so the route sends none. Re-probe required fields and the active gender catalog before enabling another club; never add placeholders to satisfy a different site's configuration.
-5. **Unverified relationship mapping.** `-6` Parent/Guardian and `-4` Pays For were observed at Ridge Hill only. They are not global constants for rollout purposes.
+4. **Per-site intake differs.** The kids-trial route now collects a real household address and separate parent/child Mindbody gender values instead of writing the studio address or a hard-coded value. Allston additionally requires `EmergContact`, which the route does not collect, and LIC exposes an extra `Not Specified` gender. Never add placeholders to satisfy a site's configuration.
+5. **Relationship catalogs match, but writes are unproven.** `-6` Parent/Guardian and `-4` Pays For appear at all seven sites. Record them per site and validate the controlled write matrix before treating the shared values as launch evidence.
 6. **Paid-program dependency.** A child needs the correct $0 Service before `AddClientToClass`; missing/wrong Service IDs can cause `ClassRequiresPayment` or attach the wrong pricing.
 7. **Allston CRM routing is incomplete.** The exact live `preferred_location` value is now `Allston - Massachusetts`, but no verified pipeline or Requested/Scheduled stages exist. Do not fall back to Brooklyn/default.
 8. **Family completion is not automated end to end.** Shared email + Parent/Guardian relationship do not create the consumer family view. The parent claim/Add Member and staff Connect steps still require stateful follow-up.
@@ -297,4 +302,4 @@ Use Ridge Hill as the control, then enable one newly authorized club for a small
 8. **Test-data cleanup:** choose who may merge/deactivate duplicates in Mindbody and how test Client IDs are logged. No automated deletion is assumed.
 9. **Rollout order:** select the first newly authorized pilot club after Ridge Hill and approve the five-family acceptance threshold.
 
-Until those decisions and the per-site tests are complete, the safe state is: **no Squarespace cutover; all seven public kids-trial locations disabled; Ridge Hill retained only as the authorized test control; all Cedarwind workflows off; legacy form workflows unchanged.**
+Until those decisions and the per-site tests are complete, the safe state is: **no Squarespace cutover; all seven public kids-trial locations disabled; Ridge Hill retained as the configuration control; all Cedarwind workflows off; legacy form workflows unchanged.**

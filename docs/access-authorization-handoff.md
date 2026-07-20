@@ -2,6 +2,8 @@
 
 **Prepared:** July 17, 2026
 
+**Access status updated:** July 20, 2026
+
 **Audience:** Ibtissam, the Mindbody site owner/admin, and the HubSpot Super Admin
 
 **Safety rule:** authorize the existing integrations; never send passwords, API keys, or bearer tokens. Share each short-lived activation link/code only with the intended site owner through an approved secure channel.
@@ -11,7 +13,7 @@
 | System | Access that works | Access that is missing | Effect |
 |---|---|---|---|
 | Mindbody — Ridge Hill `5748154` | Staff/source token and the read-only configuration probes return `200` | No upcoming Program `61` trial occurrences were found in the 30-day window | The integration is authorized, but Ridge Hill still needs its trial schedule checked before a live request |
-| Mindbody — six rollout sites | Site-specific activation links were generated on July 17, 2026; source and configuration reads still return `403` | Each site's owner must open its private link and approve Cedarwind | The six clubs remain disabled; Cedarwind cannot discover or safely configure their Program, Service, relationship, or class IDs until approval |
+| Mindbody — six rollout sites | All owners approved access; source-token issuance and all six configuration reads return `200` for every Site ID | Verified trial Program, Service price/applicability, schedule, staff write permissions, routing, and end-to-end acceptance | Discovery is unblocked, but all six clubs remain disabled until their individual launch gates pass |
 | HubSpot portal `4832170` | CRM Contact/Deal read-write, Marketing Email, properties, and Workflows | No access blocker | The trusted family-status property and a new nudge workflow were saved; every Cedarwind workflow remains off |
 
 ## Action 1 — authorize the six Mindbody sites ✅ COMPLETED 2026-07-20

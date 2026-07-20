@@ -86,16 +86,17 @@ Same shape:
 
 ## Historical go-live list — superseded
 
-This was the April work list. Do not execute it as written. Ridge Hill is now
-the only authorized control site; the six expansion sites remain unauthorized,
-and current per-site/readiness evidence lives in the multi-site audit linked above.
+This was the April work list. Do not execute it as written. As of July 20, all
+seven sites are API-authorized, but every public kids-trial location remains
+disabled pending its current readiness gates. Current evidence lives in the
+multi-site audit linked above.
 
 ### 🎾 Anthony — MindBody side
 
 **April assumption:** the developer account still needed Mindbody's formal
 “Go Live” review. That was the blocker recorded in this snapshot, not the
-current access state. Ridge Hill is now authorized; the six expansion sites
-still require site-specific authorization and preflight evidence.
+current access state. All seven sites are now authorized; the expansion sites
+still require trial setup and per-site preflight evidence before launch.
 
 1. **Submit Cedarwind's developer account for Go Live review** at
    developers.mindbodyonline.com. Stuart files the paperwork; Anthony's role

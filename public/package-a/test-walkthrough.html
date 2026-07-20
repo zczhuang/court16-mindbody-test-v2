@@ -49,7 +49,7 @@
   <dl>
     <dt>Historical audience</dt><dd><strong>Ibtissam + Anthony</strong></dd>
     <dt>Historical target</dt><dd>The production booking app and HubSpot portal <code>4832170</code>; links are intentionally omitted from the run steps.</dd>
-    <dt>Current safety</dt><dd>There is no zero-cost or sandbox guarantee. Real-site writes are durable, the six expansion clubs are unauthorized, and cleanup must be approved record by record.</dd>
+    <dt>Current safety</dt><dd>There is no zero-cost or sandbox guarantee. Real-site writes are durable, all seven sites are API-authorized but public booking-disabled, and cleanup must be approved record by record.</dd>
   </dl>
 </section>
 
@@ -71,7 +71,7 @@
   <div class="step-head"><span class="step-num">1.1</span><h3 class="step-title">Archived action · do not submit</h3></div>
   <ol>
     <li>The May walkthrough opened the booking app and selected a kids trial.</li>
-    <li>It used <strong>Newton</strong>. Newton now returns <code>403</code> and is disabled; do not select it.</li>
+    <li>It used <strong>Newton</strong>. Newton is now API-authorized but remains public booking-disabled because its trial configuration and acceptance gates have not passed; do not select it.</li>
     <li>It submitted a synthetic parent and child. A current write would create durable records and requires prior approval.</li>
   </ol>
   <div class="step-expect"><strong>Historical observation</strong>The confirmation page displayed a correlation ID.</div>
