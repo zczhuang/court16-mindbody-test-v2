@@ -108,6 +108,39 @@ export async function POST(req: Request) {
   correlationId = body.submissionId;
   log = createLogger(correlationId);
 
+  // Reject preview-only or unknown locations before touching the rate-limit
+  // bucket or distributed lock. A forced POST from the production form
+  // preview must not touch shared mutable booking state.
+  const location = getLocationById(body.locationId);
+  if (!location) {
+    return NextResponse.json(
+      { ok: false, correlationId, error: `unknown locationId: ${body.locationId}` },
+      { status: 400 },
+    );
+  }
+
+  const trialReadiness = getKidsTrialReadiness({
+    location,
+    trialConfig: TRIAL_CONFIG[location.id],
+    pipeline: getDealPipeline(location.id),
+    preferredLocation: getHubspotPreferredLocation(location.id),
+  });
+  if (!trialReadiness.ready) {
+    log.warn("trial.location.not-ready", {
+      locationId: location.id,
+      missing: trialReadiness.missing,
+    });
+    return NextResponse.json(
+      {
+        ok: false,
+        correlationId,
+        code: "trial_location_not_ready",
+        error: "Kids trial scheduling is not yet available for this club.",
+      },
+      { status: 409 },
+    );
+  }
+
   const rateLimit = consumeSignupRateLimit(req, "kid-trial", body.parentEmail);
   if (!rateLimit.ok) {
     return NextResponse.json(
@@ -157,35 +190,6 @@ export async function POST(req: Request) {
 
   try {
 
-  const location = getLocationById(body.locationId);
-  if (!location) {
-    return NextResponse.json(
-      { ok: false, correlationId, error: `unknown locationId: ${body.locationId}` },
-      { status: 400 },
-    );
-  }
-
-  const trialReadiness = getKidsTrialReadiness({
-    location,
-    trialConfig: TRIAL_CONFIG[location.id],
-    pipeline: getDealPipeline(location.id),
-    preferredLocation: getHubspotPreferredLocation(location.id),
-  });
-  if (!trialReadiness.ready) {
-    log.warn("trial.location.not-ready", {
-      locationId: location.id,
-      missing: trialReadiness.missing,
-    });
-    return NextResponse.json(
-      {
-        ok: false,
-        correlationId,
-        code: "trial_location_not_ready",
-        error: "Kids trial scheduling is not yet available for this club.",
-      },
-      { status: 409 },
-    );
-  }
   if (process.env.HUBSPOT_DEAL_LEDGER_ENABLED !== "true") {
     return NextResponse.json(
       {

@@ -32,8 +32,9 @@ export default function LocationSelector({
             Start with your club.
           </h2>
           <p className="section-sub">
-            Choose any club to view its current calendar. Where online trial booking is
-            still being set up, the schedule is clearly marked as read-only.
+            Choose any club to view its current calendar and preview the full request
+            form. Final submission stays off until that club&apos;s real trial inventory
+            and launch workflow are verified.
           </p>
         </div>
       )}
@@ -83,8 +84,8 @@ export default function LocationSelector({
               {previewOnly && (
                 <div className="loc-unavailable-reason">
                   {kidsSchedulePreview
-                    ? "Browse this club's public kids class schedule while online trial booking is set up."
-                    : "Preview the dedicated trial calendar while online booking is being finalized."}
+                    ? "Browse the public kids schedule and preview the request form while real trial inventory is being loaded."
+                    : "Preview the dedicated trial calendar and request form while live inventory is being verified."}
                 </div>
               )}
               {!enabled && unavailableReason && (
@@ -96,9 +97,7 @@ export default function LocationSelector({
                     {on
                       ? "Selected"
                       : previewOnly
-                        ? kidsSchedulePreview
-                          ? "View kids schedule"
-                          : "Preview trial calendar"
+                        ? "Explore calendar & form"
                         : trialOnly
                           ? "See trial classes"
                           : "Choose this club"}
@@ -134,8 +133,8 @@ export default function LocationSelector({
               aria-label={
                 previewOnly
                   ? kidsSchedulePreview
-                    ? `View the read-only kids schedule at ${loc.name}; these are not confirmed trial openings`
-                    : `Preview the dedicated trial calendar at ${loc.name}; online booking is not available yet`
+                    ? `View the kids schedule and preview the request form at ${loc.name}; final submission is unavailable until live trial inventory is verified`
+                    : `Preview the dedicated trial calendar and request form at ${loc.name}; final submission is unavailable until live trial inventory is verified`
                   : `See trial classes at ${loc.name}`
               }
               className={`loc-card loc-card--enabled ${on ? "on" : ""}`}

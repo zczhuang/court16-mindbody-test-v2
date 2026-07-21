@@ -187,9 +187,10 @@ export function getKidsTrialReadiness({
  * write allowlist remains a separate mandatory check at the mutation point.
  */
 /**
- * Browse-only calendar preview: strictly weaker than public readiness and
- * never a booking gate. It only decides whether parents may SEE this club's
- * explicitly enabled calendar before the full launch checklist passes. A
+ * Preview-only calendar access: strictly weaker than public readiness and
+ * never a booking gate. It only decides whether parents may see this club's
+ * explicitly enabled calendar and traverse the local form before the full
+ * launch checklist passes. A
  * dedicated trial Program is preferred; otherwise the caller may read only
  * the site-scoped regular-kids Program allowlist. An empty allowlist produces
  * an honest empty calendar and never falls back to a broad class query.

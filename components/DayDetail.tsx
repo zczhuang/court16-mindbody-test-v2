@@ -16,6 +16,8 @@ interface Props {
     | {
         kind: "preview";
         scope: KidsTrialCalendarPreviewScope;
+        selectedClassId: number | null;
+        onPick: (tc: TrialClass) => void;
       };
 }
 
@@ -71,11 +73,10 @@ export default function DayDetail({ classes, date, interaction }: Props) {
         </div>
       </div>
       {previewOnly && (
-        <p className="class-list-preview-note" role="status">
+        <p className="class-list-preview-note">
           {kidsSchedule
-            ? "Regular kids schedule for planning only — these are not confirmed trial openings."
-            : "Trial calendar preview — online booking is not available here yet."}{" "}
-          <a href="https://www.court16.com/contact">Ask our team about a trial</a>.
+            ? "Schedule preview — these are regular kids classes, not confirmed trial openings. Choose a class to preview the full request form; final submission stays locked until live trial inventory is verified."
+            : "Trial form preview — choose a time to review the full request experience. Final submission stays locked until live trial inventory is verified."}
         </p>
       )}
       <div className={`class-list ${previewOnly ? "class-list--preview" : ""}`}>
@@ -85,7 +86,12 @@ export default function DayDetail({ classes, date, interaction }: Props) {
             trialClass={c}
             interaction={
               interaction.kind === "preview"
-                ? { kind: "preview", scope: interaction.scope }
+                ? {
+                    kind: "preview",
+                    scope: interaction.scope,
+                    isSelected: interaction.selectedClassId === c.classId,
+                    onSelect: interaction.onPick,
+                  }
                 : {
                     kind: "select",
                     isSelected: interaction.selectedClassId === c.classId,

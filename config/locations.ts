@@ -39,15 +39,16 @@ export interface Location {
    */
   trialBookingEnabled: boolean;
   /**
-   * Browse-only escape hatch for an authorized Mindbody site. A club with a
+   * Preview-only escape hatch for an authorized Mindbody site. A club with a
    * dedicated Kid's Trials Program gets a trial-program preview; otherwise it
    * gets a separately labeled regular-kids schedule preview constrained to
-   * `kidsCalendarProgramIds`. Booking stays fail-closed and no broad,
-   * unfiltered class query is allowed.
+   * `kidsCalendarProgramIds`. The calendar and full form may be reviewed, but
+   * submission stays fail-closed and no broad, unfiltered class query is
+   * allowed.
    */
   trialCalendarPreviewEnabled?: boolean;
   /**
-   * Site-scoped allowlist for the read-only regular-kids schedule preview.
+   * Site-scoped allowlist for the preview-only regular-kids schedule.
    * These IDs never satisfy trial-booking readiness and are never accepted by
    * the booking route. Keep the list empty when no kids schedule is live.
    */

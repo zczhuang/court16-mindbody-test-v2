@@ -50,7 +50,7 @@ function isTrialLocationReady(location: Location | undefined): boolean {
   }).ready;
 }
 
-/** Browse-only: the calendar may be viewed, but no class can be requested. */
+/** Preview-only: the calendar and form may be reviewed, but nothing can be submitted. */
 function isTrialLocationPreviewOnly(location: Location | undefined): boolean {
   if (!location) return false;
   if (isTrialLocationReady(location)) return false;
@@ -65,7 +65,7 @@ function getTrialLocationPreviewScope(
   return preview.ready ? preview.scope : null;
 }
 
-/** Fully ready OR browse-only preview — either way the calendar may render. */
+/** Fully ready OR preview-only — either way the calendar and form may render. */
 function isTrialLocationBrowsable(location: Location | undefined): location is Location {
   return Boolean(location) && (isTrialLocationReady(location) || isTrialLocationPreviewOnly(location));
 }
@@ -244,13 +244,34 @@ function TrialInner() {
   }
 
   function handleClassSelect(tc: TrialClass) {
-    // Browse-only preview: the calendar is visible but no request may start.
-    // The intake route independently enforces full readiness; this guard just
-    // keeps a parent from filling a form that would be refused on submit.
-    if (isTrialLocationPreviewOnly(location ?? undefined)) return;
     setSelectedClass(tc);
     setSubmissionId(window.crypto.randomUUID());
     setShowFormModal(true);
+  }
+
+  function previewFormWithoutInventory() {
+    if (!location || !previewOnly) return;
+    const date = todayStrInTz(location.timezone);
+    const dateValue = new Date(`${date}T00:00:00`);
+    const dayOfWeek = new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(
+      dateValue,
+    );
+    handleClassSelect({
+      classScheduleId: -(location.siteId * 10 + 1),
+      classId: -(location.siteId * 10 + 2),
+      name: "Sample kids trial — inventory pending",
+      levelName: "Sample class",
+      time: "Time TBD",
+      endTime: "TBD",
+      date,
+      dayOfWeek,
+      coach: "Coach TBD",
+      court: "Court TBD",
+      spotsAvailable: 0,
+      maxCapacity: 0,
+      recurrence: "Preview only",
+      startsAt: `${date}T12:00:00`,
+    });
   }
 
   function handlePrevMonth() {
@@ -286,6 +307,14 @@ function TrialInner() {
   }
 
   async function handleTrialSubmit(request: TrialRequest) {
+    // Preview forms are deliberately traversable, but they must never reach
+    // the production intake route. The final button and form handler enforce
+    // the same rule; the API independently rejects any forced direct POST.
+    if (!isTrialLocationReady(location ?? undefined)) {
+      throw new Error(
+        "Submission is locked until this club's live trial inventory and launch workflow are verified.",
+      );
+    }
     // HubSpot attribution context: pageUri/pageName make the Contact's
     // "form inquiry" activity link to THIS page instead of the legacy
     // website form; hutk (when the tracking cookie exists) ties the
@@ -369,20 +398,20 @@ function TrialInner() {
               </button>
               <div className="cal-context">
                 <span className="eyebrow">
-                  {previewOnly ? "Step 2 of 2" : "Step 2 of 3"}
+                  Step 2 of 3
                 </span>
                 <h2 id="trial-step-heading" className="section-title" tabIndex={-1}>
                   {kidsSchedulePreview
-                    ? "Browse this club's kids schedule."
+                    ? "Choose a class to preview the request form."
                     : previewOnly
-                      ? "Preview their trial calendar."
+                      ? "Choose a time to preview the request form."
                       : "Choose their trial class."}
                 </h2>
                 <p className="section-sub">
                   {kidsSchedulePreview
-                    ? "Select a highlighted day to see the regular kids classes currently scheduled."
+                    ? "Select a highlighted day, then choose a regular kids class to review the full form experience."
                     : previewOnly
-                      ? "Select a highlighted day to see the dedicated trial times currently scheduled."
+                      ? "Select a highlighted day, then choose a dedicated trial time to review the full form experience."
                       : "Select a highlighted day, then choose the class that best fits your child."}
                 </p>
                 <div className="loc-breadcrumb">
@@ -398,8 +427,8 @@ function TrialInner() {
                   {kidsSchedulePreview ? (
                     <>
                       <span>Public schedule</span>
-                      <span>Read only</span>
-                      <span>Ask about trials</span>
+                      <span>Full form preview</span>
+                      <span>Submission off</span>
                     </>
                   ) : (
                     <>
@@ -411,11 +440,10 @@ function TrialInner() {
                   )}
                 </div>
                 {previewOnly && (
-                  <p className="trial-preview-note" role="status">
+                  <p className="trial-preview-note">
                     {kidsSchedulePreview
-                      ? "Kids schedule preview — these are regular classes for planning only, not confirmed trial availability. Online trial booking isn't available here yet."
-                      : "Trial calendar preview — these are dedicated trial times, but online booking isn't available here yet."}{" "}
-                    <a href="https://www.court16.com/contact">Ask our team about a trial</a>.
+                      ? `Schedule preview — these are regular kids classes, not confirmed trial openings. Choose a class to preview the full request form. Final submission stays locked until live trial inventory is verified for ${location.name}.`
+                      : `Trial form preview — choose a time to review the full request experience. Final submission stays locked until live trial inventory is verified for ${location.name}.`}
                   </p>
                 )}
               </div>
@@ -442,7 +470,19 @@ function TrialInner() {
                     : "Live trial availability did not load. Call or email and our team will match your child to a trial class."}
                 </div>
                 <div className="error-actions">
-                  <a href="tel:+17188755550" className="btn primary">
+                  {previewOnly && (
+                    <button
+                      type="button"
+                      className="btn primary"
+                      onClick={previewFormWithoutInventory}
+                    >
+                      Preview the full form
+                    </button>
+                  )}
+                  <a
+                    href="tel:+17188755550"
+                    className={`btn ${previewOnly ? "ghost" : "primary"}`}
+                  >
                     Call 718-875-5550
                   </a>
                   <a
@@ -456,6 +496,12 @@ function TrialInner() {
                     Email our team
                   </a>
                 </div>
+                {previewOnly && (
+                  <p className="empty-preview-note">
+                    Uses clearly labeled sample class details for design review only.
+                    Nothing will be submitted.
+                  </p>
+                )}
               </div>
             )}
 
@@ -485,7 +531,19 @@ function TrialInner() {
                   )}
                 </div>
                 <div className="error-actions">
-                  <a href="tel:+17188755550" className="btn primary">
+                  {previewOnly && (
+                    <button
+                      type="button"
+                      className="btn primary"
+                      onClick={previewFormWithoutInventory}
+                    >
+                      Preview the full form
+                    </button>
+                  )}
+                  <a
+                    href="tel:+17188755550"
+                    className={`btn ${previewOnly ? "ghost" : "primary"}`}
+                  >
                     Call 718-875-5550
                   </a>
                   <a
@@ -495,6 +553,12 @@ function TrialInner() {
                     Ask about the next trial
                   </a>
                 </div>
+                {previewOnly && (
+                  <p className="empty-preview-note">
+                    Uses clearly labeled sample class details for design review only.
+                    Nothing will be submitted.
+                  </p>
+                )}
               </div>
             )}
 
@@ -548,7 +612,12 @@ function TrialInner() {
                       date={selectedDate}
                       interaction={
                         previewScope
-                          ? { kind: "preview", scope: previewScope }
+                          ? {
+                              kind: "preview",
+                              scope: previewScope,
+                              selectedClassId: selectedClass?.classId ?? null,
+                              onPick: handleClassSelect,
+                            }
                           : {
                               kind: "select",
                               selectedClassId: selectedClass?.classId ?? null,
@@ -572,6 +641,7 @@ function TrialInner() {
           locationId={location.id}
           locationName={location.fullName}
           genderOptions={TRIAL_CONFIG[location.id]?.mindbodyGenderOptions ?? []}
+          submissionEnabled={isTrialLocationReady(location)}
           onSubmit={handleTrialSubmit}
           onCancel={() => {
             setShowFormModal(false);

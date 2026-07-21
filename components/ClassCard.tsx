@@ -14,6 +14,8 @@ interface Props {
     | {
         kind: "preview";
         scope: KidsTrialCalendarPreviewScope;
+        isSelected: boolean;
+        onSelect: (tc: TrialClass) => void;
       };
 }
 
@@ -48,22 +50,23 @@ export default function ClassCard({ trialClass, interaction }: Props) {
       <div className="cc-go">
         {interaction.kind === "select"
           ? "Request this class"
-          : interaction.scope === "kids_schedule"
-            ? "Kids schedule preview"
-            : "Trial calendar preview"}
-        {interaction.kind === "select" && <span aria-hidden="true">→</span>}
+          : "Preview trial request"}
+        <span aria-hidden="true">→</span>
       </div>
     </>
   );
 
   if (interaction.kind === "preview") {
     return (
-      <article
-        className="class-card class-card--readonly"
-        aria-label={`${trialClass.name}, ${trialClass.time} to ${trialClass.endTime}, schedule preview`}
+      <button
+        type="button"
+        className={`class-card class-card--preview ${interaction.isSelected ? "on" : ""}`}
+        onClick={() => interaction.onSelect(trialClass)}
+        aria-pressed={interaction.isSelected}
+        aria-label={`Preview the trial request form for ${trialClass.name}, ${trialClass.time} to ${trialClass.endTime}; final submission is unavailable until live trial inventory is verified`}
       >
         {content}
-      </article>
+      </button>
     );
   }
 

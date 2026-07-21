@@ -19,6 +19,7 @@
     "test:kids-trial-readiness": "node --no-warnings --experimental-strip-types scripts/test-kids-trial-readiness.ts",
     "test:kids-calendar": "node --no-warnings --experimental-strip-types scripts/test-kids-calendar.ts",
     "test:calendar-consumers": "node --no-warnings --experimental-strip-types scripts/test-calendar-consumers.ts",
+    "test:trial-preview-form": "node --no-warnings --experimental-strip-types scripts/test-trial-preview-form.ts",
     "test:trial-e2e": "node --no-warnings --experimental-strip-types scripts/test-trial-e2e.ts",
     "test:mindbody-pagination": "node --no-warnings --experimental-strip-types scripts/test-mindbody-pagination.ts",
     "test:mindbody-write-guard": "node --no-warnings --experimental-strip-types scripts/test-mindbody-write-guard.ts",

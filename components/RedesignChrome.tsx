@@ -15,9 +15,9 @@ export default function RedesignChrome({ previewScope, testMode = false }: Props
         {testMode
           ? "ISOLATED AUTOMATION TEST · NO COURT 16 NOTIFIERS · NO PRODUCTION WRITES"
           : kidsSchedule
-          ? "Kids tennis schedules · Ask our team about trials"
+          ? "Kids schedule · Full form preview · Submission off"
           : previewScope === "trial_program"
-            ? "Kids trial calendar · Booking by request"
+            ? "Kids trial calendar · Full form preview · Submission off"
             : "Free kids trial · Racquet provided · No credit card"}
       </div>
       <header className="trial-site-header">
@@ -36,9 +36,9 @@ export default function RedesignChrome({ previewScope, testMode = false }: Props
               {testMode
                 ? "Protected E2E acceptance"
                 : kidsSchedule
-                  ? "Kids class calendar"
+                  ? "Trial form preview"
                   : previewScope
-                    ? "Trial calendar"
+                    ? "Trial form preview"
                     : "Book kids trial"}
             </span>
             {testMode ? (

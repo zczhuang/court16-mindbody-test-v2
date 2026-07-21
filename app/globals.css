@@ -336,7 +336,7 @@ strong { font-weight: 800; }
 }
 .btn.primary { background: var(--c16-black); color: var(--c16-yellow); }
 .btn.primary:hover:not(:disabled) { transform: translate(-2px, -2px); box-shadow: 4px 4px 0 var(--c16-yellow); }
-.btn.primary:disabled { border-color: #aaa; background: #aaa; color: #eee; }
+.btn.primary:disabled { border-color: #777770; background: #d7d7d2; color: #3f3f3b; box-shadow: none; }
 .btn.ghost { background: transparent; color: var(--c16-black); }
 .btn.ghost:hover { background: var(--c16-yellow); }
 .btn.light { border-color: var(--c16-yellow); background: var(--c16-yellow); color: var(--c16-black); }
@@ -496,9 +496,8 @@ strong { font-weight: 800; }
 .cc-go { display: inline-flex; align-items: center; gap: 7px; margin-top: 3px; font-size: 12px; font-weight: 800; }
 .class-list-preview-note { margin: 0 0 4px; padding: 8px 12px; border: 1.5px solid var(--c16-black); border-left: 6px solid var(--c16-yellow); border-radius: var(--r-md); background: #fff; color: var(--c16-ink-2); font-size: 12px; font-weight: 600; }
 .class-list-preview-note a { color: inherit; font-weight: 800; text-decoration: underline; text-decoration-color: var(--c16-yellow); text-underline-offset: 3px; }
-.class-card--readonly { cursor: default; }
-.class-card--readonly:hover { transform: none; box-shadow: none; }
-.class-card--readonly .cc-go { color: var(--c16-ink-3); }
+.class-card--preview { background: var(--c16-paper-2); }
+.class-card--preview .cc-go { color: var(--c16-ink-2); }
 
 .empty-state { min-height: 310px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 7px; padding: 30px; border: 2px dashed var(--c16-line); border-radius: var(--r-lg); background: var(--c16-paper-2); text-align: center; }
 .empty-ball, .loading-ball { width: 62px; height: 62px; margin-bottom: 10px; border: 2px solid var(--c16-black); border-radius: 50%; background: var(--c16-yellow); box-shadow: 3px 3px 0 var(--c16-black); }
@@ -508,6 +507,7 @@ strong { font-weight: 800; }
 .es-sub { max-width: 42ch; color: var(--c16-ink-3); font-size: 13px; }
 .booking-error { min-height: 280px; border-style: solid; border-color: var(--c16-black); background: var(--c16-yellow-soft); }
 .error-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; margin-top: 14px; }
+.empty-preview-note { max-width: 48ch; margin: 4px 0 0; color: var(--c16-ink-3); font-size: 11px; line-height: 1.45; }
 
 /* Confirmation */
 .confirmation-shell { width: min(100% - 68px, 1192px); margin: 0 auto; padding: clamp(54px, 8vw, 96px) 0 80px; }

@@ -18,7 +18,8 @@ const BOOKING_STEPS: { k: TrialStep; n: number; label: string }[] = [
 
 const PREVIEW_STEPS: typeof BOOKING_STEPS = [
   { k: "location", n: 1, label: "Choose a club" },
-  { k: "calendar", n: 2, label: "View the calendar" },
+  { k: "calendar", n: 2, label: "Pick a class" },
+  { k: "details", n: 3, label: "Preview the form" },
 ];
 
 export default function ProgressBar({ step, previewScope }: Props) {
@@ -47,8 +48,8 @@ export default function ProgressBar({ step, previewScope }: Props) {
         <p className="prog-lead">
           {previewScope
             ? kidsSchedule
-              ? "Browse the club's current kids schedule. These regular classes are for planning only; ask our team about a trial opening."
-              : "Browse the dedicated trial calendar. Online booking is not available here yet, but our team can help."
+              ? "Browse the club's current kids schedule and preview the full request form. Final submission stays locked until live trial inventory is verified."
+              : "Browse the dedicated trial calendar and preview the full request form. Final submission stays locked until live trial inventory is verified."
             : "Choose a club and an age-appropriate trial time. It's free, we provide the racquet, and our team will confirm the spot."}
         </p>
       </div>

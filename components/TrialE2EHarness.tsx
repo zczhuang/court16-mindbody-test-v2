@@ -350,6 +350,7 @@ export default function TrialE2EHarness() {
           genderOptions={["Female", "Male", "Undisclosed"]}
           initialValues={initialValues}
           testMode
+          submissionEnabled
           onSubmit={submitIntake}
           onCancel={() => setShowForm(false)}
         />

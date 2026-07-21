@@ -6,6 +6,7 @@ import type { ChildEntry } from "@/components/AgeSelector";
 import { ageFromDob } from "@/lib/class-utils";
 import {
   MAX_KIDS_TRIAL_AGE,
+  MINDBODY_STANDARD_GENDERS,
   MIN_KIDS_TRIAL_AGE,
   US_STATE_AND_TERRITORY_CODES,
   isValidIsoDate,
@@ -27,6 +28,7 @@ interface Props {
   genderOptions: readonly MindbodyStandardGender[];
   initialValues?: Partial<TrialRequest>;
   testMode?: boolean;
+  submissionEnabled: boolean;
   onSubmit: (request: TrialRequest) => Promise<void>;
   onCancel: () => void;
 }
@@ -48,6 +50,7 @@ export default function TrialRequestForm({
   genderOptions,
   initialValues,
   testMode = false,
+  submissionEnabled,
   onSubmit,
   onCancel,
 }: Props) {
@@ -141,10 +144,23 @@ export default function TrialRequestForm({
   const trialDateLabel = TRIAL_DATE_FORMATTER.format(
     new Date(`${trialClass.date}T00:00:00`),
   );
+  const previewOnly = !submissionEnabled;
+  const usingPreviewGenderOptions = previewOnly && genderOptions.length === 0;
+  const displayedGenderOptions = usingPreviewGenderOptions
+    ? MINDBODY_STANDARD_GENDERS
+    : genderOptions;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    // Production preview is a design-review lane, not an intake lane. Let a
+    // reviewer see both panels without entering real personal information,
+    // then stop every panel-two submission before validation or onSubmit.
+    if (!submissionEnabled) {
+      if (formStep === "family") setFormStep("mindbody");
+      return;
+    }
 
     // Revalidate the first panel in React as well as with native form
     // constraints. Those inputs are unmounted on panel two, so a server
@@ -249,6 +265,7 @@ export default function TrialRequestForm({
       role="dialog"
       aria-modal="true"
       aria-labelledby="trial-form-title"
+      aria-describedby={previewOnly ? "trial-form-preview-note" : undefined}
       aria-busy={submitting}
       className="trf-backdrop"
       onMouseDown={(e) => {
@@ -259,7 +276,8 @@ export default function TrialRequestForm({
         <div className="trf-head">
           <div>
             <div className="eyebrow" style={{ marginBottom: 4 }}>
-              Final details · {formStep === "family" ? "1 of 2" : "2 of 2"}
+              {previewOnly ? "Trial form preview" : "Final details"} ·{" "}
+              {formStep === "family" ? "1 of 2" : "2 of 2"}
             </div>
             <h3
               ref={formTitleRef}
@@ -297,7 +315,8 @@ export default function TrialRequestForm({
           id="trial-request-form"
           onSubmit={handleSubmit}
           className="trf-body"
-          autoComplete={testMode ? "off" : undefined}
+          autoComplete={testMode || previewOnly ? "off" : undefined}
+          noValidate={previewOnly}
         >
           <fieldset className="trf-fields" disabled={testMode}>
             {formStep === "family" ? (
@@ -306,12 +325,16 @@ export default function TrialRequestForm({
                 <strong>
                   {testMode
                     ? "Synthetic test data is prefilled and locked."
-                    : "One quick form. We'll handle the setup."}
+                    : previewOnly
+                      ? "Preview only — nothing will be sent."
+                      : "One quick form. We'll handle the setup."}
                 </strong>
-                <span>
+                <span id={previewOnly ? "trial-form-preview-note" : undefined}>
                   {testMode
                     ? "This exact production form is connected only to the protected E2E lane. Court 16 notification adapters are absent; Site -99 mode also requests native email and text suppression."
-                    : "No credit card is needed. We'll use these details to prepare the family records, and Mindbody will send any secure account email."}
+                    : previewOnly
+                      ? `Move through both panels without entering real personal information. Final submission will open after Court 16 verifies live trial inventory and the launch workflow for ${locationName}.`
+                      : "No credit card is needed. We'll use these details to prepare the family records, and Mindbody will send any secure account email."}
                 </span>
               </div>
               <div className="trf-section">
@@ -345,7 +368,9 @@ export default function TrialRequestForm({
                   hint={
                     testMode
                       ? "The locked, non-deliverable test address cannot receive email."
-                      : "We'll send trial updates here. Mindbody may also send a secure account email."
+                      : previewOnly
+                        ? "Preview only — you can leave this blank and no email will be sent."
+                        : "We'll send trial updates here. Mindbody may also send a secure account email."
                   }
                 >
                   <input
@@ -361,7 +386,13 @@ export default function TrialRequestForm({
                 <div className="trf-grid">
                   <Field
                     label="Mobile phone *"
-                    hint={testMode ? "Locked synthetic data; the app invokes no call or text adapter." : "Staff calls to confirm within a few hours."}
+                    hint={
+                      testMode
+                        ? "Locked synthetic data; the app invokes no call or text adapter."
+                        : previewOnly
+                          ? "Preview only — you can leave this blank and no call or text will be triggered."
+                          : "Staff calls to confirm within a few hours."
+                    }
                   >
                     <input
                       type="tel"
@@ -373,7 +404,14 @@ export default function TrialRequestForm({
                       className="trf-input"
                     />
                   </Field>
-                  <Field label="Your date of birth *" hint="Needed to prepare the family account.">
+                  <Field
+                    label="Your date of birth *"
+                    hint={
+                      previewOnly
+                        ? "Preview only — no date is required."
+                        : "Needed to prepare the family account."
+                    }
+                  >
                     <input
                       type="date"
                       required
@@ -413,7 +451,9 @@ export default function TrialRequestForm({
                 <Field
                   label="Child's date of birth *"
                   hint={
-                    !Number.isNaN(derivedAge)
+                    previewOnly && Number.isNaN(derivedAge)
+                      ? "Preview only — no date is required."
+                      : !Number.isNaN(derivedAge)
                       ? `Age ${derivedAge} — we'll match the right class level.`
                       : "Used to match the right class."
                   }
@@ -491,11 +531,15 @@ export default function TrialRequestForm({
             ) : (
             <>
               <div className="trf-account-note">
-                <strong>Keep the family profile accurate.</strong>
-                <span>
-                  Mindbody asks for the details below when a new account is prepared. We
-                  use the household address for both parent and child and protect it under
-                  Court 16&apos;s Privacy Policy.
+                <strong>
+                  {previewOnly
+                    ? "Preview only — nothing will be sent."
+                    : "Keep the family profile accurate."}
+                </strong>
+                <span id={previewOnly ? "trial-form-preview-note" : undefined}>
+                  {previewOnly
+                    ? `Complete this panel to review the experience. Final submission will open after Court 16 verifies live trial inventory and the launch workflow for ${locationName}.`
+                    : "Mindbody asks for the details below when a new account is prepared. We use the household address for both parent and child and protect it under Court 16's Privacy Policy."}
                 </span>
               </div>
 
@@ -504,7 +548,11 @@ export default function TrialRequestForm({
                 <div className="trf-grid">
                   <Field
                     label="Parent or guardian gender *"
-                    hint="Required by Mindbody for this club."
+                    hint={
+                      usingPreviewGenderOptions
+                        ? "Preview values — this club's Mindbody options still need verification."
+                        : "Required by Mindbody for this club."
+                    }
                   >
                     <select
                       required
@@ -517,7 +565,7 @@ export default function TrialRequestForm({
                       <option value="" disabled>
                         Select
                       </option>
-                      {genderOptions.map((gender) => (
+                      {displayedGenderOptions.map((gender) => (
                         <option key={gender} value={gender}>
                           {gender}
                         </option>
@@ -526,7 +574,11 @@ export default function TrialRequestForm({
                   </Field>
                   <Field
                     label="Child gender *"
-                    hint="Required by Mindbody for this club."
+                    hint={
+                      usingPreviewGenderOptions
+                        ? "Preview values — this club's Mindbody options still need verification."
+                        : "Required by Mindbody for this club."
+                    }
                   >
                     <select
                       required
@@ -539,7 +591,7 @@ export default function TrialRequestForm({
                       <option value="" disabled>
                         Select
                       </option>
-                      {genderOptions.map((gender) => (
+                      {displayedGenderOptions.map((gender) => (
                         <option key={gender} value={gender}>
                           {gender}
                         </option>
@@ -628,6 +680,12 @@ export default function TrialRequestForm({
                 admin routes are not used. Site -99 mode can create synthetic records only in
                 Mindbody&apos;s public sandbox.
               </>
+            ) : previewOnly ? (
+              <>
+                This production preview keeps your entries in this browser. Nothing is
+                sent to Court 16, Mindbody, HubSpot, staff, or administrators. Close the
+                form to clear them; you can leave every field blank while reviewing.
+              </>
             ) : (
               <>
                 By sending this request, you agree Court 16 may use these details to arrange
@@ -641,6 +699,17 @@ export default function TrialRequestForm({
           {error && (
             <div className="trf-error" role="alert">
               {error}
+            </div>
+          )}
+
+          {previewOnly && formStep === "mindbody" && (
+            <div id="trial-submission-lock" className="trf-submit-lock">
+              <strong>Submission locked.</strong>
+              <span>
+                {locationName} isn&apos;t fully launch-ready yet. Live trial inventory and
+                the remaining workflow checks must be verified. Your details haven&apos;t
+                been sent.
+              </span>
             </div>
           )}
         </form>
@@ -661,13 +730,20 @@ export default function TrialRequestForm({
           <button
             type="submit"
             form="trial-request-form"
-            disabled={submitting}
+            disabled={submitting || (formStep === "mindbody" && !submissionEnabled)}
+            aria-describedby={
+              formStep === "mindbody" && !submissionEnabled
+                ? "trial-submission-lock"
+                : undefined
+            }
             className="btn primary"
           >
             {submitting
                 ? "Sending…"
                 : formStep === "family"
-                  ? "Continue"
+                  ? previewOnly
+                    ? "Preview family details"
+                    : "Continue"
                   : testMode
                     ? "Run safe test request"
                     : "Send trial request"}
@@ -838,6 +914,21 @@ export default function TrialRequestForm({
           border-radius: var(--r-md);
           font-size: 13px;
           font-weight: 600;
+        }
+        .trf-submit-lock {
+          display: grid;
+          gap: 3px;
+          padding: 12px 14px;
+          border: 1.5px solid #777770;
+          border-radius: var(--r-md);
+          background: #e5e4df;
+          color: #3f3f3b;
+          font-size: 12px;
+          line-height: 1.45;
+        }
+        .trf-submit-lock strong {
+          font-family: var(--f-display);
+          font-size: 15px;
         }
         .trf-privacy {
           margin: 0;
