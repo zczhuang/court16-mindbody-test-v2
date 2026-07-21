@@ -11,8 +11,8 @@ import AdultRequestForm, { type AdultRequest } from "@/components/AdultRequestFo
 import StaffAssistConfirmation from "@/components/StaffAssistConfirmation";
 import { getLocationById, type Location } from "@/config/locations";
 import { isAdultOfferReadyAtLocation, type AdultOffer } from "@/config/adult-config";
-import type { TrialClass, MindBodyClass } from "@/lib/trial-types";
-import { parseClass, filterAdultOnly, filterAvailable } from "@/lib/class-utils";
+import type { CalendarClassDto, TrialClass } from "@/lib/trial-types";
+import { parseClass, filterAvailable } from "@/lib/class-utils";
 import { useSelectedLocation } from "@/lib/location-state";
 
 type Step = "setup" | "calendar";
@@ -77,13 +77,12 @@ function IntroInner() {
         const lastDay = new Date(year, month, 0).getDate();
         const endDate = `${year}-${String(month).padStart(2, "0")}-${lastDay}`;
         const resp = await fetch(
-          `/api/mindbody/calendar?locationId=${loc.id}&startDate=${startDate}&endDate=${endDate}`,
+          `/api/mindbody/calendar?locationId=${loc.id}&startDate=${startDate}&endDate=${endDate}&intent=adult_intro`,
         );
         if (!resp.ok) throw new Error("Failed to load classes");
         const data = await resp.json();
-        const mbClasses: MindBodyClass[] = data.classes || [];
-        const adultClasses = filterAdultOnly(mbClasses);
-        const parsed = adultClasses.map(parseClass);
+        const calendarClasses: CalendarClassDto[] = data.classes || [];
+        const parsed = calendarClasses.map(parseClass);
         const available = filterAvailable(parsed);
         available.sort((a, b) => {
           const d = a.date.localeCompare(b.date);
@@ -378,8 +377,11 @@ function IntroInner() {
                   <DayDetail
                     classes={dayClasses}
                     date={selectedDate}
-                    selectedClassId={selectedClass?.classScheduleId ?? null}
-                    onPick={handleClassSelect}
+                    interaction={{
+                      kind: "select",
+                      selectedClassId: selectedClass?.classId ?? null,
+                      onPick: handleClassSelect,
+                    }}
                   />
                 </aside>
               </div>

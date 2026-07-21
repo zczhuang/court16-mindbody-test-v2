@@ -1,10 +1,21 @@
 import Image from "next/image";
+import type { KidsTrialCalendarPreviewScope } from "@/config/kids-trial-readiness";
 
-export default function RedesignChrome() {
+interface Props {
+  previewScope?: KidsTrialCalendarPreviewScope | null;
+}
+
+export default function RedesignChrome({ previewScope }: Props) {
+  const kidsSchedule = previewScope === "kids_schedule";
+
   return (
     <>
       <div className="trial-announcement">
-        Free kids trial · Racquet provided · No credit card
+        {kidsSchedule
+          ? "Kids tennis schedules · Ask our team about trials"
+          : previewScope === "trial_program"
+            ? "Kids trial calendar · Booking by request"
+            : "Free kids trial · Racquet provided · No credit card"}
       </div>
       <header className="trial-site-header">
         <div className="trial-site-header__inner">
@@ -18,7 +29,9 @@ export default function RedesignChrome() {
             />
           </a>
           <nav className="trial-nav" aria-label="Trial help">
-            <span className="trial-nav__label">Book kids trial</span>
+            <span className="trial-nav__label">
+              {kidsSchedule ? "Kids class calendar" : previewScope ? "Trial calendar" : "Book kids trial"}
+            </span>
             <a className="trial-nav__phone" href="tel:+17188755550">
               Questions? 718-875-5550
             </a>

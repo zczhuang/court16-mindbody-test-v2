@@ -12,9 +12,9 @@ import ConfirmationScreen from "@/components/ConfirmationScreen";
 import TrialSiteFooter from "@/components/TrialSiteFooter";
 import { getLocationById, type Location } from "@/config/locations";
 import type {
+  CalendarClassDto,
   TrialClass,
   TrialRequest,
-  MindBodyClass,
   TrialSubmissionStatus,
 } from "@/lib/trial-types";
 import { useSelectedLocation } from "@/lib/location-state";
@@ -22,7 +22,6 @@ import {
   parseClass,
   filterByAge,
   filterByTrialEligibility,
-  filterChildrenOnly,
   filterAvailable,
 } from "@/lib/class-utils";
 import {
@@ -35,6 +34,7 @@ import { getDealPipeline, getHubspotPreferredLocation } from "@/config/hubspot-d
 import {
   getKidsTrialCalendarPreviewReadiness,
   getKidsTrialReadiness,
+  type KidsTrialCalendarPreviewScope,
 } from "@/config/kids-trial-readiness";
 import type { ChildEntry } from "@/components/AgeSelector";
 
@@ -54,10 +54,15 @@ function isTrialLocationReady(location: Location | undefined): boolean {
 function isTrialLocationPreviewOnly(location: Location | undefined): boolean {
   if (!location) return false;
   if (isTrialLocationReady(location)) return false;
-  return getKidsTrialCalendarPreviewReadiness({
-    location,
-    trialConfig: TRIAL_CONFIG[location.id],
-  }).ready;
+  return getKidsTrialCalendarPreviewReadiness({ location }).ready;
+}
+
+function getTrialLocationPreviewScope(
+  location: Location | undefined,
+): KidsTrialCalendarPreviewScope | null {
+  if (!location || isTrialLocationReady(location)) return null;
+  const preview = getKidsTrialCalendarPreviewReadiness({ location });
+  return preview.ready ? preview.scope : null;
 }
 
 /** Fully ready OR browse-only preview — either way the calendar may render. */
@@ -96,6 +101,9 @@ function TrialInner() {
   const now = new Date();
   const [calYear, setCalYear] = useState(now.getFullYear());
   const [calMonth, setCalMonth] = useState(now.getMonth() + 1);
+  const previewScope = getTrialLocationPreviewScope(location ?? undefined);
+  const previewOnly = previewScope != null;
+  const kidsSchedulePreview = previewScope === "kids_schedule";
 
   // Keep the visible step in sync with browser Back/Forward while rejecting
   // deep links for clubs that have not passed the launch-readiness gate.
@@ -140,33 +148,45 @@ function TrialInner() {
         // slots existed in the first days of the next month.
         const startDate = todayStrInTz(loc.timezone);
         const endDate = maxBookableDateStr(loc.timezone);
-        // intent=kid_trial narrows server-side to this club's explicitly
-        // configured Kid's Trials Program. Incomplete clubs fail closed before
-        // Mindbody is queried; there is no unfiltered kids-class fallback.
+        // The server selects either the dedicated trial Program or this site's
+        // explicit regular-kids Program allowlist. It never performs a broad
+        // kids-trial fallback query.
         const resp = await fetch(
           `/api/mindbody/calendar?locationId=${loc.id}&startDate=${startDate}&endDate=${endDate}&intent=kid_trial`,
           { signal },
         );
         if (!resp.ok) throw new Error("Failed to load classes");
         const data = await resp.json();
-        const mbClasses: MindBodyClass[] = data.classes || [];
+        const calendarClasses: CalendarClassDto[] = data.classes || [];
+        const expectedScope =
+          getTrialLocationPreviewScope(loc) === "kids_schedule"
+            ? "kids_schedule"
+            : "trial_program";
+        const expectedPreviewOnly = isTrialLocationPreviewOnly(loc);
+        if (
+          data.calendarScope !== expectedScope ||
+          data.previewOnly !== expectedPreviewOnly
+        ) {
+          throw new Error("Calendar configuration changed. Please choose the club again.");
+        }
 
-        // The kids-trial endpoint always returns a Program-filtered response.
-        // Keep the legacy branch only for defensive compatibility with an old
-        // response shape; the server will not emit it for a ready club.
-        const childrenClasses = data.filteredByProgramId
-          ? mbClasses
-          : filterChildrenOnly(mbClasses);
-        const parsed = childrenClasses.map(parseClass);
-        const eligibleFiltered = filterByTrialEligibility(parsed, loc.id);
-        const available = filterAvailable(eligibleFiltered);
+        const parsed = calendarClasses.map(parseClass);
+        const eligibleFiltered =
+          expectedScope === "trial_program"
+            ? filterByTrialEligibility(parsed, loc.id)
+            : parsed;
+        // Regular schedule previews include every public, non-cancelled row;
+        // WebCapacity=0 is common and does not mean the class is unscheduled.
+        // Fully launched trial booking still requires live web capacity.
+        const displayClasses =
+          expectedScope === "kids_schedule"
+            ? eligibleFiltered
+            : filterAvailable(eligibleFiltered);
 
-        available.sort((a, b) => {
-          const d = a.date.localeCompare(b.date);
-          if (d !== 0) return d;
-          return a.time.localeCompare(b.time);
+        displayClasses.sort((a, b) => {
+          return a.startsAt.localeCompare(b.startsAt);
         });
-        setAllClasses(available);
+        setAllClasses(displayClasses);
       } catch (err) {
         if (signal?.aborted) return;
         setError(err instanceof Error ? err.message : "Failed to load classes");
@@ -324,9 +344,12 @@ function TrialInner() {
 
   return (
     <div className="trial-page-shell">
-      <RedesignChrome />
+      <RedesignChrome previewScope={step === "calendar" ? previewScope : null} />
       <main className="c16-container" id="main-content">
-        <ProgressBar step={showFormModal ? "details" : step} />
+        <ProgressBar
+          step={showFormModal ? "details" : step}
+          previewScope={step === "calendar" ? previewScope : null}
+        />
 
         {step === "location" && (
           <>
@@ -345,12 +368,22 @@ function TrialInner() {
                 <span aria-hidden="true">←</span> Change club
               </button>
               <div className="cal-context">
-                <span className="eyebrow">Step 2 of 3</span>
+                <span className="eyebrow">
+                  {previewOnly ? "Step 2 of 2" : "Step 2 of 3"}
+                </span>
                 <h2 id="trial-step-heading" className="section-title" tabIndex={-1}>
-                  Choose their trial class.
+                  {kidsSchedulePreview
+                    ? "Browse this club's kids schedule."
+                    : previewOnly
+                      ? "Preview their trial calendar."
+                      : "Choose their trial class."}
                 </h2>
                 <p className="section-sub">
-                  Select a highlighted day, then choose the class that best fits your child.
+                  {kidsSchedulePreview
+                    ? "Select a highlighted day to see the regular kids classes currently scheduled."
+                    : previewOnly
+                      ? "Select a highlighted day to see the dedicated trial times currently scheduled."
+                      : "Select a highlighted day, then choose the class that best fits your child."}
                 </p>
                 <div className="loc-breadcrumb">
                   <span className="loc-pin" aria-hidden="true" />
@@ -358,17 +391,31 @@ function TrialInner() {
                     {location.state} — {location.name}
                   </span>
                 </div>
-                <div className="trial-reassurance" aria-label="Trial essentials">
-                  <span>Free trial</span>
-                  <span>No credit card</span>
-                  <span>Racquet provided</span>
-                  <span>Ages 3–17</span>
+                <div
+                  className="trial-reassurance"
+                  aria-label={kidsSchedulePreview ? "Schedule details" : "Trial essentials"}
+                >
+                  {kidsSchedulePreview ? (
+                    <>
+                      <span>Public schedule</span>
+                      <span>Read only</span>
+                      <span>Ask about trials</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Free trial</span>
+                      <span>No credit card</span>
+                      <span>Racquet provided</span>
+                      <span>Ages 3–17</span>
+                    </>
+                  )}
                 </div>
-                {isTrialLocationPreviewOnly(location) && (
+                {previewOnly && (
                   <p className="trial-preview-note" role="status">
-                    Calendar preview — this club&apos;s trial times are still being
-                    posted and online booking isn&apos;t open here yet. Want a heads-up?{" "}
-                    <a href="https://www.court16.com/contact">Ask our team</a>.
+                    {kidsSchedulePreview
+                      ? "Kids schedule preview — these are regular classes for planning only, not confirmed trial availability. Online trial booking isn't available here yet."
+                      : "Trial calendar preview — these are dedicated trial times, but online booking isn't available here yet."}{" "}
+                    <a href="https://www.court16.com/contact">Ask our team about a trial</a>.
                   </p>
                 )}
               </div>
@@ -377,7 +424,9 @@ function TrialInner() {
             {loading && (
               <div className="empty-state" role="status" aria-live="polite">
                 <div className="loading-ball" aria-hidden="true" />
-                <div className="es-title">Checking trial availability…</div>
+                <div className="es-title">
+                  {kidsSchedulePreview ? "Loading the kids schedule…" : "Checking trial availability…"}
+                </div>
                 <div className="es-sub">This usually takes only a moment.</div>
               </div>
             )}
@@ -388,15 +437,20 @@ function TrialInner() {
                   We can still help at {location?.name || "this club"}.
                 </div>
                 <div className="es-sub">
-                  Live availability did not load. Call or email and our team will match your
-                  child to a trial class.
+                  {kidsSchedulePreview
+                    ? "The live kids schedule did not load. Call or email and our team can help with class times and trial options."
+                    : "Live trial availability did not load. Call or email and our team will match your child to a trial class."}
                 </div>
                 <div className="error-actions">
                   <a href="tel:+17188755550" className="btn primary">
                     Call 718-875-5550
                   </a>
                   <a
-                    href={`mailto:hello@court16.com?subject=Trial%20at%20${encodeURIComponent(location?.name || "Court 16")}&body=Hi%20—%20I'd%20like%20to%20book%20a%20trial%20class%20at%20${encodeURIComponent(location?.name || "")}.%20Please%20get%20back%20to%20me%20with%20available%20times.`}
+                    href={
+                      kidsSchedulePreview
+                        ? `mailto:hello@court16.com?subject=Kids%20schedule%20and%20trial%20at%20${encodeURIComponent(location?.name || "Court 16")}&body=Hi%20—%20I'd%20like%20help%20with%20the%20kids%20schedule%20and%20trial%20options%20at%20${encodeURIComponent(location?.name || "")}.`
+                        : `mailto:hello@court16.com?subject=Trial%20at%20${encodeURIComponent(location?.name || "Court 16")}&body=Hi%20—%20I'd%20like%20to%20book%20a%20trial%20class%20at%20${encodeURIComponent(location?.name || "")}.%20Please%20get%20back%20to%20me%20with%20available%20times.`
+                    }
                     className="btn ghost"
                   >
                     Email our team
@@ -408,18 +462,34 @@ function TrialInner() {
             {!loading && !error && allClasses.length === 0 && (
               <div className="empty-state no-classes-state" role="status">
                 <div className="empty-ball" aria-hidden="true" />
-                <div className="es-title">No online trial times are posted right now.</div>
+                <div className="es-title">
+                  {kidsSchedulePreview
+                    ? "No kids classes are scheduled right now."
+                    : "No online trial times are posted right now."}
+                </div>
                 <div className="es-sub">
-                  {location.name} has no kids-trial classes in the next {TRIAL_MAX_ADVANCE_DAYS}
-                  {TRIAL_MAX_ADVANCE_DAYS === 1 ? " day" : " days"}. Our team can help find
-                  the next opening.
+                  {kidsSchedulePreview ? (
+                    <>
+                      {location.name} has no public kids classes in the next{" "}
+                      {TRIAL_MAX_ADVANCE_DAYS}
+                      {TRIAL_MAX_ADVANCE_DAYS === 1 ? " day" : " days"}. Our team can help
+                      with opening details and trial options.
+                    </>
+                  ) : (
+                    <>
+                      {location.name} has no kids-trial classes in the next{" "}
+                      {TRIAL_MAX_ADVANCE_DAYS}
+                      {TRIAL_MAX_ADVANCE_DAYS === 1 ? " day" : " days"}. Our team can help
+                      find the next opening.
+                    </>
+                  )}
                 </div>
                 <div className="error-actions">
                   <a href="tel:+17188755550" className="btn primary">
                     Call 718-875-5550
                   </a>
                   <a
-                    href={`mailto:hello@court16.com?subject=Next%20kids%20trial%20at%20${encodeURIComponent(location.name)}&body=Hi%20—%20I'd%20like%20the%20next%20available%20kids%20trial%20at%20${encodeURIComponent(location.name)}.`}
+                    href={`mailto:hello@court16.com?subject=Kids%20trial%20at%20${encodeURIComponent(location.name)}&body=Hi%20—%20I'd%20like%20to%20ask%20about%20a%20kids%20trial%20at%20${encodeURIComponent(location.name)}.`}
                     className="btn ghost"
                   >
                     Ask about the next trial
@@ -468,6 +538,7 @@ function TrialInner() {
                       onSelectDate={handleDateSelect}
                       onPrevMonth={handlePrevMonth}
                       onNextMonth={handleNextMonth}
+                      contentScope={kidsSchedulePreview ? "kids_schedule" : "trial"}
                       maxDateStr={maxBookableDateStr(location.timezone)}
                     />
                   </div>
@@ -475,9 +546,15 @@ function TrialInner() {
                     <DayDetail
                       classes={dayClasses}
                       date={selectedDate}
-                      selectedClassId={selectedClass?.classScheduleId ?? null}
-                      onPick={handleClassSelect}
-                      previewOnly={isTrialLocationPreviewOnly(location)}
+                      interaction={
+                        previewScope
+                          ? { kind: "preview", scope: previewScope }
+                          : {
+                              kind: "select",
+                              selectedClassId: selectedClass?.classId ?? null,
+                              onPick: handleClassSelect,
+                            }
+                      }
                     />
                   </aside>
                 </div>

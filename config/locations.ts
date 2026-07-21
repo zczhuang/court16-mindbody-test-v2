@@ -39,15 +39,19 @@ export interface Location {
    */
   trialBookingEnabled: boolean;
   /**
-   * Browse-only escape hatch: lets parents open this club's kids-trial
-   * calendar (read-only, program-filtered) before the full launch gates
-   * pass. Booking stays fail-closed — no class can be requested and the
-   * intake route still enforces full readiness. Requires an authorized
-   * Mindbody site plus verified Program and $0 Service IDs; a club without
-   * those must remain fully dark (the unfiltered-calendar fallback stays
-   * removed).
+   * Browse-only escape hatch for an authorized Mindbody site. A club with a
+   * dedicated Kid's Trials Program gets a trial-program preview; otherwise it
+   * gets a separately labeled regular-kids schedule preview constrained to
+   * `kidsCalendarProgramIds`. Booking stays fail-closed and no broad,
+   * unfiltered class query is allowed.
    */
   trialCalendarPreviewEnabled?: boolean;
+  /**
+   * Site-scoped allowlist for the read-only regular-kids schedule preview.
+   * These IDs never satisfy trial-booking readiness and are never accepted by
+   * the booking route. Keep the list empty when no kids schedule is live.
+   */
+  kidsCalendarProgramIds?: readonly number[];
   /**
    * Operational evidence required in addition to static IDs. Every boolean
    * must be true before this club can appear in the public kids-trial flow.
@@ -87,8 +91,9 @@ export interface Location {
    *      trial-eligible times (e.g. Mon 3:45 PM, Sat 9 AM, etc.)
    *   5. Share the Program ID with Cedarwind → set here per location
    *
-   * If undefined, `trialBookingEnabled` MUST remain false. The calendar route
-   * refuses the request instead of falling back to an unfiltered class list.
+   * If undefined, `trialBookingEnabled` MUST remain false. A separately
+   * labeled read-only kids schedule may still use `kidsCalendarProgramIds`,
+   * but those regular classes can never enter the trial booking path.
    */
   kidTrialProgramId?: number;
 }
@@ -146,6 +151,9 @@ export const LOCATIONS: Location[] = [
     timezone: "America/New_York",
     publicBookingEnabled: true,
     trialBookingEnabled: false,
+    trialCalendarPreviewEnabled: true,
+    // Live /site/programs + fully paginated class audit, 2026-07-20.
+    kidsCalendarProgramIds: [76, 70, 74],
     trialUnavailableReason: "Kids trial scheduling is being connected for this club.",
     // Live read-only audit 2026-07-20: source token + all six probes 200
     // after the owner approved the activation link. Authorization only —
@@ -174,6 +182,8 @@ export const LOCATIONS: Location[] = [
     timezone: "America/New_York",
     publicBookingEnabled: true,
     trialBookingEnabled: false,
+    trialCalendarPreviewEnabled: true,
+    kidsCalendarProgramIds: [29],
     trialUnavailableReason: "Kids trial scheduling is being connected for this club.",
     // Live read-only audit 2026-07-20: source token + all six probes 200
     // after the owner approved the activation link. Authorization only —
@@ -202,6 +212,8 @@ export const LOCATIONS: Location[] = [
     timezone: "America/New_York",
     publicBookingEnabled: true,
     trialBookingEnabled: false,
+    trialCalendarPreviewEnabled: true,
+    kidsCalendarProgramIds: [32],
     trialUnavailableReason: "Kids trial scheduling is being connected for this club.",
     // Live read-only audit 2026-07-20: source token + all six probes 200
     // after the owner approved the activation link. Authorization only —
@@ -235,6 +247,8 @@ export const LOCATIONS: Location[] = [
     // Program 61 occurrences, so the calendar renders its honest empty state
     // until staff schedules trial classes. Booking remains fully gated.
     trialCalendarPreviewEnabled: true,
+    // Kept separate from dedicated Kid's Trials Program 61 below.
+    kidsCalendarProgramIds: [37],
     trialUnavailableReason: "The next online kids trial times are being finalized.",
     trialLaunchEvidence: {
       mindbodySiteAuthorized: true,
@@ -265,6 +279,8 @@ export const LOCATIONS: Location[] = [
     timezone: "America/New_York",
     publicBookingEnabled: true,
     trialBookingEnabled: false,
+    trialCalendarPreviewEnabled: true,
+    kidsCalendarProgramIds: [42],
     trialUnavailableReason: "Kids trial scheduling is being connected for this club.",
     // Live read-only audit 2026-07-20: source token + all six probes 200
     // after the owner approved the activation link. Authorization only —
@@ -293,6 +309,8 @@ export const LOCATIONS: Location[] = [
     timezone: "America/New_York",
     publicBookingEnabled: true,
     trialBookingEnabled: false,
+    trialCalendarPreviewEnabled: true,
+    kidsCalendarProgramIds: [37, 36],
     trialUnavailableReason: "Kids trial scheduling is being connected for this club.",
     // Live read-only audit 2026-07-20: source token + all six probes 200
     // after the owner approved the activation link. Authorization only —
@@ -324,6 +342,9 @@ export const LOCATIONS: Location[] = [
     timezone: "America/New_York",
     publicBookingEnabled: false,
     trialBookingEnabled: false,
+    trialCalendarPreviewEnabled: true,
+    // No classes appeared in either the 7-day or 60-day live audit window.
+    kidsCalendarProgramIds: [],
     trialUnavailableReason: "Opening details and kids trial scheduling are being finalized.",
     // Live read-only audit 2026-07-20: source token + all six probes 200
     // after the owner approved the activation link. Authorization only —

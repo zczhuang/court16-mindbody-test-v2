@@ -40,12 +40,16 @@ The copy/paste owner and admin steps are in [the access-authorization handoff](.
 > - **Kids-trial Program**: only Ridge Hill has one (`61 Kid's Trials`). No
 >   expansion club has a trial program or trial schedule yet.
 > - **Class inventory (60-day census)**: Brooklyn/LIC/FiDi/Fishtown/Newton
->   each run 1,400–2,800+ upcoming classes (children's programs exist at
->   Brooklyn, Ridge Hill, and Newton); **Allston's schedule is completely
->   empty (0 classes)** — the club is not yet operating in Mindbody.
+>   each run 1,400–2,800+ upcoming classes; **Allston's audited schedule is
+>   completely empty (0 classes)**.
+> - **Read-only calendar rollout (20 Jul)**: every authorized club now opens a
+>   calendar. Brooklyn, LIC, FiDi, Fishtown, and Newton show only their
+>   explicitly allowlisted public kids Programs; Ridge Hill stays on dedicated
+>   trial Program `61`; Allston shows an honest empty calendar. These regular
+>   kids rows are labeled as planning-only schedules and cannot enter intake.
 
 
-All seven sites are now API-authorized. Ridge Hill remains the configuration control because it is the only site with a discovered Kid's Trials Program (`61`) and a separately verified trial Service (`100328`). The expansion sites are readable but still lack verified trial Programs, Services, schedules, routing, and acceptance evidence.
+All seven sites are now API-authorized. Ridge Hill remains the configuration control because it is the only site with a discovered Kid's Trials Program (`61`) and a separately verified trial Service (`100328`). The expansion sites' regular kids calendars are now readable in a separate preview mode, but they still lack verified trial Programs, Services, trial schedules, routing, and acceptance evidence.
 
 This proves authorization and configuration visibility only; it does not prove a club is ready for families. The 30-day re-audit found **zero upcoming Program 61 occurrences** at Ridge Hill. Ridge Hill is therefore also disabled from public trial requests. The live HubSpot family-status dropdown now exists, but a trustworthy Mindbody claim/link completion readback still does not.
 
@@ -191,7 +195,7 @@ The application owns orchestration and IDs, not customer email. HubSpot owns Cou
 
 1. **Authorization is complete; launch configuration is not.** All seven source tokens and read probes succeed, but authorization alone does not verify any write, checkout, notification, or family-account behavior.
 2. **Trial inventory is absent outside Ridge Hill.** No expansion club exposes a Kid's Trials Program. Brooklyn, Fishtown, LIC, and FiDi expose no kids-trial Service-name candidate; Newton and Allston expose `100183`, but its price and applicability remain unverified. Hard-coding Ridge Hill IDs across sites would corrupt relationships or fail checkout/enrollment.
-3. **Unsafe calendar fallback was present and is now blocked in this branch.** Previously, a site without `kidTrialProgramId` fell back to a broad “children” filter that could expose regular classes. The current branch adds an explicit `trialBookingEnabled` gate and requires both Program and Service IDs before either calendar retrieval or client creation. Keep every non-verified club disabled.
+3. **Unsafe calendar fallback was replaced with an explicit read-only schedule boundary.** A site without `kidTrialProgramId` never runs a broad “children” query. Preview reads use dated authorization plus a site-scoped `kidsCalendarProgramIds` allowlist, query each Program separately in public consumer mode, paginate, re-filter the response, and label the rows as regular classes rather than trial availability. An empty allowlist returns an empty calendar without calling Mindbody. Booking and client creation still require the dedicated trial Program, Service, full launch evidence, and write allowlist.
 4. **Per-site intake differs.** The kids-trial route now collects a real household address and separate parent/child Mindbody gender values instead of writing the studio address or a hard-coded value. Allston additionally requires `EmergContact`, which the route does not collect, and LIC exposes an extra `Not Specified` gender. Never add placeholders to satisfy a site's configuration.
 5. **Relationship catalogs match, but writes are unproven.** `-6` Parent/Guardian and `-4` Pays For appear at all seven sites. Record them per site and validate the controlled write matrix before treating the shared values as launch evidence.
 6. **Paid-program dependency.** A child needs the correct $0 Service before `AddClientToClass`; missing/wrong Service IDs can cause `ClassRequiresPayment` or attach the wrong pricing.
@@ -214,7 +218,7 @@ The application owns orchestration and IDs, not customer email. HubSpot owns Cou
 - Added per-site Mindbody gender options to the readiness contract. The public form and server use only the enabled club's configured list, and the live audit fails an enabled club if any configured value is absent from its active Mindbody catalog.
 - Added server-side readiness checks to both the kids calendar and booking submission routes; a disabled or incompletely configured club returns `trial_location_not_ready` before any Mindbody or HubSpot write.
 - Made the readiness gate require the club's exact verified Parent/Guardian relationship descriptor as well as Program, Service, HubSpot pipeline, and `preferred_location`; the audit fails if the configured relationship is not present in the live site catalog.
-- Removed the effective unfiltered kids-calendar fallback for public trial requests by requiring a verified Program and $0 Service.
+- Removed the effective unfiltered kids-calendar fallback. Public trial requests still require a verified Program and `$0` Service; read-only regular-kids previews use a separate explicit Program allowlist and never satisfy booking readiness.
 - Keyed ordinary Mindbody staff-token caching by Site ID, preventing a token from one club being reused against another.
 - Made direct diagnostic client/class/write endpoints fail closed unless `TEST_API_TOKEN` is configured.
 - Updated the six published club addresses from Court 16's current location pages; Allston remains disabled because its exact club address is not yet published.

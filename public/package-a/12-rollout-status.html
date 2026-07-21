@@ -49,7 +49,7 @@
 
 <section class="summary-pkg">
   <dl>
-    <dt>Where we are</dt><dd>The product, safety architecture, and staff playbook are <strong>built, reviewed, and deployed to the demo URLs</strong> (not yet linked from court16.com). Ridge Hill's calendar is viewable there in preview. No club can take a live booking yet — every remaining step is a known, owned task below; most are short tasks (estimates below), a few need staged testing.</dd>
+    <dt>Where we are</dt><dd>The product, safety architecture, and staff playbook are <strong>built, reviewed, and deployed to the demo URLs</strong> (not yet linked from court16.com). All seven club cards now open a calendar: five expansion clubs show an explicitly allowlisted public kids schedule, Ridge Hill shows its dedicated trial Program, and Allston shows an honest empty state. No club can take a live booking yet — every remaining step is a known, owned task below; most are short tasks (estimates below), a few need staged testing.</dd>
     <dt>Gate cleared 20 Jul</dt><dd><strong>All seven Mindbody sites are now authorized</strong> — every owner approved the activation link, and the same-day re-audit confirms the source token and all six read probes return 200 at every club. Per-club discovery is unblocked; the remaining work is club setup, HubSpot workflows, ops switches, and staged testing below.</dd>
     <dt>Decision recorded</dt><dd>Option 1 (17 Jul): Mindbody owns every password and account-link email; HubSpot only reminds; family completion is staff-verified on the original child record.</dd>
   </dl>
@@ -60,9 +60,9 @@
   <div class="built-card">
     <h3>The booking product <span class="state live">DEPLOYED · BOOKING CLOSED</span></h3>
     <ul>
-      <li><strong>Kids-trial flow</strong> — club picker → live Mindbody calendar (curated trial program only) → family form → staff-confirmed booking, replacing the 12-field form + 11-step account email.</li>
+      <li><strong>Kids-trial flow</strong> — club picker → live Mindbody calendar → family form → staff-confirmed booking, replacing the 12-field form + 11-step account email. Booking remains restricted to a verified dedicated trial Program; regular kids schedules are a separate read-only preview.</li>
       <li><strong>Court 16 design language</strong> — Gilroy type, brand yellow, doodle hero, and an exact replica of the court16.com footer — built to drop into <em>court16.com/request-free-trial</em> once launch checks and design sign-off land.</li>
-      <li><strong>Ridge Hill calendar preview</strong> — parents can open the calendar today; booking stays closed until launch checks pass.</li>
+      <li><strong>All-site calendar preview</strong> — parents can open every club today. Public regular-kids Programs are shown for planning only, Ridge Hill remains filtered to trial Program <code>61</code>, and booking stays closed until launch checks pass.</li>
       <li><strong>Family accounts done right</strong> — one shared parent email, the site's verified Parent/Guardian link, no duplicate child profiles, no merges.</li>
     </ul>
   </div>
@@ -161,9 +161,9 @@
 <h2>5 · Honest gap list</h2>
 <table class="gap-table">
   <tr><th>Gap</th><th>Why it matters</th><th>Owner</th></tr>
-  <tr><td>No Kid's Trials program at any expansion club</td><td>Nothing exists to schedule, preview, or book — each club needs its Program, age-band classes, schedule, and verified $0 service (Newton and Allston already expose a Service-name candidate)</td><td>Club staff, per club</td></tr>
+  <tr><td>No Kid's Trials program at any expansion club</td><td>Regular kids schedules are visible read-only, but no dedicated trial inventory exists to book — each club still needs its Program, age-band trial classes, schedule, and verified $0 service (Newton and Allston already expose a Service-name candidate)</td><td>Club staff, per club</td></tr>
   <tr><td>Allston audited schedule is empty</td><td>The audited class window contains zero classes and the site uniquely requires an emergency-contact field the form doesn't collect</td><td>Allston staff · Cedarwind (form/config)</td></tr>
-  <tr><td>Ridge Hill trial schedule empty</td><td>Nothing to preview, test, or book at the control club</td><td>Ridge Hill staff</td></tr>
+  <tr><td>Ridge Hill trial schedule empty</td><td>The dedicated trial calendar renders its empty state, but there are no occurrences to test or book at the control club</td><td>Ridge Hill staff</td></tr>
   <tr><td>Staff-notification workflow not built</td><td>New requests would sit unseen — no email carries the staff links</td><td>Cedarwind builds · Ibtissam approves</td></tr>
   <tr><td>Redis lock + Deal schema not provisioned/applied</td><td>Booking pipeline stays intentionally dark until these ops steps run</td><td>Cedarwind</td></tr>
   <tr><td>No end-to-end family trace yet</td><td>The full journey is proven in parts, not as one continuous run</td><td>Cedarwind + Ridge Hill staff</td></tr>

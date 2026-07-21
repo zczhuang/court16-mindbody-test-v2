@@ -120,10 +120,8 @@ export function isAdultOfferReadyAtLocation(offer: AdultOffer, locationId: strin
 
 /**
  * MindBody `ClassDescription.Program.Name` values we consider "adult".
- * Used to filter the calendar for the adult flow. Until real production
- * data tells us the exact strings Court 16 uses, this list is permissive
- * and the `filterAdultOnly` helper falls back to "anything not in the
- * children allowlist" so sandbox / early-dev data still renders.
+ * This is a closed server-side allowlist for the public adult calendar:
+ * unknown, kids, rental, and administrative Programs never leave the API.
  */
 export const ADULT_PROGRAM_NAMES: string[] = [
   "Adult Classes",
@@ -136,6 +134,7 @@ export const ADULT_PROGRAM_NAMES: string[] = [
 /** Returns true iff we're confident this class is an adult program. */
 export function isAdultProgram(programName: string | undefined): boolean {
   if (!programName) return false;
+  if (isChildrenProgram(programName)) return false;
   return ADULT_PROGRAM_NAMES.some(
     (p) => programName.toLowerCase().includes(p.toLowerCase()),
   );
@@ -148,6 +147,10 @@ export function isChildrenProgram(programName: string | undefined): boolean {
   return (
     lower.includes("children") ||
     lower.includes("kids") ||
+    lower.includes("youth") ||
+    /\bteen(?:ager)?\b/.test(lower) ||
+    lower.includes("tots") ||
+    lower.includes("squidlet") ||
     lower.includes("little freshman") ||
     lower.includes("freshman") ||
     lower.includes("sophomore") ||

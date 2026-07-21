@@ -94,17 +94,17 @@ try {
   // Browse-only calendar preview: strictly weaker than public readiness and
   // never implied by it — the flag must be explicit, and preview never makes
   // a club publicly ready.
-  const previewOff = getKidsTrialCalendarPreviewReadiness({ location, trialConfig });
+  const previewOff = getKidsTrialCalendarPreviewReadiness({ location });
   assert.equal(previewOff.ready, false);
   if (!previewOff.ready) assert(previewOff.missing.includes("calendar_preview_enabled"));
 
   const previewLocation: Location = { ...location, trialCalendarPreviewEnabled: true };
-  const previewOn = getKidsTrialCalendarPreviewReadiness({
-    location: previewLocation,
-    trialConfig,
-  });
+  const previewOn = getKidsTrialCalendarPreviewReadiness({ location: previewLocation });
   assert.equal(previewOn.ready, true);
-  if (previewOn.ready) assert.equal(previewOn.programId, 61);
+  if (previewOn.ready) {
+    assert.equal(previewOn.scope, "trial_program");
+    assert.deepEqual(previewOn.programIds, [61]);
+  }
 
   // Preview does not unlock the public flow: the same club still fails the
   // full readiness gate.
@@ -116,31 +116,53 @@ try {
   });
   assert.equal(previewStillNotPublic.ready, false);
 
-  // Preview requires an authorized site plus verified Program + $0 Service —
-  // the removed unfiltered-calendar fallback can never resurface through it.
+  // Preview always requires dated site authorization.
   const previewUnauthorized = getKidsTrialCalendarPreviewReadiness({
     location: {
       ...previewLocation,
       trialLaunchEvidence: { ...previewLocation.trialLaunchEvidence!, mindbodySiteAuthorized: false },
     },
-    trialConfig,
   });
   assert.equal(previewUnauthorized.ready, false);
   if (!previewUnauthorized.ready) {
     assert(previewUnauthorized.missing.includes("mindbody_site_authorized"));
   }
-  const previewNoProgram = getKidsTrialCalendarPreviewReadiness({
-    location: { ...previewLocation, kidTrialProgramId: undefined },
-    trialConfig,
+  // Without a dedicated trial Program, preview switches to a separate,
+  // read-only regular-kids schedule using only the explicit site allowlist.
+  const kidsSchedulePreview = getKidsTrialCalendarPreviewReadiness({
+    location: {
+      ...previewLocation,
+      kidTrialProgramId: undefined,
+      kidsCalendarProgramIds: [76, 70, 76, -1],
+    },
   });
-  assert.equal(previewNoProgram.ready, false);
-  if (!previewNoProgram.ready) assert(previewNoProgram.missing.includes("mindbody_program_id"));
-  const previewNoService = getKidsTrialCalendarPreviewReadiness({
+  assert.equal(kidsSchedulePreview.ready, true);
+  if (kidsSchedulePreview.ready) {
+    assert.equal(kidsSchedulePreview.scope, "kids_schedule");
+    assert.deepEqual(kidsSchedulePreview.programIds, [76, 70]);
+  }
+
+  // An authorized, explicitly enabled club with no live kids Program still
+  // gets the calendar shell and an honest empty state; it never broad-queries.
+  const emptySchedulePreview = getKidsTrialCalendarPreviewReadiness({
+    location: {
+      ...previewLocation,
+      kidTrialProgramId: undefined,
+      kidsCalendarProgramIds: [],
+    },
+  });
+  assert.equal(emptySchedulePreview.ready, true);
+  if (emptySchedulePreview.ready) {
+    assert.equal(emptySchedulePreview.scope, "kids_schedule");
+    assert.deepEqual(emptySchedulePreview.programIds, []);
+  }
+
+  // A $0 Service is still mandatory for booking, but irrelevant to a GET-only
+  // dedicated trial calendar preview.
+  const previewWithoutService = getKidsTrialCalendarPreviewReadiness({
     location: previewLocation,
-    trialConfig: { ...trialConfig, trialServiceId: undefined },
   });
-  assert.equal(previewNoService.ready, false);
-  if (!previewNoService.ready) assert(previewNoService.missing.includes("mindbody_service_id"));
+  assert.equal(previewWithoutService.ready, true);
 } finally {
   if (originalPublicLaunch === undefined) {
     delete process.env.NEXT_PUBLIC_KIDS_TRIAL_PUBLIC_LAUNCH_ENABLED;

@@ -42,6 +42,21 @@ export interface MindBodyClass {
   };
 }
 
+/** Narrow parent-facing calendar payload projected from a Mindbody class. */
+export interface CalendarClassDto {
+  classScheduleId: number;
+  classId: number;
+  name: string;
+  startDateTime: string;
+  endDateTime: string;
+  maxCapacity: number;
+  totalBooked: number;
+  webCapacity?: number;
+  webBooked?: number;
+  coach: string;
+  court: string;
+}
+
 /** Parsed class card data for the trial calendar UI */
 export interface TrialClass {
   classScheduleId: number;

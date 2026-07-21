@@ -720,11 +720,11 @@ function fmtDate(d) {
   return d.toISOString().slice(0, 10);
 }
 function classDisplayName(c) {
-  return c.ClassName || c?.ClassDescription?.Name || 'Adult Class';
+  return c.name || 'Adult Class';
 }
 function fmtSlotLabel(c) {
-  // c.StartDateTime is wall-clock ISO like "2026-06-02T18:00:00"
-  const [date, time] = c.StartDateTime.split('T');
+  // startDateTime is wall-clock ISO like "2026-06-02T18:00:00"
+  const [date, time] = c.startDateTime.split('T');
   const d = new Date(date + 'T12:00:00'); // noon avoids TZ drift on day-of-week
   const day = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   const hh = Number(time.slice(0, 2));
@@ -733,12 +733,11 @@ function fmtSlotLabel(c) {
   const h12 = ((hh + 11) % 12) + 1;
   return `${day} · ${h12}:${mm}${ampm}`;
 }
-function isAdultClass(c) {
-  const prog = (c?.ClassDescription?.Program?.Name || '').toLowerCase();
-  const name = classDisplayName(c).toLowerCase();
-  // exclude obvious children's programs/classes
-  if (/(children|kids|little freshman|freshman|sophomore|junior|squidlet|tots)/.test(prog + ' ' + name)) return false;
-  return true;
+function availableSpots(c) {
+  if (typeof c.webCapacity === 'number') {
+    return Math.max(0, c.webCapacity - (c.webBooked || 0));
+  }
+  return Math.max(0, (c.maxCapacity || 0) - (c.totalBooked || 0));
 }
 function rankClassForLevel(c, lvlKey) {
   const name = classDisplayName(c).toLowerCase();
@@ -759,7 +758,7 @@ async function startBooking() {
 
   const today = new Date();
   const end = new Date(today.getTime() + 14 * 24 * 3600 * 1000);
-  const url = `/api/mindbody/calendar?locationId=${encodeURIComponent(API_LOCATION_ID(state.location))}&startDate=${fmtDate(today)}&endDate=${fmtDate(end)}`;
+  const url = `/api/mindbody/calendar?locationId=${encodeURIComponent(API_LOCATION_ID(state.location))}&startDate=${fmtDate(today)}&endDate=${fmtDate(end)}&intent=adult_intro`;
 
   let classes = [];
   try {
@@ -776,19 +775,19 @@ async function startBooking() {
     return;
   }
 
-  // Filter: adult, not canceled, has availability, future
+  // The server has already enforced the adult Program boundary and removed
+  // cancelled rows. The browser only applies availability and future guards.
   const todayIso = new Date().toISOString().slice(0, 10);
   const adult = classes
-    .filter(c => !c.IsCanceled && isAdultClass(c))
-    .filter(c => (c.MaxCapacity ?? 0) - (c.TotalBooked ?? 0) > 0)
-    .filter(c => (c.StartDateTime || '') >= todayIso); // wall-clock string compare is safe
+    .filter(c => availableSpots(c) > 0)
+    .filter(c => (c.startDateTime || '') >= todayIso); // wall-clock string compare is safe
 
   // Rank by level match, then by soonest
   const ranked = adult
     .map(c => ({ c, score: rankClassForLevel(c, state.experience) }))
     .sort((a, b) => {
       if (b.score !== a.score) return b.score - a.score;
-      return a.c.StartDateTime.localeCompare(b.c.StartDateTime);
+      return a.c.startDateTime.localeCompare(b.c.startDateTime);
     })
     .map(x => x.c);
 
@@ -827,7 +826,7 @@ async function startBookingHandoff() {
 async function pickSlot(i) {
   state.selectedSlot = state.slots[i];
   const c = state.selectedSlot;
-  await addBot(`Locked in: ${classDisplayName(c)} on ${fmtSlotLabel(c)} with ${c?.Staff?.DisplayName || 'a Court 16 coach'}. Just need a few details to hold your spot.`);
+  await addBot(`Locked in: ${classDisplayName(c)} on ${fmtSlotLabel(c)} with ${c.coach || 'a Court 16 coach'}. Just need a few details to hold your spot.`);
   await addBot("What's your first name?");
   state.awaitingField = 'firstName';
   state.step = 'collecting';
@@ -879,7 +878,7 @@ async function submitBooking() {
   const L = LOCATIONS[state.location];
   await addBot("Holding your spot now…");
 
-  const [date, time] = c.StartDateTime.split('T');
+  const [date, time] = c.startDateTime.split('T');
   const d = new Date(date + 'T12:00:00');
   const classDay = d.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
   const hh = Number(time.slice(0, 2));
@@ -891,13 +890,13 @@ async function submitBooking() {
     locationId: API_LOCATION_ID(state.location),
     offerKey: 'tennis-intro-75',
     adult: { ...state.adult },
-    classScheduleId: c.ClassScheduleId,
-    classId: c.Id,
+    classScheduleId: c.classScheduleId,
+    classId: c.classId,
     className: classDisplayName(c),
     classDay,
     classTime,
-    classStartsAt: c.StartDateTime,
-    coachName: c?.Staff?.DisplayName || '',
+    classStartsAt: c.startDateTime,
+    coachName: c.coach || '',
     notes: `Booked via chatbot · experience=${state.experience}, goal=${state.goal}, years=${state.years || 'n/a'}`
   };
 
@@ -933,8 +932,8 @@ async function submitBooking() {
       <h3>${classDisplayName(c)}</h3>
       <p class="why">${classDay} · ${classTime} · ${L.label}</p>
       <div class="c16-meta">
-        <div><div class="k">Coach</div><div class="v">${c?.Staff?.DisplayName || '—'}</div></div>
-        <div><div class="k">Court</div><div class="v">${c?.Resource?.Name || '—'}</div></div>
+        <div><div class="k">Coach</div><div class="v">${c.coach || '—'}</div></div>
+        <div><div class="k">Court</div><div class="v">${c.court || '—'}</div></div>
         <div><div class="k">Name</div><div class="v">${state.adult.firstName} ${state.adult.lastName}</div></div>
         <div><div class="k">Email</div><div class="v" style="font-size:12px;">${state.adult.email}</div></div>
       </div>

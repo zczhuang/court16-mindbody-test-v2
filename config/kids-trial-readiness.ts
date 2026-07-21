@@ -23,9 +23,9 @@ export type KidsTrialReadinessRequirement =
 
 export type KidsTrialCalendarPreviewRequirement =
   | "calendar_preview_enabled"
-  | "mindbody_site_authorized"
-  | "mindbody_program_id"
-  | "mindbody_service_id";
+  | "mindbody_site_authorized";
+
+export type KidsTrialCalendarPreviewScope = "trial_program" | "kids_schedule";
 
 export type KidsTrialStaffReadinessRequirement =
   | "mindbody_site_authorized"
@@ -189,26 +189,41 @@ export function getKidsTrialReadiness({
 /**
  * Browse-only calendar preview: strictly weaker than public readiness and
  * never a booking gate. It only decides whether parents may SEE this club's
- * program-filtered trial calendar (including its honest empty state) before
- * the full launch checklist passes. Requires an authorized Mindbody site plus
- * the verified Program and $0 Service IDs so the removed unfiltered-calendar
- * fallback can never resurface through preview.
+ * explicitly enabled calendar before the full launch checklist passes. A
+ * dedicated trial Program is preferred; otherwise the caller may read only
+ * the site-scoped regular-kids Program allowlist. An empty allowlist produces
+ * an honest empty calendar and never falls back to a broad class query.
  */
 export function getKidsTrialCalendarPreviewReadiness({
   location,
-  trialConfig,
-}: Pick<KidsTrialReadinessInput, "location" | "trialConfig">):
-  | { ready: true; location: Location; programId: number }
+}: Pick<KidsTrialReadinessInput, "location">):
+  | {
+      ready: true;
+      location: Location;
+      scope: KidsTrialCalendarPreviewScope;
+      programIds: number[];
+    }
   | { ready: false; location: Location; missing: KidsTrialCalendarPreviewRequirement[] } {
   const missing: KidsTrialCalendarPreviewRequirement[] = [];
   if (location.trialCalendarPreviewEnabled !== true) missing.push("calendar_preview_enabled");
   if (!location.trialLaunchEvidence?.mindbodySiteAuthorized) {
     missing.push("mindbody_site_authorized");
   }
-  if (!isPositiveInteger(location.kidTrialProgramId)) missing.push("mindbody_program_id");
-  if (!isPositiveInteger(trialConfig?.trialServiceId)) missing.push("mindbody_service_id");
   if (missing.length > 0) return { ready: false, location, missing };
-  return { ready: true, location, programId: location.kidTrialProgramId! };
+
+  if (isPositiveInteger(location.kidTrialProgramId)) {
+    return {
+      ready: true,
+      location,
+      scope: "trial_program",
+      programIds: [location.kidTrialProgramId],
+    };
+  }
+
+  const programIds = Array.from(
+    new Set((location.kidsCalendarProgramIds ?? []).filter(isPositiveInteger)),
+  );
+  return { ready: true, location, scope: "kids_schedule", programIds };
 }
 
 export function getKidsTrialStaffReadiness({

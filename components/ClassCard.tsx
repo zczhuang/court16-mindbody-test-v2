@@ -1,33 +1,41 @@
 "use client";
 
 import type { TrialClass } from "@/lib/trial-types";
+import type { KidsTrialCalendarPreviewScope } from "@/config/kids-trial-readiness";
 
 interface Props {
   trialClass: TrialClass;
-  isSelected: boolean;
-  onSelect: (tc: TrialClass) => void;
+  interaction:
+    | {
+        kind: "select";
+        isSelected: boolean;
+        onSelect: (tc: TrialClass) => void;
+      }
+    | {
+        kind: "preview";
+        scope: KidsTrialCalendarPreviewScope;
+      };
 }
 
-export default function ClassCard({ trialClass, isSelected, onSelect }: Props) {
+export default function ClassCard({ trialClass, interaction }: Props) {
   const spotTone =
     trialClass.spotsAvailable <= 1
       ? "low"
       : trialClass.spotsAvailable <= 3
         ? "mid"
         : "ok";
+  const showCapacity = interaction.kind === "select" || interaction.scope === "trial_program";
 
-  return (
-    <button
-      type="button"
-      className={`class-card ${isSelected ? "on" : ""}`}
-      onClick={() => onSelect(trialClass)}
-    >
+  const content = (
+    <>
       <div className="cc-top">
         <span className="lvl-chip">{trialClass.levelName}</span>
-        <span className={`spots-chip spots-${spotTone}`}>
-          <span className="dot" /> {trialClass.spotsAvailable}{" "}
-          {trialClass.spotsAvailable === 1 ? "spot" : "spots"}
-        </span>
+        {showCapacity && (
+          <span className={`spots-chip spots-${spotTone}`}>
+            <span className="dot" /> {trialClass.spotsAvailable}{" "}
+            {trialClass.spotsAvailable === 1 ? "spot" : "spots"}
+          </span>
+        )}
       </div>
       <div className="cc-title">{trialClass.name}</div>
       <div className="cc-meta">
@@ -38,8 +46,34 @@ export default function ClassCard({ trialClass, isSelected, onSelect }: Props) {
         <span>{trialClass.coach}</span>
       </div>
       <div className="cc-go">
-        Request this class <span aria-hidden="true">→</span>
+        {interaction.kind === "select"
+          ? "Request this class"
+          : interaction.scope === "kids_schedule"
+            ? "Kids schedule preview"
+            : "Trial calendar preview"}
+        {interaction.kind === "select" && <span aria-hidden="true">→</span>}
       </div>
+    </>
+  );
+
+  if (interaction.kind === "preview") {
+    return (
+      <article
+        className="class-card class-card--readonly"
+        aria-label={`${trialClass.name}, ${trialClass.time} to ${trialClass.endTime}, schedule preview`}
+      >
+        {content}
+      </article>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className={`class-card ${interaction.isSelected ? "on" : ""}`}
+      onClick={() => interaction.onSelect(trialClass)}
+    >
+      {content}
     </button>
   );
 }

@@ -11,6 +11,8 @@ interface Props {
   onSelectDate: (date: string) => void;
   onPrevMonth: () => void;
   onNextMonth: () => void;
+  /** Changes only calendar language; regular kids schedule rows stay read-only. */
+  contentScope?: "trial" | "kids_schedule";
   /**
    * Last bookable date "YYYY-MM-DD" (inclusive). Days beyond it render
    * disabled and next-month nav stops once the window is exhausted.
@@ -38,8 +40,10 @@ export default function CalendarView({
   onSelectDate,
   onPrevMonth,
   onNextMonth,
+  contentScope = "trial",
   maxDateStr,
 }: Props) {
+  const kidsSchedule = contentScope === "kids_schedule";
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
@@ -67,7 +71,7 @@ export default function CalendarView({
   const nextDisabled = !!maxDateStr && nextMonthFirst > maxDateStr;
 
   return (
-    <div className="cal">
+    <div className={`cal ${kidsSchedule ? "cal--kids-schedule" : ""}`}>
       <div className="cal-head">
         <button
           type="button"
@@ -131,8 +135,12 @@ export default function CalendarView({
           const isBeyondWindow = !!maxDateStr && dateStr > maxDateStr;
           const fullDate = FULL_DATE_FORMATTER.format(new Date(year, month - 1, day));
           const availabilityLabel = has
-            ? `${dayClasses.length} ${dayClasses.length === 1 ? "class" : "classes"}, ${spots} ${spots === 1 ? "spot" : "spots"}`
-            : "No trial classes";
+            ? kidsSchedule
+              ? `${dayClasses.length} ${dayClasses.length === 1 ? "class" : "classes"} scheduled`
+              : `${dayClasses.length} ${dayClasses.length === 1 ? "class" : "classes"}, ${spots} ${spots === 1 ? "spot" : "spots"}`
+            : kidsSchedule
+              ? "No kids classes"
+              : "No trial classes";
 
           return (
             <button
@@ -150,11 +158,16 @@ export default function CalendarView({
               {has && !isBeyondWindow && (
                 <span className="cal-tag">
                   <span className="tag-count">
-                    {dayClasses.length} {dayClasses.length === 1 ? "class" : "classes"}
+                    <span>{dayClasses.length}</span>{" "}
+                    <span className="tag-count-label">
+                      {dayClasses.length === 1 ? "class" : "classes"}
+                    </span>
                   </span>
-                  <span className="tag-spots">
-                    {spots} {spots === 1 ? "spot" : "spots"}
-                  </span>
+                  {!kidsSchedule && (
+                    <span className="tag-spots">
+                      {spots} {spots === 1 ? "spot" : "spots"}
+                    </span>
+                  )}
                 </span>
               )}
             </button>
@@ -164,13 +177,13 @@ export default function CalendarView({
 
       <div className="cal-legend">
         <span>
-          <span className="sw sw-has" /> Classes available
+          <span className="sw sw-has" /> Classes {kidsSchedule ? "scheduled" : "available"}
         </span>
         <span>
           <span className="sw sw-sel" /> Selected
         </span>
         <span>
-          <span className="sw sw-none" /> No trials
+          <span className="sw sw-none" /> {kidsSchedule ? "No kids classes" : "No trials"}
         </span>
       </div>
     </div>

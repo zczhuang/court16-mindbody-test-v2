@@ -27,13 +27,13 @@ export default function LocationSelector({
     <section className="loc-section">
       {!suppressHead && (
         <div className="section-head">
-          <div className="eyebrow">Step 1 of 3</div>
+          <div className="eyebrow">Step 1</div>
           <h2 id="trial-step-heading" className="section-title" tabIndex={-1}>
             Start with your club.
           </h2>
           <p className="section-sub">
-            Choose a club with online trial times. If your club is still being set up,
-            our team can help with the next opening.
+            Choose any club to view its current calendar. Where online trial booking is
+            still being set up, the schedule is clearly marked as read-only.
           </p>
         </div>
       )}
@@ -48,15 +48,15 @@ export default function LocationSelector({
                 preferredLocation: getHubspotPreferredLocation(loc.id),
               }).ready
             : loc.publicBookingEnabled;
-          // Browse-only: the club's program-filtered calendar may be viewed
-          // even though booking is not yet open there.
-          const previewOnly =
+          const previewReadiness =
             trialOnly &&
-            !fullyReady &&
-            getKidsTrialCalendarPreviewReadiness({
-              location: loc,
-              trialConfig: TRIAL_CONFIG[loc.id],
-            }).ready;
+            !fullyReady
+              ? getKidsTrialCalendarPreviewReadiness({ location: loc })
+              : null;
+          const previewOnly = Boolean(previewReadiness?.ready);
+          const previewScope =
+            previewReadiness?.ready === true ? previewReadiness.scope : null;
+          const kidsSchedulePreview = previewScope === "kids_schedule";
           const enabled = fullyReady || previewOnly;
           const on = enabled && selectedId === loc.id;
           const unavailableReason = trialOnly
@@ -71,7 +71,9 @@ export default function LocationSelector({
                     ? on
                       ? "Selected"
                       : previewOnly
-                        ? "Calendar preview"
+                        ? kidsSchedulePreview
+                          ? "Kids calendar"
+                          : "Trial calendar"
                         : "Online"
                     : "Setup in progress"}
                 </span>
@@ -80,8 +82,9 @@ export default function LocationSelector({
               <div className="loc-addr">{shortAddress(loc)}</div>
               {previewOnly && (
                 <div className="loc-unavailable-reason">
-                  Trial times are still being posted — take a look at the calendar while
-                  online booking is finished.
+                  {kidsSchedulePreview
+                    ? "Browse this club's public kids class schedule while online trial booking is set up."
+                    : "Preview the dedicated trial calendar while online booking is being finalized."}
                 </div>
               )}
               {!enabled && unavailableReason && (
@@ -93,7 +96,9 @@ export default function LocationSelector({
                     {on
                       ? "Selected"
                       : previewOnly
-                        ? "Preview the calendar"
+                        ? kidsSchedulePreview
+                          ? "View kids schedule"
+                          : "Preview trial calendar"
                         : trialOnly
                           ? "See trial classes"
                           : "Choose this club"}
@@ -128,7 +133,9 @@ export default function LocationSelector({
               aria-pressed={on}
               aria-label={
                 previewOnly
-                  ? `Preview the trial calendar at ${loc.name}; online booking is not open yet`
+                  ? kidsSchedulePreview
+                    ? `View the read-only kids schedule at ${loc.name}; these are not confirmed trial openings`
+                    : `Preview the dedicated trial calendar at ${loc.name}; online booking is not available yet`
                   : `See trial classes at ${loc.name}`
               }
               className={`loc-card loc-card--enabled ${on ? "on" : ""}`}

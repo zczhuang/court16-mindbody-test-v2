@@ -1,35 +1,62 @@
 "use client";
 
 import React from "react";
+import type { KidsTrialCalendarPreviewScope } from "@/config/kids-trial-readiness";
 
 export type TrialStep = "location" | "calendar" | "details" | "confirmed";
 
 interface Props {
   step: TrialStep;
+  previewScope?: KidsTrialCalendarPreviewScope | null;
 }
 
-const STEPS: { k: TrialStep; n: number; label: string }[] = [
+const BOOKING_STEPS: { k: TrialStep; n: number; label: string }[] = [
   { k: "location", n: 1, label: "Choose a club" },
   { k: "calendar", n: 2, label: "Pick a class" },
   { k: "details", n: 3, label: "Family details" },
 ];
 
-export default function ProgressBar({ step }: Props) {
-  const idx = STEPS.findIndex((s) => s.k === step);
-  const effectiveIdx = step === "confirmed" ? STEPS.length : idx;
+const PREVIEW_STEPS: typeof BOOKING_STEPS = [
+  { k: "location", n: 1, label: "Choose a club" },
+  { k: "calendar", n: 2, label: "View the calendar" },
+];
+
+export default function ProgressBar({ step, previewScope }: Props) {
+  const steps = previewScope ? PREVIEW_STEPS : BOOKING_STEPS;
+  const idx = steps.findIndex((s) => s.k === step);
+  const effectiveIdx = step === "confirmed" ? steps.length : idx;
+  const kidsSchedule = previewScope === "kids_schedule";
 
   return (
     <div className="c16-progress trial-progress">
       <div className="trial-hero-copy">
-        <div className="trial-kicker">Free kids tennis trial</div>
-        <h1>Book Your Kids Tennis Trial</h1>
+        <div className="trial-kicker">
+          {previewScope
+            ? kidsSchedule
+              ? "Kids tennis schedule"
+              : "Kids trial calendar"
+            : "Free kids tennis trial"}
+        </div>
+        <h1>
+          {previewScope
+            ? kidsSchedule
+              ? "Explore Kids Tennis at Court 16"
+              : "Preview Kids Trial Times"
+            : "Book Your Kids Tennis Trial"}
+        </h1>
         <p className="prog-lead">
-          Choose a club and an age-appropriate trial time. It&apos;s free, we provide the
-          racquet, and our team will confirm the spot.
+          {previewScope
+            ? kidsSchedule
+              ? "Browse the club's current kids schedule. These regular classes are for planning only; ask our team about a trial opening."
+              : "Browse the dedicated trial calendar. Online booking is not available here yet, but our team can help."
+            : "Choose a club and an age-appropriate trial time. It's free, we provide the racquet, and our team will confirm the spot."}
         </p>
       </div>
-      <nav className="prog-rail" aria-label="Trial request progress">
-        {STEPS.map((s, i) => (
+      <nav
+        className="prog-rail"
+        aria-label={previewScope ? "Calendar preview progress" : "Trial request progress"}
+      >
+        {steps.map((s, i) => (
           <React.Fragment key={s.k}>
             <div
               className={`prog-step ${i <= effectiveIdx ? "on" : ""} ${i === effectiveIdx ? "current" : ""}`}
@@ -55,7 +82,7 @@ export default function ProgressBar({ step }: Props) {
               </span>
               <span className="prog-lbl">{s.label}</span>
             </div>
-            {i < STEPS.length - 1 && (
+            {i < steps.length - 1 && (
               <div className={`prog-line ${i < effectiveIdx ? "on" : ""}`} />
             )}
           </React.Fragment>
