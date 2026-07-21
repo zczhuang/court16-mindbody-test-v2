@@ -25,6 +25,8 @@ interface Props {
   locationId: string;
   locationName: string;
   genderOptions: readonly MindbodyStandardGender[];
+  initialValues?: Partial<TrialRequest>;
+  testMode?: boolean;
   onSubmit: (request: TrialRequest) => Promise<void>;
   onCancel: () => void;
 }
@@ -44,28 +46,44 @@ export default function TrialRequestForm({
   locationId,
   locationName,
   genderOptions,
+  initialValues,
+  testMode = false,
   onSubmit,
   onCancel,
 }: Props) {
-  const [parentFirstName, setParentFirstName] = useState("");
-  const [parentLastName, setParentLastName] = useState("");
-  const [parentEmail, setParentEmail] = useState("");
-  const [parentPhone, setParentPhone] = useState("");
-  const [parentBirthDate, setParentBirthDate] = useState("");
-  const [parentGender, setParentGender] = useState<MindbodyStandardGender | "">("");
-  const [childFirstName, setChildFirstName] = useState("");
-  const [childLastName, setChildLastName] = useState("");
-  const [childBirthDate, setChildBirthDate] = useState("");
-  const [childGender, setChildGender] = useState<MindbodyStandardGender | "">("");
-  const [childPlayingLevel, setChildPlayingLevel] = useState<ChildPlayingLevel | "">("");
-  const [childSchool, setChildSchool] = useState("");
-  const [leadSource, setLeadSource] = useState<LeadSource | "">("");
-  const [householdAddress1, setHouseholdAddress1] = useState("");
-  const [householdAddress2, setHouseholdAddress2] = useState("");
-  const [householdCity, setHouseholdCity] = useState("");
-  const [householdState, setHouseholdState] = useState("");
-  const [householdPostalCode, setHouseholdPostalCode] = useState("");
-  const [notes, setNotes] = useState("");
+  const [parentFirstName, setParentFirstName] = useState(initialValues?.parentFirstName ?? "");
+  const [parentLastName, setParentLastName] = useState(initialValues?.parentLastName ?? "");
+  const [parentEmail, setParentEmail] = useState(initialValues?.parentEmail ?? "");
+  const [parentPhone, setParentPhone] = useState(initialValues?.parentPhone ?? "");
+  const [parentBirthDate, setParentBirthDate] = useState(initialValues?.parentBirthDate ?? "");
+  const [parentGender, setParentGender] = useState<MindbodyStandardGender | "">(
+    initialValues?.parentGender ?? "",
+  );
+  const [childFirstName, setChildFirstName] = useState(initialValues?.childFirstName ?? "");
+  const [childLastName, setChildLastName] = useState(initialValues?.childLastName ?? "");
+  const [childBirthDate, setChildBirthDate] = useState(initialValues?.childBirthDate ?? "");
+  const [childGender, setChildGender] = useState<MindbodyStandardGender | "">(
+    initialValues?.childGender ?? "",
+  );
+  const [childPlayingLevel, setChildPlayingLevel] = useState<ChildPlayingLevel | "">(
+    initialValues?.childPlayingLevel ?? "",
+  );
+  const [childSchool, setChildSchool] = useState(initialValues?.childSchool ?? "");
+  const [leadSource, setLeadSource] = useState<LeadSource | "">(
+    initialValues?.leadSource ?? "",
+  );
+  const [householdAddress1, setHouseholdAddress1] = useState(
+    initialValues?.householdAddress1 ?? "",
+  );
+  const [householdAddress2, setHouseholdAddress2] = useState(
+    initialValues?.householdAddress2 ?? "",
+  );
+  const [householdCity, setHouseholdCity] = useState(initialValues?.householdCity ?? "");
+  const [householdState, setHouseholdState] = useState(initialValues?.householdState ?? "");
+  const [householdPostalCode, setHouseholdPostalCode] = useState(
+    initialValues?.householdPostalCode ?? "",
+  );
+  const [notes, setNotes] = useState(initialValues?.notes ?? "");
   const [formStep, setFormStep] = useState<FormStep>("family");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -279,14 +297,21 @@ export default function TrialRequestForm({
           id="trial-request-form"
           onSubmit={handleSubmit}
           className="trf-body"
+          autoComplete={testMode ? "off" : undefined}
         >
-          {formStep === "family" ? (
+          <fieldset className="trf-fields" disabled={testMode}>
+            {formStep === "family" ? (
             <>
               <div className="trf-account-note">
-                <strong>One quick form. We&apos;ll handle the setup.</strong>
+                <strong>
+                  {testMode
+                    ? "Synthetic test data is prefilled and locked."
+                    : "One quick form. We'll handle the setup."}
+                </strong>
                 <span>
-                  No credit card is needed. We&apos;ll use these details to prepare the
-                  family records, and Mindbody will send any secure account email.
+                  {testMode
+                    ? "This exact production form is connected only to the protected E2E lane. Court 16 notification adapters are absent; Site -99 mode also requests native email and text suppression."
+                    : "No credit card is needed. We'll use these details to prepare the family records, and Mindbody will send any secure account email."}
                 </span>
               </div>
               <div className="trf-section">
@@ -317,7 +342,11 @@ export default function TrialRequestForm({
                 </div>
                 <Field
                   label="Email *"
-                  hint="We'll send trial updates here. Mindbody may also send a secure account email."
+                  hint={
+                    testMode
+                      ? "The locked, non-deliverable test address cannot receive email."
+                      : "We'll send trial updates here. Mindbody may also send a secure account email."
+                  }
                 >
                   <input
                     type="email"
@@ -330,7 +359,10 @@ export default function TrialRequestForm({
                   />
                 </Field>
                 <div className="trf-grid">
-                  <Field label="Mobile phone *" hint="Staff calls to confirm within a few hours.">
+                  <Field
+                    label="Mobile phone *"
+                    hint={testMode ? "Locked synthetic data; the app invokes no call or text adapter." : "Staff calls to confirm within a few hours."}
+                  >
                     <input
                       type="tel"
                       required
@@ -456,7 +488,7 @@ export default function TrialRequestForm({
                 </div>
               </div>
             </>
-          ) : (
+            ) : (
             <>
               <div className="trf-account-note">
                 <strong>Keep the family profile accurate.</strong>
@@ -586,13 +618,24 @@ export default function TrialRequestForm({
               </div>
 
             </>
-          )}
+            )}
+          </fieldset>
 
           <p className="trf-privacy">
-            By sending this request, you agree Court 16 may use these details to arrange
-            the trial and prepare linked Mindbody records. See our{" "}
-            <a href="https://www.court16.com/terms/privacy-policy">Privacy Policy</a> and{" "}
-            <a href="https://www.court16.com/terms/terms-of-use">Terms of Use</a>.
+            {testMode ? (
+              <>
+                Protected test lane only. Court 16 production HubSpot, Mindbody, staff, and
+                admin routes are not used. Site -99 mode can create synthetic records only in
+                Mindbody&apos;s public sandbox.
+              </>
+            ) : (
+              <>
+                By sending this request, you agree Court 16 may use these details to arrange
+                the trial and prepare linked Mindbody records. See our{" "}
+                <a href="https://www.court16.com/terms/privacy-policy">Privacy Policy</a> and{" "}
+                <a href="https://www.court16.com/terms/terms-of-use">Terms of Use</a>.
+              </>
+            )}
           </p>
 
           {error && (
@@ -622,10 +665,12 @@ export default function TrialRequestForm({
             className="btn primary"
           >
             {submitting
-              ? "Sending…"
-              : formStep === "family"
-                ? "Continue"
-                : "Send trial request"}
+                ? "Sending…"
+                : formStep === "family"
+                  ? "Continue"
+                  : testMode
+                    ? "Run safe test request"
+                    : "Send trial request"}
             <span aria-hidden="true">→</span>
           </button>
         </div>
@@ -732,6 +777,18 @@ export default function TrialRequestForm({
           padding: 18px;
           border: 1px solid var(--c16-line);
           background: #fff;
+        }
+        .trf-fields {
+          min-width: 0;
+          margin: 0;
+          padding: 0;
+          border: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 18px;
+        }
+        .trf-fields:disabled {
+          opacity: 1;
         }
         .trf-section .eyebrow {
           margin-bottom: 2px;

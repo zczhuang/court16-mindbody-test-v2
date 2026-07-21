@@ -3,15 +3,18 @@ import type { KidsTrialCalendarPreviewScope } from "@/config/kids-trial-readines
 
 interface Props {
   previewScope?: KidsTrialCalendarPreviewScope | null;
+  testMode?: boolean;
 }
 
-export default function RedesignChrome({ previewScope }: Props) {
+export default function RedesignChrome({ previewScope, testMode = false }: Props) {
   const kidsSchedule = previewScope === "kids_schedule";
 
   return (
     <>
       <div className="trial-announcement">
-        {kidsSchedule
+        {testMode
+          ? "ISOLATED AUTOMATION TEST · NO COURT 16 NOTIFIERS · NO PRODUCTION WRITES"
+          : kidsSchedule
           ? "Kids tennis schedules · Ask our team about trials"
           : previewScope === "trial_program"
             ? "Kids trial calendar · Booking by request"
@@ -30,11 +33,21 @@ export default function RedesignChrome({ previewScope }: Props) {
           </a>
           <nav className="trial-nav" aria-label="Trial help">
             <span className="trial-nav__label">
-              {kidsSchedule ? "Kids class calendar" : previewScope ? "Trial calendar" : "Book kids trial"}
+              {testMode
+                ? "Protected E2E acceptance"
+                : kidsSchedule
+                  ? "Kids class calendar"
+                  : previewScope
+                    ? "Trial calendar"
+                    : "Book kids trial"}
             </span>
-            <a className="trial-nav__phone" href="tel:+17188755550">
-              Questions? 718-875-5550
-            </a>
+            {testMode ? (
+              <span className="trial-nav__phone">No staff contact</span>
+            ) : (
+              <a className="trial-nav__phone" href="tel:+17188755550">
+                Questions? 718-875-5550
+              </a>
+            )}
             <a className="trial-nav__site" href="https://www.court16.com">
               Court16.com <span aria-hidden="true">↗</span>
             </a>
