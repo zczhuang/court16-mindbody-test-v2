@@ -51,6 +51,62 @@ assert.match(
 assert.match(requestForm, /isn&apos;t fully launch-ready yet/);
 assert.match(requestForm, /autoComplete=\{testMode \|\| previewOnly \? "off" : undefined\}/);
 
+// Gender belongs with each person's core details on panel one, beside date of
+// birth, and live intake must validate both selections before panel two opens.
+const parentDobField = requestForm.indexOf('label="Your date of birth *"');
+const parentGenderField = requestForm.indexOf(
+  'label="Parent or guardian gender *"',
+);
+const childDobField = requestForm.indexOf('label="Child\'s date of birth *"');
+const childGenderField = requestForm.indexOf('label="Child gender *"');
+const secondPanelHeading = requestForm.indexOf("Keep the family profile accurate.");
+const genderValidation = requestForm.indexOf("if (!parentGender || !childGender)");
+const familyStepTransition = requestForm.indexOf(
+  'if (formStep === "family") {',
+  firstLiveValidation,
+);
+const parentDetailsGridStart = requestForm.lastIndexOf(
+  '<div className="trf-grid">',
+  parentDobField,
+);
+const parentDetailsGridEnd = requestForm.indexOf("</div>", parentGenderField);
+const childDetailsGridStart = requestForm.lastIndexOf(
+  '<div className="trf-grid">',
+  childDobField,
+);
+const childDetailsGridEnd = requestForm.indexOf("</div>", childGenderField);
+assert(parentDobField >= 0, "parent DOB field is missing");
+assert(parentGenderField > parentDobField, "parent gender must sit after parent DOB");
+assert(childDobField > parentGenderField, "child DOB must remain in the child section");
+assert(childGenderField > childDobField, "child gender must sit after child DOB");
+assert(
+  parentDetailsGridStart >= 0 && parentGenderField < parentDetailsGridEnd,
+  "parent DOB and gender must share one responsive grid",
+);
+assert(
+  childDetailsGridStart >= 0 && childGenderField < childDetailsGridEnd,
+  "child DOB and gender must share one responsive grid",
+);
+assert.equal(
+  requestForm.match(/label="Parent or guardian gender \*"/g)?.length,
+  1,
+  "parent gender must appear exactly once",
+);
+assert.equal(
+  requestForm.match(/label="Child gender \*"/g)?.length,
+  1,
+  "child gender must appear exactly once",
+);
+assert(
+  secondPanelHeading > childGenderField,
+  "both gender fields must appear before panel two",
+);
+assert.doesNotMatch(requestForm, />Profile details</);
+assert(
+  genderValidation >= 0 && genderValidation < familyStepTransition,
+  "gender validation must run before panel one advances",
+);
+
 // The parent adds a redundant no-network guard and drives the form lock from
 // full launch readiness rather than the weaker inventory-preview flag.
 const parentGuard = trialPage.indexOf("if (!isTrialLocationReady(location ?? undefined))");

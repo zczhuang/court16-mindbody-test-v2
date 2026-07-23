@@ -199,12 +199,12 @@ export default function TrialRequestForm({
       setError("Select the child's tennis experience and how you heard about Court 16.");
       return;
     }
-    if (formStep === "family") {
-      setFormStep("mindbody");
-      return;
-    }
     if (!parentGender || !childGender) {
       setError("Select the required gender field for both the parent and child.");
+      return;
+    }
+    if (formStep === "family") {
+      setFormStep("mindbody");
       return;
     }
     setSubmitting(true);
@@ -383,27 +383,27 @@ export default function TrialRequestForm({
                     className="trf-input"
                   />
                 </Field>
+                <Field
+                  label="Mobile phone *"
+                  hint={
+                    testMode
+                      ? "Locked synthetic data; the app invokes no call or text adapter."
+                      : previewOnly
+                        ? "Preview only — you can leave this blank and no call or text will be triggered."
+                        : "Staff calls to confirm within a few hours."
+                  }
+                >
+                  <input
+                    type="tel"
+                    required
+                    autoComplete="tel"
+                    value={parentPhone}
+                    onChange={(e) => setParentPhone(e.target.value)}
+                    placeholder="(212) 555-0100"
+                    className="trf-input"
+                  />
+                </Field>
                 <div className="trf-grid">
-                  <Field
-                    label="Mobile phone *"
-                    hint={
-                      testMode
-                        ? "Locked synthetic data; the app invokes no call or text adapter."
-                        : previewOnly
-                          ? "Preview only — you can leave this blank and no call or text will be triggered."
-                          : "Staff calls to confirm within a few hours."
-                    }
-                  >
-                    <input
-                      type="tel"
-                      required
-                      autoComplete="tel"
-                      value={parentPhone}
-                      onChange={(e) => setParentPhone(e.target.value)}
-                      placeholder="(212) 555-0100"
-                      className="trf-input"
-                    />
-                  </Field>
                   <Field
                     label="Your date of birth *"
                     hint={
@@ -420,6 +420,32 @@ export default function TrialRequestForm({
                       onChange={(e) => setParentBirthDate(e.target.value)}
                       className="trf-input"
                     />
+                  </Field>
+                  <Field
+                    label="Parent or guardian gender *"
+                    hint={
+                      usingPreviewGenderOptions
+                        ? "Preview values — this club's Mindbody options still need verification."
+                        : "Required by Mindbody for this club."
+                    }
+                  >
+                    <select
+                      required
+                      value={parentGender}
+                      onChange={(event) =>
+                        setParentGender(event.target.value as MindbodyStandardGender)
+                      }
+                      className="trf-input"
+                    >
+                      <option value="" disabled>
+                        Select
+                      </option>
+                      {displayedGenderOptions.map((gender) => (
+                        <option key={gender} value={gender}>
+                          {gender}
+                        </option>
+                      ))}
+                    </select>
                   </Field>
                 </div>
               </div>
@@ -448,24 +474,52 @@ export default function TrialRequestForm({
                     />
                   </Field>
                 </div>
-                <Field
-                  label="Child's date of birth *"
-                  hint={
-                    previewOnly && Number.isNaN(derivedAge)
-                      ? "Preview only — no date is required."
-                      : !Number.isNaN(derivedAge)
-                      ? `Age ${derivedAge} — we'll match the right class level.`
-                      : "Used to match the right class."
-                  }
-                >
-                  <input
-                    type="date"
-                    required
-                    value={childBirthDate}
-                    onChange={(e) => setChildBirthDate(e.target.value)}
-                    className="trf-input"
-                  />
-                </Field>
+                <div className="trf-grid">
+                  <Field
+                    label="Child's date of birth *"
+                    hint={
+                      previewOnly && Number.isNaN(derivedAge)
+                        ? "Preview only — no date is required."
+                        : !Number.isNaN(derivedAge)
+                          ? `Age ${derivedAge} — we'll match the right class level.`
+                          : "Used to match the right class."
+                    }
+                  >
+                    <input
+                      type="date"
+                      required
+                      value={childBirthDate}
+                      onChange={(e) => setChildBirthDate(e.target.value)}
+                      className="trf-input"
+                    />
+                  </Field>
+                  <Field
+                    label="Child gender *"
+                    hint={
+                      usingPreviewGenderOptions
+                        ? "Preview values — this club's Mindbody options still need verification."
+                        : "Required by Mindbody for this club."
+                    }
+                  >
+                    <select
+                      required
+                      value={childGender}
+                      onChange={(event) =>
+                        setChildGender(event.target.value as MindbodyStandardGender)
+                      }
+                      className="trf-input"
+                    >
+                      <option value="" disabled>
+                        Select
+                      </option>
+                      {displayedGenderOptions.map((gender) => (
+                        <option key={gender} value={gender}>
+                          {gender}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                </div>
                 <div className="trf-grid">
                   <Field label="Tennis experience *">
                     <select
@@ -541,64 +595,6 @@ export default function TrialRequestForm({
                     ? `Complete this panel to review the experience. Final submission will open after Court 16 verifies live trial inventory and the launch workflow for ${locationName}.`
                     : "Mindbody asks for the details below when a new account is prepared. We use the household address for both parent and child and protect it under Court 16's Privacy Policy."}
                 </span>
-              </div>
-
-              <div className="trf-section">
-                <div className="eyebrow">Profile details</div>
-                <div className="trf-grid">
-                  <Field
-                    label="Parent or guardian gender *"
-                    hint={
-                      usingPreviewGenderOptions
-                        ? "Preview values — this club's Mindbody options still need verification."
-                        : "Required by Mindbody for this club."
-                    }
-                  >
-                    <select
-                      required
-                      value={parentGender}
-                      onChange={(event) =>
-                        setParentGender(event.target.value as MindbodyStandardGender)
-                      }
-                      className="trf-input"
-                    >
-                      <option value="" disabled>
-                        Select
-                      </option>
-                      {displayedGenderOptions.map((gender) => (
-                        <option key={gender} value={gender}>
-                          {gender}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                  <Field
-                    label="Child gender *"
-                    hint={
-                      usingPreviewGenderOptions
-                        ? "Preview values — this club's Mindbody options still need verification."
-                        : "Required by Mindbody for this club."
-                    }
-                  >
-                    <select
-                      required
-                      value={childGender}
-                      onChange={(event) =>
-                        setChildGender(event.target.value as MindbodyStandardGender)
-                      }
-                      className="trf-input"
-                    >
-                      <option value="" disabled>
-                        Select
-                      </option>
-                      {displayedGenderOptions.map((gender) => (
-                        <option key={gender} value={gender}>
-                          {gender}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                </div>
               </div>
 
               <div className="trf-section">
