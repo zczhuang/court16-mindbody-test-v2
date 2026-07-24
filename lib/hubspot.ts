@@ -138,9 +138,9 @@ export interface TrialFormFields {
    * (`child_date_of_birth__YYYY/MM/DD`) with "Required field is missing"; the
    * form field's internal name is the un-suffixed `child_date_of_birth`. */
   child_date_of_birth: string;
-  child_1___playing_level: string;
-  school: string;
-  lead_source: string;
+  child_1___playing_level?: string;
+  school?: string;
+  lead_source?: string;
 
   // Form optional child 2
   child_2___first_name?: string;

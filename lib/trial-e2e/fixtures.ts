@@ -51,14 +51,14 @@ export function makeTrialE2EInitialValues(
     childFirstName: "E2E",
     childLastName: `Player-${suffix}`,
     childBirthDate: "2017-06-15",
-    childPlayingLevel: "New to Tennis",
-    childSchool: "Automation Test School",
     childGender: "Undisclosed",
-    leadSource: "Other",
     householdAddress1: "1 Sandbox Way",
     householdCity: "New York",
     householdState: "NY",
     householdPostalCode: "10001",
-    notes: "Isolated end-to-end automation acceptance run.",
+    parentEmergencyContactName: "E2E Alternate Contact",
+    parentEmergencyContactPhone: "2125550188",
+    parentEmergencyContactEmail: `court16.e2e.contact+${suffix}@${emailDomain}`,
+    parentEmergencyContactRelationship: "Family friend",
   };
 }

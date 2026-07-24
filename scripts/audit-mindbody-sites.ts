@@ -74,7 +74,8 @@ const AUDIT_SCOPE = {
   launchApproval: false,
   verifies: [
     "source_token",
-    "required_client_fields_read",
+    "required_client_fields_source_staff_read",
+    "required_client_fields_addclient_consumer_read",
     "relationship_catalog_read",
     "gender_catalog_read",
     "configured_gender_option_presence",
@@ -85,7 +86,7 @@ const AUDIT_SCOPE = {
   doesNotVerify: [
     "service_price_program_or_location_applicability",
     "comp_checkout",
-    "required_field_intake_policy",
+    "consumer_addclient_write_acceptance",
     "native_email_settings",
     "hubspot_routing_or_workflows",
     "parent_child_end_to_end_writes",
@@ -149,6 +150,12 @@ function requiredFieldNames(values: unknown[]): string[] {
     const name = record.Name ?? record.FieldName;
     return typeof name === "string" ? [name] : [];
   });
+}
+
+function sameStringSet(left: string[], right: string[]): boolean {
+  if (left.length !== right.length) return false;
+  const rightValues = new Set(right);
+  return left.every((value) => rightValues.has(value));
 }
 
 function familyRelationshipCandidates(values: unknown[]): RelationshipCandidate[] {
@@ -264,6 +271,21 @@ async function auditLocation(
 ) {
   const tokenResult = await issueSourceToken(apiKey, sourcePassword, location.siteId);
   const token = tokenResult.status === "ok" ? tokenResult.token : undefined;
+  const sourceStaffRequiredFieldsProbe = token
+    ? runProbe(async () => {
+        const body = await getReadEndpoint(
+          apiKey,
+          location.siteId,
+          READ_ENDPOINTS.requiredClientFields,
+          {},
+          token,
+        );
+        return asArray(body.RequiredClientFields);
+      })
+    : Promise.resolve({
+        status: { status: "failed" as const, reason: "missing_source_token" },
+        value: undefined as unknown[] | undefined,
+      });
 
   // These endpoints are useful even before source authorization is complete.
   // When no source token is available they run in consumer mode and the token
@@ -276,7 +298,8 @@ async function auditLocation(
 
   const [
     gendersResult,
-    requiredFieldsResult,
+    sourceStaffRequiredFieldsResult,
+    consumerRequiredFieldsResult,
     relationshipsResult,
     programsResult,
     classesResult,
@@ -297,13 +320,13 @@ async function auditLocation(
         });
         return normalizeNamedRecords(activeOptions);
       }),
+      sourceStaffRequiredFieldsProbe,
       runProbe(async () => {
         const body = await getReadEndpoint(
           apiKey,
           location.siteId,
           READ_ENDPOINTS.requiredClientFields,
           {},
-          token,
         );
         return asArray(body.RequiredClientFields);
       }),
@@ -364,7 +387,12 @@ async function auditLocation(
   const programs = programsResult.value ?? [];
   const services = servicesResult.value ?? [];
   const classes = classesResult.value ?? [];
-  const requiredFields = requiredFieldNames(requiredFieldsResult.value ?? []);
+  const sourceStaffRequiredFields = requiredFieldNames(
+    sourceStaffRequiredFieldsResult.value ?? [],
+  );
+  const consumerRequiredFields = requiredFieldNames(
+    consumerRequiredFieldsResult.value ?? [],
+  );
   const familyRelationships = familyRelationshipCandidates(relationshipsResult.value ?? []);
   const availableGenders = gendersResult.value ?? [];
   const programCandidates = programs
@@ -410,7 +438,8 @@ async function auditLocation(
     configuredGenderOptions.length > 0 &&
     configuredGenderOptions.every((gender) => availableGenderNames.has(gender));
   const probeStatuses = [
-    requiredFieldsResult.status,
+    sourceStaffRequiredFieldsResult.status,
+    consumerRequiredFieldsResult.status,
     relationshipsResult.status,
     gendersResult.status,
     programsResult.status,
@@ -438,7 +467,14 @@ async function auditLocation(
         ? { status: "ok" as const }
         : { status: "failed" as const, reason: tokenResult.reason },
     probes: {
-      requiredClientFields: withCount(requiredFieldsResult.status, requiredFieldsResult.value),
+      requiredClientFieldsSourceStaff: withCount(
+        sourceStaffRequiredFieldsResult.status,
+        sourceStaffRequiredFieldsResult.value,
+      ),
+      requiredClientFieldsAddClientConsumer: withCount(
+        consumerRequiredFieldsResult.status,
+        consumerRequiredFieldsResult.value,
+      ),
       relationships: withCount(relationshipsResult.status, relationshipsResult.value),
       genders: withCount(gendersResult.status, gendersResult.value),
       programs: withCount(programsResult.status, programsResult.value),
@@ -461,7 +497,12 @@ async function auditLocation(
     },
     candidateKidsTrialPrograms: programCandidates,
     candidateKidsTrialServices: serviceCandidates,
-    requiredClientFields: requiredFields,
+    requiredClientFields: {
+      addClientConsumerMode: consumerRequiredFields,
+      sourceStaffMode: sourceStaffRequiredFields,
+      differsByAuthorization:
+        !sameStringSet(consumerRequiredFields, sourceStaffRequiredFields),
+    },
     availableGenders: availableGenders.map(toCandidate),
     candidateFamilyRelationships: familyRelationships,
   };

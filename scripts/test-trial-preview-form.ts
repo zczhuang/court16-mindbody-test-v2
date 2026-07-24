@@ -107,6 +107,32 @@ assert(
   "gender validation must run before panel one advances",
 );
 
+// The live consumer-mode AddClient contract requires a real emergency contact
+// at every Court 16 site. One alternate contact supports the adult profile;
+// the child payload reuses the registering parent as its truthful contact.
+const emergencySection = requestForm.indexOf("Alternate emergency contact");
+assert(emergencySection > secondPanelHeading, "emergency contact must be on panel two");
+for (const key of [
+  "parentEmergencyContactName",
+  "parentEmergencyContactPhone",
+  "parentEmergencyContactEmail",
+  "parentEmergencyContactRelationship",
+]) {
+  assert.match(requestForm, new RegExp(`value=\\{${key}\\}`));
+}
+assert.match(
+  trialRoute,
+  /EmergencyContactInfoRelationship:\s*"Parent\/Guardian"/,
+);
+
+// Court16/HubSpot-only questions do not belong in the minimum Mindbody
+// profile form.
+assert.doesNotMatch(requestForm, /Tennis experience/);
+assert.doesNotMatch(requestForm, /School \(optional\)/);
+assert.doesNotMatch(requestForm, /How did you hear about Court 16/);
+assert.doesNotMatch(requestForm, /Anything we should know/);
+assert.doesNotMatch(requestForm, /Apartment, suite/);
+
 // The parent adds a redundant no-network guard and drives the form lock from
 // full launch readiness rather than the weaker inventory-preview flag.
 const parentGuard = trialPage.indexOf("if (!isTrialLocationReady(location ?? undefined))");

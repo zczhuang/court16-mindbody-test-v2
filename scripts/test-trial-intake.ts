@@ -4,6 +4,7 @@ import type { MindbodyProfileDetails } from "../lib/trial-intake";
 const intakeModuleUrl = new URL("../lib/trial-intake.ts", import.meta.url).href;
 const {
   buildMindbodyHouseholdAddress,
+  buildMindbodyParentEmergencyContact,
   isValidIsoDate,
   normalizeMindbodyProfileDetails,
   validateMindbodyProfileDetails,
@@ -18,6 +19,10 @@ const valid: MindbodyProfileDetails = {
   householdCity: " Brooklyn ",
   householdState: "ny",
   householdPostalCode: "11201",
+  parentEmergencyContactName: " Avery Backup ",
+  parentEmergencyContactPhone: " (646) 555-0198 ",
+  parentEmergencyContactEmail: " AVERY@example.com ",
+  parentEmergencyContactRelationship: " Family friend ",
 };
 
 assert.deepEqual(validateMindbodyProfileDetails(valid), []);
@@ -31,6 +36,10 @@ assert.deepEqual(normalized, {
   householdCity: "Brooklyn",
   householdState: "NY",
   householdPostalCode: "11201",
+  parentEmergencyContactName: "Avery Backup",
+  parentEmergencyContactPhone: "(646) 555-0198",
+  parentEmergencyContactEmail: "avery@example.com",
+  parentEmergencyContactRelationship: "Family friend",
 });
 assert.deepEqual(buildMindbodyHouseholdAddress(normalized), {
   AddressLine1: "123 Main Street",
@@ -38,6 +47,12 @@ assert.deepEqual(buildMindbodyHouseholdAddress(normalized), {
   City: "Brooklyn",
   State: "NY",
   PostalCode: "11201",
+});
+assert.deepEqual(buildMindbodyParentEmergencyContact(normalized), {
+  EmergencyContactInfoName: "Avery Backup",
+  EmergencyContactInfoPhone: "(646) 555-0198",
+  EmergencyContactInfoEmail: "avery@example.com",
+  EmergencyContactInfoRelationship: "Family friend",
 });
 
 const invalid = {
@@ -47,6 +62,10 @@ const invalid = {
   householdAddress1: " ",
   householdState: "New York",
   householdPostalCode: "ABC",
+  parentEmergencyContactName: " ",
+  parentEmergencyContactPhone: "123",
+  parentEmergencyContactEmail: "not-an-email",
+  parentEmergencyContactRelationship: "",
 } as unknown as MindbodyProfileDetails;
 const invalidErrors = validateMindbodyProfileDetails(invalid);
 assert(
@@ -66,6 +85,10 @@ assert(
   ),
 );
 assert(invalidErrors.includes("householdPostalCode must be a 5-digit ZIP or ZIP+4"));
+assert(invalidErrors.includes("parentEmergencyContactName is required"));
+assert(invalidErrors.includes("parentEmergencyContactPhone is invalid"));
+assert(invalidErrors.includes("parentEmergencyContactEmail is invalid"));
+assert(invalidErrors.includes("parentEmergencyContactRelationship is required"));
 
 assert.deepEqual(
   validateMindbodyProfileDetails({ ...valid, householdState: "ZZ" }),

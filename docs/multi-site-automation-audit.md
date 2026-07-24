@@ -21,12 +21,19 @@ The copy/paste owner and admin steps are in [the access-authorization handoff](.
 > upcoming trial inventory or end-to-end acceptance, and all seven remain
 > disabled for public booking.
 >
-> New per-site facts from the 20 Jul readback:
+> New per-site facts from the 23 Jul readback:
 >
-> - **Required fields** are identical at six sites (`AddressLine1`, `City`,
->   `State`, `PostalCode`, `MobilePhone`, `BirthDate`, `Email`, `IsMale`);
->   **Allston additionally requires `EmergContact`**, which the current form
->   does not collect — Allston needs form/config work before intake.
+> - **Required fields are authorization-mode dependent.** Production
+>   `AddClient` uses consumer mode (API key + Site ID, no bearer), so its
+>   readback—not the source-staff readback—is the intake contract. All seven
+>   consumer-mode readbacks require `AddressLine1`, `City`, `State`,
+>   `PostalCode`, `MobilePhone`, `BirthDate`, `EmergContact`, and `IsMale`.
+>   Ridge Hill additionally requires `ReferredBy` and `Email`; Newton and
+>   Allston additionally require `Email`. The minimum-profile form now
+>   collects a real alternate contact for the parent and uses the registering
+>   parent as the child's truthful emergency contact.
+>   The source-staff bearer view differs: it reports `Email` at every site,
+>   omits `EmergContact` at six sites, and omits Ridge Hill's `ReferredBy`.
 > - **Family relationships** `-6` Parent/Guardian↔Child and `-4` Is Paid For
 >   By↔Pays For are present at all seven sites — the Ridge Hill family model
 >   ports everywhere (still record each site's values explicitly).
@@ -196,7 +203,7 @@ The application owns orchestration and IDs, not customer email. HubSpot owns Cou
 1. **Authorization is complete; launch configuration is not.** All seven source tokens and read probes succeed, but authorization alone does not verify any write, checkout, notification, or family-account behavior.
 2. **Trial inventory is absent outside Ridge Hill.** No expansion club exposes a Kid's Trials Program. Brooklyn, Fishtown, LIC, and FiDi expose no kids-trial Service-name candidate; Newton and Allston expose `100183`, but its price and applicability remain unverified. Hard-coding Ridge Hill IDs across sites would corrupt relationships or fail checkout/enrollment.
 3. **Unsafe calendar fallback was replaced with an explicit read-only schedule boundary.** A site without `kidTrialProgramId` never runs a broad “children” query. Preview reads use dated authorization plus a site-scoped `kidsCalendarProgramIds` allowlist, query each Program separately in public consumer mode, paginate, re-filter the response, and label the rows as regular classes rather than trial availability. An empty allowlist returns an empty calendar without calling Mindbody. Booking and client creation still require the dedicated trial Program, Service, full launch evidence, and write allowlist.
-4. **Per-site intake differs.** The kids-trial route now collects a real household address and separate parent/child Mindbody gender values instead of writing the studio address or a hard-coded value. Allston additionally requires `EmergContact`, which the route does not collect, and LIC exposes an extra `Not Specified` gender. Never add placeholders to satisfy a site's configuration.
+4. **The production AddClient contract must stay tied to consumer-mode evidence.** The kids-trial route now collects a real household address, separate parent/child Mindbody gender values, and a truthful emergency contact instead of writing studio, demographic, or contact placeholders. Consumer-mode reads require `EmergContact` at all seven sites. Ridge Hill also requires `ReferredBy` (the truthful application-derived value is `Online`), while LIC exposes an extra `Not Specified` gender. The six non-Ridge-Hill sites still need controlled write acceptance before launch.
 5. **Relationship catalogs match, but writes are unproven.** `-6` Parent/Guardian and `-4` Pays For appear at all seven sites. Record them per site and validate the controlled write matrix before treating the shared values as launch evidence.
 6. **Paid-program dependency.** A child needs the correct $0 Service before `AddClientToClass`; missing/wrong Service IDs can cause `ClassRequiresPayment` or attach the wrong pricing.
 7. **Allston CRM routing is incomplete.** The exact live `preferred_location` value is now `Allston - Massachusetts`, but no verified pipeline or Requested/Scheduled stages exist. Do not fall back to Brooklyn/default.

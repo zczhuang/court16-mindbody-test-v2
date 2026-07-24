@@ -170,15 +170,14 @@ export function validateTrialE2ERequest(
     "childLastName",
     "childBirthDate",
     "childGender",
-    "childPlayingLevel",
-    "childSchool",
-    "leadSource",
     "householdAddress1",
-    "householdAddress2",
     "householdCity",
     "householdState",
     "householdPostalCode",
-    "notes",
+    "parentEmergencyContactName",
+    "parentEmergencyContactPhone",
+    "parentEmergencyContactEmail",
+    "parentEmergencyContactRelationship",
   ];
   for (const key of syntheticKeys) {
     if (String(body[key] ?? "") !== String(synthetic[key] ?? "")) {

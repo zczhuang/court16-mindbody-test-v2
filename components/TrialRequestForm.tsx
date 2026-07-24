@@ -12,12 +12,6 @@ import {
   isValidIsoDate,
   type MindbodyStandardGender,
 } from "@/lib/trial-intake";
-import {
-  CHILD_PLAYING_LEVELS,
-  LEAD_SOURCES,
-  type ChildPlayingLevel,
-  type LeadSource,
-} from "@/lib/trial-reporting";
 
 interface Props {
   submissionId: string;
@@ -68,25 +62,25 @@ export default function TrialRequestForm({
   const [childGender, setChildGender] = useState<MindbodyStandardGender | "">(
     initialValues?.childGender ?? "",
   );
-  const [childPlayingLevel, setChildPlayingLevel] = useState<ChildPlayingLevel | "">(
-    initialValues?.childPlayingLevel ?? "",
-  );
-  const [childSchool, setChildSchool] = useState(initialValues?.childSchool ?? "");
-  const [leadSource, setLeadSource] = useState<LeadSource | "">(
-    initialValues?.leadSource ?? "",
-  );
   const [householdAddress1, setHouseholdAddress1] = useState(
     initialValues?.householdAddress1 ?? "",
-  );
-  const [householdAddress2, setHouseholdAddress2] = useState(
-    initialValues?.householdAddress2 ?? "",
   );
   const [householdCity, setHouseholdCity] = useState(initialValues?.householdCity ?? "");
   const [householdState, setHouseholdState] = useState(initialValues?.householdState ?? "");
   const [householdPostalCode, setHouseholdPostalCode] = useState(
     initialValues?.householdPostalCode ?? "",
   );
-  const [notes, setNotes] = useState(initialValues?.notes ?? "");
+  const [parentEmergencyContactName, setParentEmergencyContactName] = useState(
+    initialValues?.parentEmergencyContactName ?? "",
+  );
+  const [parentEmergencyContactPhone, setParentEmergencyContactPhone] = useState(
+    initialValues?.parentEmergencyContactPhone ?? "",
+  );
+  const [parentEmergencyContactEmail, setParentEmergencyContactEmail] = useState(
+    initialValues?.parentEmergencyContactEmail ?? "",
+  );
+  const [parentEmergencyContactRelationship, setParentEmergencyContactRelationship] =
+    useState(initialValues?.parentEmergencyContactRelationship ?? "");
   const [formStep, setFormStep] = useState<FormStep>("family");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -195,10 +189,6 @@ export default function TrialRequestForm({
       );
       return;
     }
-    if (!childPlayingLevel || !leadSource) {
-      setError("Select the child's tennis experience and how you heard about Court 16.");
-      return;
-    }
     if (!parentGender || !childGender) {
       setError("Select the required gender field for both the parent and child.");
       return;
@@ -223,14 +213,14 @@ export default function TrialRequestForm({
         childAge: derivedAge,
         childBirthDate,
         childGender,
-        childPlayingLevel,
-        childSchool: childSchool || undefined,
-        leadSource,
         householdAddress1,
-        householdAddress2: householdAddress2 || undefined,
         householdCity,
         householdState,
         householdPostalCode,
+        parentEmergencyContactName,
+        parentEmergencyContactPhone,
+        parentEmergencyContactEmail,
+        parentEmergencyContactRelationship,
         children: [
           {
             firstName: childFirstName,
@@ -248,7 +238,6 @@ export default function TrialRequestForm({
         classTime: trialClass.time,
         classStartsAt: trialClass.startsAt,
         coachName: trialClass.coach,
-        notes: notes || undefined,
       });
     } catch (err) {
       setError(
@@ -520,62 +509,6 @@ export default function TrialRequestForm({
                     </select>
                   </Field>
                 </div>
-                <div className="trf-grid">
-                  <Field label="Tennis experience *">
-                    <select
-                      required
-                      value={childPlayingLevel}
-                      onChange={(event) =>
-                        setChildPlayingLevel(event.target.value as ChildPlayingLevel)
-                      }
-                      className="trf-input"
-                    >
-                      <option value="" disabled>
-                        Select
-                      </option>
-                      {CHILD_PLAYING_LEVELS.map((level) => (
-                        <option key={level} value={level}>
-                          {level}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                  <Field label="School (optional)">
-                    <input
-                      type="text"
-                      value={childSchool}
-                      onChange={(e) => setChildSchool(e.target.value)}
-                      className="trf-input"
-                    />
-                  </Field>
-                </div>
-                <Field label="How did you hear about Court 16? *">
-                  <select
-                    required
-                    value={leadSource}
-                    onChange={(event) => setLeadSource(event.target.value as LeadSource)}
-                    className="trf-input"
-                  >
-                    <option value="" disabled>
-                      Select
-                    </option>
-                    {LEAD_SOURCES.map((source) => (
-                      <option key={source} value={source}>
-                        {source}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Anything we should know? (optional)">
-                  <textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    rows={2}
-                    placeholder="Allergies, experience level, special requests…"
-                    className="trf-input"
-                    style={{ resize: "vertical", minHeight: 60 }}
-                  />
-                </Field>
                 <div className="trf-family-note">
                   Your child shares the parent contact email and never needs a separate
                   login. Court 16 staff will help with any final family-account link.
@@ -607,16 +540,6 @@ export default function TrialRequestForm({
                     value={householdAddress1}
                     onChange={(e) => setHouseholdAddress1(e.target.value)}
                     placeholder="123 Main Street"
-                    className="trf-input"
-                  />
-                </Field>
-                <Field label="Apartment, suite, etc. (optional)">
-                  <input
-                    type="text"
-                    autoComplete="address-line2"
-                    value={householdAddress2}
-                    onChange={(e) => setHouseholdAddress2(e.target.value)}
-                    placeholder="Apt 4B"
                     className="trf-input"
                   />
                 </Field>
@@ -659,6 +582,68 @@ export default function TrialRequestForm({
                       value={householdPostalCode}
                       onChange={(e) => setHouseholdPostalCode(e.target.value)}
                       placeholder="10001"
+                      className="trf-input"
+                    />
+                  </Field>
+                </div>
+              </div>
+
+              <div className="trf-section">
+                <div className="eyebrow">Alternate emergency contact</div>
+                <p className="trf-section-copy">
+                  Mindbody requires an emergency contact for each profile. We&apos;ll
+                  use the parent or guardian above for your child and this alternate
+                  contact for the adult profile.
+                </p>
+                <div className="trf-grid">
+                  <Field label="Full name *">
+                    <input
+                      type="text"
+                      required
+                      autoComplete="section-emergency name"
+                      value={parentEmergencyContactName}
+                      onChange={(event) =>
+                        setParentEmergencyContactName(event.target.value)
+                      }
+                      className="trf-input"
+                    />
+                  </Field>
+                  <Field label="Relationship *">
+                    <input
+                      type="text"
+                      required
+                      autoComplete="off"
+                      value={parentEmergencyContactRelationship}
+                      onChange={(event) =>
+                        setParentEmergencyContactRelationship(event.target.value)
+                      }
+                      placeholder="Spouse, sibling, friend…"
+                      className="trf-input"
+                    />
+                  </Field>
+                </div>
+                <div className="trf-grid">
+                  <Field label="Mobile phone *">
+                    <input
+                      type="tel"
+                      required
+                      autoComplete="section-emergency tel"
+                      value={parentEmergencyContactPhone}
+                      onChange={(event) =>
+                        setParentEmergencyContactPhone(event.target.value)
+                      }
+                      className="trf-input"
+                    />
+                  </Field>
+                  <Field label="Email *">
+                    <input
+                      type="email"
+                      required
+                      autoComplete="section-emergency email"
+                      value={parentEmergencyContactEmail}
+                      onChange={(event) =>
+                        setParentEmergencyContactEmail(event.target.value)
+                      }
                       className="trf-input"
                     />
                   </Field>
@@ -864,6 +849,12 @@ export default function TrialRequestForm({
         }
         .trf-section .eyebrow {
           margin-bottom: 2px;
+        }
+        .trf-section-copy {
+          margin: 0 0 2px;
+          color: var(--c16-ink-2);
+          font-size: 12px;
+          line-height: 1.5;
         }
         .trf-grid {
           display: grid;

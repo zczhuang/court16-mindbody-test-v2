@@ -386,10 +386,11 @@ async function authedFetch<T>(
      * `InvalidPermissionConfiguration`.
      *
      * Consumer-mode AddClient on real sites must satisfy the SITE's
-     * `RequiredClientFields` config (probe via GET /client/requiredclientfields).
-     * The current RH readback returns AddressLine1, City, State, PostalCode,
-     * BirthDate, MobilePhone, Email, and Gender. Re-probe every site rather
-     * than copying this list into a new club's intake policy.
+     * `RequiredClientFields` config (probe the same endpoint WITHOUT a bearer).
+     * The source-staff bearer returns a materially different list. The Jul 23
+     * 2026 RH consumer readback returns AddressLine1, City, State, PostalCode,
+     * ReferredBy, BirthDate, MobilePhone, Email, EmergContact, and IsMale.
+     * Re-probe every site rather than copying one club's list.
      */
     consumerMode?: boolean;
   },
@@ -540,9 +541,10 @@ export interface AddClientInput {
   FirstName: string;
   LastName: string;
 
-  // Required by site 5748154 (RH) consumer-mode config — probe via
-  // GET /client/requiredclientfields. Other sites may differ; callers
-  // should provide all of these so the helper works site-agnostic.
+  // Court 16 keeps a real email on every profile for duplicate protection,
+  // family claiming, and usable account contact. The site's consumer-mode
+  // GET /client/requiredclientfields decides which remaining fields AddClient
+  // enforces; do not use the source-staff bearer result for this contract.
   Email: string;
   BirthDate?: string; // ISO "YYYY-MM-DD"
   MobilePhone?: string;
@@ -558,6 +560,7 @@ export interface AddClientInput {
    * genders return `InvalidPermissionConfiguration` in consumer mode.
    */
   Gender?: string;
+  // The API reports this four-field bundle as `EmergContact`.
   EmergencyContactInfoName?: string;
   EmergencyContactInfoPhone?: string;
   EmergencyContactInfoEmail?: string;

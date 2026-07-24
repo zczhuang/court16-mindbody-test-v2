@@ -19,9 +19,11 @@ assert.deepEqual(buildHubspotTrialReportingFields(valid), {
 });
 assert.deepEqual(buildHubspotTrialReportingFields({ ...valid, childSchool: "  " }), {
   child_1___playing_level: "Played a bit here and there",
-  school: "Not provided",
   lead_source: "Google",
 });
+assert.deepEqual(validateTrialReportingDetails({}), []);
+assert.deepEqual(validateTrialReportingDetails(undefined), []);
+assert.deepEqual(buildHubspotTrialReportingFields({}), {});
 
 const invalid = {
   childPlayingLevel: "New to Pickleball",

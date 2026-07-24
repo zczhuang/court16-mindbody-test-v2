@@ -20,15 +20,15 @@ export type ChildPlayingLevel = (typeof CHILD_PLAYING_LEVELS)[number];
 export type LeadSource = (typeof LEAD_SOURCES)[number];
 
 export interface TrialReportingDetails {
-  childPlayingLevel: ChildPlayingLevel;
+  childPlayingLevel?: ChildPlayingLevel;
   childSchool?: string;
-  leadSource: LeadSource;
+  leadSource?: LeadSource;
 }
 
 export interface HubspotTrialReportingFields {
-  child_1___playing_level: ChildPlayingLevel;
-  school: string;
-  lead_source: LeadSource;
+  child_1___playing_level?: ChildPlayingLevel;
+  school?: string;
+  lead_source?: LeadSource;
 }
 
 /**
@@ -40,24 +40,32 @@ export function buildHubspotTrialReportingFields(
   details: TrialReportingDetails,
 ): HubspotTrialReportingFields {
   return {
-    child_1___playing_level: details.childPlayingLevel,
-    school: details.childSchool?.trim() || "Not provided",
-    lead_source: details.leadSource,
+    ...(details.childPlayingLevel
+      ? { child_1___playing_level: details.childPlayingLevel }
+      : {}),
+    ...(details.childSchool?.trim() ? { school: details.childSchool.trim() } : {}),
+    ...(details.leadSource ? { lead_source: details.leadSource } : {}),
   };
 }
 
 export function validateTrialReportingDetails(
   details: Partial<TrialReportingDetails> | undefined,
 ): string[] {
-  if (!details) return ["Trial reporting details are required"];
+  if (!details) return [];
   const errors: string[] = [];
-  if (!CHILD_PLAYING_LEVELS.includes(details.childPlayingLevel as ChildPlayingLevel)) {
+  if (
+    details.childPlayingLevel != null &&
+    !CHILD_PLAYING_LEVELS.includes(details.childPlayingLevel as ChildPlayingLevel)
+  ) {
     errors.push("childPlayingLevel is invalid");
   }
   if (details.childSchool != null && typeof details.childSchool !== "string") {
     errors.push("childSchool must be a string");
   }
-  if (!LEAD_SOURCES.includes(details.leadSource as LeadSource)) {
+  if (
+    details.leadSource != null &&
+    !LEAD_SOURCES.includes(details.leadSource as LeadSource)
+  ) {
     errors.push("leadSource is invalid");
   }
   return errors;

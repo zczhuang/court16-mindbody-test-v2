@@ -58,6 +58,7 @@ import {
   MAX_KIDS_TRIAL_AGE,
   MIN_KIDS_TRIAL_AGE,
   buildMindbodyHouseholdAddress,
+  buildMindbodyParentEmergencyContact,
   isValidIsoDate,
   normalizeMindbodyProfileDetails,
   validateMindbodyProfileDetails,
@@ -773,10 +774,13 @@ export async function POST(req: Request) {
     let familyProvisioningAttempted = false;
     if (!mbDegraded) {
       try {
-        // Mindbody requires these fields at Ridge Hill. The Court 16 form
-        // collects the household values explicitly so neither profile is
-        // created with the club address or a guessed demographic value.
+        // Production AddClient runs in consumer mode. Its live field readback
+        // requires a truthful household address and emergency contact at all
+        // seven Court 16 sites; never substitute a studio address or
+        // self/placeholder contact.
         const householdAddress = buildMindbodyHouseholdAddress(mindbodyProfile);
+        const parentEmergencyContact =
+          buildMindbodyParentEmergencyContact(mindbodyProfile);
 
         familyProvisioningStartedAt = new Date();
         familyProvisioningAttempted = true;
@@ -799,6 +803,7 @@ export async function POST(req: Request) {
           ReferredBy: "Online",
           Gender: mindbodyProfile.parentGender,
           ...householdAddress,
+          ...parentEmergencyContact,
           // Opt new Client into MindBody's transactional emails so the
           // "Add Court 16 to your Mindbody account" auto-link email actually
           // fires. MindBody defaults SendAccountEmails to false if omitted,
@@ -852,6 +857,14 @@ export async function POST(req: Request) {
           ReferredBy: "Online",
           Gender: mindbodyProfile.childGender,
           ...householdAddress,
+          // The registering parent is a real, already-collected emergency
+          // contact for the child. Only the adult profile needs the alternate
+          // contact requested on panel two.
+          EmergencyContactInfoName:
+            `${body.parentFirstName} ${body.parentLastName}`.trim(),
+          EmergencyContactInfoPhone: body.parentPhone,
+          EmergencyContactInfoEmail: body.parentEmail,
+          EmergencyContactInfoRelationship: "Parent/Guardian",
           // Inline Parent/Guardian → Child relationship: links this child
           // (current AddClient) to the parent (RelatedClientId). This is the
           // correct familial link in MindBody's catalog; -4 "Pays For" was a

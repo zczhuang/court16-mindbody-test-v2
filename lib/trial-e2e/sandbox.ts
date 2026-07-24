@@ -472,6 +472,11 @@ export async function runTrialE2ESandboxIntake(
         State: profile.householdState,
         PostalCode: profile.householdPostalCode,
         ReferredBy: "Court16 E2E Site -99",
+        EmergencyContactInfoName: profile.parentEmergencyContactName,
+        EmergencyContactInfoPhone: profile.parentEmergencyContactPhone,
+        EmergencyContactInfoEmail: profile.parentEmergencyContactEmail,
+        EmergencyContactInfoRelationship:
+          profile.parentEmergencyContactRelationship,
         ...notificationFlags(),
       });
       await journal.advance("parent_add_started", { parentClientId: String(parent.Id) });
@@ -531,6 +536,11 @@ export async function runTrialE2ESandboxIntake(
         State: profile.householdState,
         PostalCode: profile.householdPostalCode,
         ReferredBy: "Court16 E2E Site -99",
+        EmergencyContactInfoName:
+          `${body.parentFirstName} ${body.parentLastName}`.trim(),
+        EmergencyContactInfoPhone: body.parentPhone,
+        EmergencyContactInfoEmail: email,
+        EmergencyContactInfoRelationship: "Parent/Guardian",
         ClientRelationships: [
           {
             RelatedClientId: String(parent.Id),

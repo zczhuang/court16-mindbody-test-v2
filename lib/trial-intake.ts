@@ -85,6 +85,10 @@ export interface MindbodyProfileDetails {
   householdCity: string;
   householdState: string;
   householdPostalCode: string;
+  parentEmergencyContactName: string;
+  parentEmergencyContactPhone: string;
+  parentEmergencyContactEmail: string;
+  parentEmergencyContactRelationship: string;
 }
 
 export interface NormalizedMindbodyProfileDetails extends MindbodyProfileDetails {
@@ -97,6 +101,13 @@ export interface MindbodyHouseholdAddress {
   City: string;
   State: string;
   PostalCode: string;
+}
+
+export interface MindbodyEmergencyContact {
+  EmergencyContactInfoName: string;
+  EmergencyContactInfoPhone: string;
+  EmergencyContactInfoEmail: string;
+  EmergencyContactInfoRelationship: string;
 }
 
 function hasText(value: unknown): value is string {
@@ -182,6 +193,24 @@ export function validateMindbodyProfileDetails(
   ) {
     errors.push("householdPostalCode must be a 5-digit ZIP or ZIP+4");
   }
+  if (!hasText(details.parentEmergencyContactName)) {
+    errors.push("parentEmergencyContactName is required");
+  }
+  if (
+    !hasText(details.parentEmergencyContactPhone) ||
+    details.parentEmergencyContactPhone.replace(/\D/g, "").length < 7
+  ) {
+    errors.push("parentEmergencyContactPhone is invalid");
+  }
+  if (
+    !hasText(details.parentEmergencyContactEmail) ||
+    !/^\S+@\S+\.\S+$/.test(details.parentEmergencyContactEmail.trim())
+  ) {
+    errors.push("parentEmergencyContactEmail is invalid");
+  }
+  if (!hasText(details.parentEmergencyContactRelationship)) {
+    errors.push("parentEmergencyContactRelationship is required");
+  }
   return errors;
 }
 
@@ -197,6 +226,11 @@ export function normalizeMindbodyProfileDetails(
     householdCity: details.householdCity.trim(),
     householdState: details.householdState.trim().toUpperCase(),
     householdPostalCode: details.householdPostalCode.trim(),
+    parentEmergencyContactName: details.parentEmergencyContactName.trim(),
+    parentEmergencyContactPhone: details.parentEmergencyContactPhone.trim(),
+    parentEmergencyContactEmail: details.parentEmergencyContactEmail.trim().toLowerCase(),
+    parentEmergencyContactRelationship:
+      details.parentEmergencyContactRelationship.trim(),
   };
 }
 
@@ -209,5 +243,16 @@ export function buildMindbodyHouseholdAddress(
     City: details.householdCity,
     State: details.householdState,
     PostalCode: details.householdPostalCode,
+  };
+}
+
+export function buildMindbodyParentEmergencyContact(
+  details: NormalizedMindbodyProfileDetails,
+): MindbodyEmergencyContact {
+  return {
+    EmergencyContactInfoName: details.parentEmergencyContactName,
+    EmergencyContactInfoPhone: details.parentEmergencyContactPhone,
+    EmergencyContactInfoEmail: details.parentEmergencyContactEmail,
+    EmergencyContactInfoRelationship: details.parentEmergencyContactRelationship,
   };
 }
