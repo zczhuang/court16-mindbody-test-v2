@@ -132,6 +132,18 @@ assert.doesNotMatch(requestForm, /School \(optional\)/);
 assert.doesNotMatch(requestForm, /How did you hear about Court 16/);
 assert.doesNotMatch(requestForm, /Anything we should know/);
 assert.doesNotMatch(requestForm, /Apartment, suite/);
+for (const field of [
+  "childPlayingLevel",
+  "childSchool",
+  "leadSource",
+  "notes",
+  "householdAddress2",
+]) {
+  assert.match(
+    trialRoute,
+    new RegExp(`"${field}"[\\s\\S]*?not accepted by the minimum Mindbody profile form`),
+  );
+}
 
 // The parent adds a redundant no-network guard and drives the form lock from
 // full launch readiness rather than the weaker inventory-preview flag.

@@ -35,7 +35,7 @@ The six other sites still require a controlled, staff-approved AddClient
 acceptance test before launch; a readback alone does not prove write
 acceptance.
 
-## Smallest truthful parent and child flow
+## Smallest write-proven truthful parent and child flow
 
 Ask once for:
 
@@ -64,5 +64,6 @@ constant `Online`; it does not require a parent-facing attribution question.
 - Address line 2
 
 These fields may only remain if Court 16 has a separate, intentional business
-use for them. They must never be populated with invented defaults merely to
-satisfy another system.
+use for them. The minimum-profile endpoint now rejects these legacy properties
+instead of silently accepting or retaining them. They must never be populated
+with invented defaults merely to satisfy another system.

@@ -66,7 +66,6 @@ import {
 } from "@/lib/trial-intake";
 import {
   buildHubspotTrialReportingFields,
-  validateTrialReportingDetails,
 } from "@/lib/trial-reporting";
 
 export const runtime = "nodejs";
@@ -1617,8 +1616,19 @@ function validate(body: TrialRequest | undefined): string[] {
   ) {
     errors.push("parentPhone is required");
   }
+  const removedOptionalFields = [
+    "childPlayingLevel",
+    "childSchool",
+    "leadSource",
+    "notes",
+    "householdAddress2",
+  ] as const;
+  for (const field of removedOptionalFields) {
+    if (Object.prototype.hasOwnProperty.call(body, field)) {
+      errors.push(`${field} is not accepted by the minimum Mindbody profile form`);
+    }
+  }
   errors.push(...validateMindbodyProfileDetails(body));
-  errors.push(...validateTrialReportingDetails(body));
 
   // Adult DOB is required (Ibtissam review Jun 11) and must belong to an
   // adult — keeps the MindBody parent record real, no placeholder fallback.
