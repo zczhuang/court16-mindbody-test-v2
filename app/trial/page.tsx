@@ -312,7 +312,7 @@ function TrialInner() {
     // the same rule; the API independently rejects any forced direct POST.
     if (!isTrialLocationReady(location ?? undefined)) {
       throw new Error(
-        "Submission is locked until this club's live trial inventory and launch workflow are verified.",
+        "Submission is locked until this club's booking setup and launch workflow are verified.",
       );
     }
     // HubSpot attribution context: pageUri/pageName make the Contact's
@@ -442,8 +442,8 @@ function TrialInner() {
                 {previewOnly && (
                   <p className="trial-preview-note">
                     {kidsSchedulePreview
-                      ? `Schedule preview — these are regular kids classes, not confirmed trial openings. Choose a class to preview the full request form. Final submission stays locked until live trial inventory is verified for ${location.name}.`
-                      : `Trial form preview — choose a time to review the full request experience. Final submission stays locked until live trial inventory is verified for ${location.name}.`}
+                      ? `Schedule preview — these are regular kids classes, not confirmed trial openings. Choose a class to preview the full request form. Final submission stays locked until dedicated trial inventory and launch checks are verified for ${location.name}.`
+                      : `Trial form preview — choose a time to review the full request experience. Final submission stays locked until site-specific booking setup and launch checks are verified for ${location.name}.`}
                   </p>
                 )}
               </div>

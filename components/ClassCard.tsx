@@ -63,7 +63,7 @@ export default function ClassCard({ trialClass, interaction }: Props) {
         className={`class-card class-card--preview ${interaction.isSelected ? "on" : ""}`}
         onClick={() => interaction.onSelect(trialClass)}
         aria-pressed={interaction.isSelected}
-        aria-label={`Preview the trial request form for ${trialClass.name}, ${trialClass.time} to ${trialClass.endTime}; final submission is unavailable until live trial inventory is verified`}
+        aria-label={`Preview the trial request form for ${trialClass.name}, ${trialClass.time} to ${trialClass.endTime}; final submission is unavailable until the club's booking setup and launch checks are verified`}
       >
         {content}
       </button>

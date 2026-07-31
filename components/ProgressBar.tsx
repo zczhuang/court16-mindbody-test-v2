@@ -48,8 +48,8 @@ export default function ProgressBar({ step, previewScope }: Props) {
         <p className="prog-lead">
           {previewScope
             ? kidsSchedule
-              ? "Browse the club's current kids schedule and preview the full request form. Final submission stays locked until live trial inventory is verified."
-              : "Browse the dedicated trial calendar and preview the full request form. Final submission stays locked until live trial inventory is verified."
+              ? "Browse the club's current kids schedule and preview the full request form. Final submission stays locked until dedicated trial inventory and launch checks are verified."
+              : "Browse the dedicated trial calendar and preview the full request form. Final submission stays locked until booking setup and launch checks are verified."
             : "Choose a club and an age-appropriate trial time. It's free, we provide the racquet, and our team will confirm the spot."}
         </p>
       </div>

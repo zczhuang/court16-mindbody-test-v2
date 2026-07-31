@@ -322,7 +322,7 @@ export default function TrialRequestForm({
                   {testMode
                     ? "This exact production form is connected only to the protected E2E lane. Court 16 notification adapters are absent; Site -99 mode also requests native email and text suppression."
                     : previewOnly
-                      ? `Move through both panels without entering real personal information. Final submission will open after Court 16 verifies live trial inventory and the launch workflow for ${locationName}.`
+                      ? `Move through both panels without entering real personal information. Final submission will open after Court 16 verifies site-specific booking setup and the launch workflow for ${locationName}.`
                       : "No credit card is needed. We'll use these details to prepare the family records, and Mindbody will send any secure account email."}
                 </span>
               </div>
@@ -525,7 +525,7 @@ export default function TrialRequestForm({
                 </strong>
                 <span id={previewOnly ? "trial-form-preview-note" : undefined}>
                   {previewOnly
-                    ? `Complete this panel to review the experience. Final submission will open after Court 16 verifies live trial inventory and the launch workflow for ${locationName}.`
+                    ? `Complete this panel to review the experience. Final submission will open after Court 16 verifies site-specific booking setup and the launch workflow for ${locationName}.`
                     : "Mindbody asks for the details below when a new account is prepared. We use the household address for both parent and child and protect it under Court 16's Privacy Policy."}
                 </span>
               </div>
@@ -687,9 +687,9 @@ export default function TrialRequestForm({
             <div id="trial-submission-lock" className="trf-submit-lock">
               <strong>Submission locked.</strong>
               <span>
-                {locationName} isn&apos;t fully launch-ready yet. Live trial inventory and
-                the remaining workflow checks must be verified. Your details haven&apos;t
-                been sent.
+                {locationName} isn&apos;t fully launch-ready yet. The site-specific booking
+                service, routing, and remaining launch checks must be verified. Your
+                details haven&apos;t been sent.
               </span>
             </div>
           )}

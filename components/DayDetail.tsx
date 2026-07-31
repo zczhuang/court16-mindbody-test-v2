@@ -75,8 +75,8 @@ export default function DayDetail({ classes, date, interaction }: Props) {
       {previewOnly && (
         <p className="class-list-preview-note">
           {kidsSchedule
-            ? "Schedule preview — these are regular kids classes, not confirmed trial openings. Choose a class to preview the full request form; final submission stays locked until live trial inventory is verified."
-            : "Trial form preview — choose a time to review the full request experience. Final submission stays locked until live trial inventory is verified."}
+            ? "Schedule preview — these are regular kids classes, not confirmed trial openings. Choose a class to preview the full request form; final submission stays locked until dedicated trial inventory and launch checks are verified."
+            : "Trial form preview — choose a time to review the full request experience. Final submission stays locked until booking setup and launch checks are verified."}
         </p>
       )}
       <div className={`class-list ${previewOnly ? "class-list--preview" : ""}`}>

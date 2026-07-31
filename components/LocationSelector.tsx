@@ -33,8 +33,8 @@ export default function LocationSelector({
           </h2>
           <p className="section-sub">
             Choose any club to view its current calendar and preview the full request
-            form. Final submission stays off until that club&apos;s real trial inventory
-            and launch workflow are verified.
+            form. Final submission stays off until that club&apos;s dedicated trial
+            calendar and launch workflow are verified.
           </p>
         </div>
       )}
@@ -84,8 +84,8 @@ export default function LocationSelector({
               {previewOnly && (
                 <div className="loc-unavailable-reason">
                   {kidsSchedulePreview
-                    ? "Browse the public kids schedule and preview the request form while real trial inventory is being loaded."
-                    : "Preview the dedicated trial calendar and request form while live inventory is being verified."}
+                    ? "Browse the public kids schedule and preview the request form while dedicated trial inventory is being loaded."
+                    : "Preview the dedicated trial calendar and request form while site-specific booking setup and launch checks are completed."}
                 </div>
               )}
               {!enabled && unavailableReason && (
@@ -133,8 +133,8 @@ export default function LocationSelector({
               aria-label={
                 previewOnly
                   ? kidsSchedulePreview
-                    ? `View the kids schedule and preview the request form at ${loc.name}; final submission is unavailable until live trial inventory is verified`
-                    : `Preview the dedicated trial calendar and request form at ${loc.name}; final submission is unavailable until live trial inventory is verified`
+                    ? `View the kids schedule and preview the request form at ${loc.name}; final submission is unavailable until dedicated trial inventory and launch checks are verified`
+                    : `Preview the dedicated trial calendar and request form at ${loc.name}; final submission is unavailable until site-specific booking setup and launch checks are verified`
                   : `See trial classes at ${loc.name}`
               }
               className={`loc-card loc-card--enabled ${on ? "on" : ""}`}
