@@ -69,6 +69,10 @@ const READ_ENDPOINTS = {
 const BASE_URL = process.env.MINDBODY_BASE_URL ?? "https://api.mindbodyonline.com/public/v6";
 const SOURCE_NAME = process.env.MINDBODY_SOURCE_NAME ?? "CedarWindSolutionsLLC";
 const REQUEST_TIMEOUT_MS = 20_000;
+// Several mature Court 16 sites have more than 200 Program records. Program
+// 120 falls beyond the old 200-row audit window, even though Mindbody accepts
+// and returns it when the catalog request is widened.
+const PROGRAM_CATALOG_LIMIT = 500;
 const AUDIT_SCOPE = {
   kind: "read_only_preflight",
   launchApproval: false,
@@ -345,7 +349,7 @@ async function auditLocation(
           apiKey,
           location.siteId,
           READ_ENDPOINTS.programs,
-          { Limit: 200 },
+          { Limit: PROGRAM_CATALOG_LIMIT },
           token,
         );
         return normalizeNamedRecords(body.Programs);

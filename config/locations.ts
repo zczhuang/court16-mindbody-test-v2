@@ -153,21 +153,24 @@ export const LOCATIONS: Location[] = [
     publicBookingEnabled: true,
     trialBookingEnabled: false,
     trialCalendarPreviewEnabled: true,
-    // Live /site/programs + fully paginated class audit, 2026-07-20.
+    // Retained as the explicit regular-kids fallback; Program 120 below now
+    // drives the dedicated trial-calendar preview.
     kidsCalendarProgramIds: [76, 70, 74],
+    // Live read-only audit 2026-07-31: Program 120 (Kids' Trials) returned
+    // three open occurrences in the current seven-day app window.
+    kidTrialProgramId: 120,
     trialUnavailableReason: "Kids trial scheduling is being connected for this club.",
-    // Live read-only audit 2026-07-20: source token + all six probes 200
-    // after the owner approved the activation link. Authorization only —
-    // trial inventory, routing, and acceptance remain unverified.
+    // Authorization and upcoming trial inventory are now verified. Booking
+    // remains gated on the site-specific Service, routing, and acceptance.
     trialLaunchEvidence: {
       mindbodySiteAuthorized: true,
-      upcomingTrialInventoryVerified: false,
+      upcomingTrialInventoryVerified: true,
       hubspotRoutingVerified: false,
       hubspotDealLedgerVerified: false,
       durableMutationLockVerified: false,
       endToEndAcceptancePassed: false,
       designOwnerApproved: false,
-      reviewedAt: "2026-07-20",
+      reviewedAt: "2026-07-31",
     },
     loginUrl: LOGIN_URLS.brooklyn,
   },
@@ -184,20 +187,24 @@ export const LOCATIONS: Location[] = [
     publicBookingEnabled: true,
     trialBookingEnabled: false,
     trialCalendarPreviewEnabled: true,
+    // Retained as the explicit regular-kids fallback; Program 120 below now
+    // drives the dedicated trial-calendar preview.
     kidsCalendarProgramIds: [29],
+    // Live read-only audit 2026-07-31: Program 120 (Kids' Trials) returned
+    // two open occurrences in the current seven-day app window.
+    kidTrialProgramId: 120,
     trialUnavailableReason: "Kids trial scheduling is being connected for this club.",
-    // Live read-only audit 2026-07-20: source token + all six probes 200
-    // after the owner approved the activation link. Authorization only —
-    // trial inventory, routing, and acceptance remain unverified.
+    // Authorization and upcoming trial inventory are now verified. Booking
+    // remains gated on the site-specific Service, routing, and acceptance.
     trialLaunchEvidence: {
       mindbodySiteAuthorized: true,
-      upcomingTrialInventoryVerified: false,
+      upcomingTrialInventoryVerified: true,
       hubspotRoutingVerified: false,
       hubspotDealLedgerVerified: false,
       durableMutationLockVerified: false,
       endToEndAcceptancePassed: false,
       designOwnerApproved: false,
-      reviewedAt: "2026-07-20",
+      reviewedAt: "2026-07-31",
     },
     loginUrl: LOGIN_URLS.lic,
   },
@@ -214,20 +221,24 @@ export const LOCATIONS: Location[] = [
     publicBookingEnabled: true,
     trialBookingEnabled: false,
     trialCalendarPreviewEnabled: true,
+    // Retained as the explicit regular-kids fallback; Program 120 below now
+    // drives the dedicated trial-calendar preview.
     kidsCalendarProgramIds: [32],
+    // Live read-only audit 2026-07-31: Program 120 (Kids' Trials) returned
+    // four non-cancelled open occurrences in the current seven-day app window.
+    kidTrialProgramId: 120,
     trialUnavailableReason: "Kids trial scheduling is being connected for this club.",
-    // Live read-only audit 2026-07-20: source token + all six probes 200
-    // after the owner approved the activation link. Authorization only —
-    // trial inventory, routing, and acceptance remain unverified.
+    // Authorization and upcoming trial inventory are now verified. Booking
+    // remains gated on the site-specific Service, routing, and acceptance.
     trialLaunchEvidence: {
       mindbodySiteAuthorized: true,
-      upcomingTrialInventoryVerified: false,
+      upcomingTrialInventoryVerified: true,
       hubspotRoutingVerified: false,
       hubspotDealLedgerVerified: false,
       durableMutationLockVerified: false,
       endToEndAcceptancePassed: false,
       designOwnerApproved: false,
-      reviewedAt: "2026-07-20",
+      reviewedAt: "2026-07-31",
     },
     loginUrl: LOGIN_URLS.fidi,
   },
@@ -244,22 +255,21 @@ export const LOCATIONS: Location[] = [
     publicBookingEnabled: true,
     trialBookingEnabled: false,
     // Read-only calendar preview only: the site is authorized and Program 61 +
-    // Service 100328 are verified, but the July 18 audit found zero upcoming
-    // Program 61 occurrences, so the calendar renders its honest empty state
-    // until staff schedules trial classes. Booking remains fully gated.
+    // Service 100328 are verified. The July 31 audit found one open Program 61
+    // occurrence in the current app window. Booking remains fully gated.
     trialCalendarPreviewEnabled: true,
     // Kept separate from dedicated Kid's Trials Program 61 below.
     kidsCalendarProgramIds: [37],
     trialUnavailableReason: "The next online kids trial times are being finalized.",
     trialLaunchEvidence: {
       mindbodySiteAuthorized: true,
-      upcomingTrialInventoryVerified: false,
+      upcomingTrialInventoryVerified: true,
       hubspotRoutingVerified: false,
       hubspotDealLedgerVerified: false,
       durableMutationLockVerified: false,
       endToEndAcceptancePassed: false,
       designOwnerApproved: false,
-      reviewedAt: "2026-07-20",
+      reviewedAt: "2026-07-31",
     },
     loginUrl: LOGIN_URLS.ridgehill,
     // Ibtissam created Program 61 + 4 ClassDescriptions on May 20-21:
@@ -281,20 +291,24 @@ export const LOCATIONS: Location[] = [
     publicBookingEnabled: true,
     trialBookingEnabled: false,
     trialCalendarPreviewEnabled: true,
+    // Retained as the explicit regular-kids fallback; Program 120 below now
+    // drives the dedicated trial-calendar preview.
     kidsCalendarProgramIds: [42],
+    // Live read-only audit 2026-07-31: Program 120 (Kids' Trials) returned
+    // eight open occurrences in the current seven-day app window.
+    kidTrialProgramId: 120,
     trialUnavailableReason: "Kids trial scheduling is being connected for this club.",
-    // Live read-only audit 2026-07-20: source token + all six probes 200
-    // after the owner approved the activation link. Authorization only —
-    // trial inventory, routing, and acceptance remain unverified.
+    // Authorization and upcoming trial inventory are now verified. Booking
+    // remains gated on the site-specific Service, routing, and acceptance.
     trialLaunchEvidence: {
       mindbodySiteAuthorized: true,
-      upcomingTrialInventoryVerified: false,
+      upcomingTrialInventoryVerified: true,
       hubspotRoutingVerified: false,
       hubspotDealLedgerVerified: false,
       durableMutationLockVerified: false,
       endToEndAcceptancePassed: false,
       designOwnerApproved: false,
-      reviewedAt: "2026-07-20",
+      reviewedAt: "2026-07-31",
     },
     loginUrl: LOGIN_URLS.fishtown,
   },

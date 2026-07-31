@@ -4,6 +4,8 @@
 
 **Activation re-audit:** 2026-07-20
 
+**Trial-inventory re-audit:** 2026-07-31
+
 **Scope:** Allston, Downtown Brooklyn, Fishtown, Long Island City, Manhattan–FiDi, Newton, and Ridge Hill.
 **Decision rule:** do not enable a club because its Site ID is known. Enable it only after Mindbody authorization, the club's own trial configuration, HubSpot routing, and the full parent/child test all pass.
 
@@ -16,10 +18,18 @@ The copy/paste owner and admin steps are in [the access-authorization handoff](.
 > owner approved the Cedarwind activation link; the source token and all six
 > read probes return `200` at all seven Site IDs (evidence:
 > `npm run audit:mindbody-sites`, 2026-07-20). The July 17/18 `403` results are
-> historical. Authorization clears only the access gate: Ridge Hill's known
-> Program and Service remain the control configuration, no site has verified
-> upcoming trial inventory or end-to-end acceptance, and all seven remain
-> disabled for public booking.
+> historical. Authorization clears only the access gate; all seven remain
+> disabled for public booking until the separate launch gates pass.
+>
+> **Inventory re-audit 2026-07-31 — four expansion clubs now have dedicated
+> trial calendars.** Brooklyn, LIC, FiDi, and Fishtown each expose site-scoped
+> Program `120` (`Kids' Trials`) with open occurrences in the app's current
+> seven-day window (3, 2, 4, and 8 displayable rows respectively). Ridge Hill
+> remains on Program `61` and has one open occurrence. Newton and Allston have
+> no Program `120` occurrences and remain on their regular-kids/empty preview
+> boundaries. The five live trial calendars are still preview-only: site-
+> specific Service applicability, routing, write acceptance, E2E, and approval
+> gates remain incomplete.
 >
 > New per-site facts from the 23 Jul readback:
 >
@@ -39,26 +49,30 @@ The copy/paste owner and admin steps are in [the access-authorization handoff](.
 >   ports everywhere (still record each site's values explicitly).
 > - **Genders**: None/Male/Female/Undisclosed everywhere; **LIC additionally
 >   has `Not Specified` (id 6)** — per-site catalogs must still drive each form.
-> - **Kids-service candidates**: `Complimentary Child Intro Session`
->   (`100183`) appears at Ridge Hill, Newton, and Allston. The read-only audit
->   does not verify its price, Program/location applicability, or checkout
->   behavior. Ridge Hill's separately configured trial Service remains
->   `100328` (`Kid's Trial`).
-> - **Kids-trial Program**: only Ridge Hill has one (`61 Kid's Trials`). No
->   expansion club has a trial program or trial schedule yet.
+> - **Kids-service candidates**: the July 31 readback exposes `Kid's Trial`
+>   candidates at Brooklyn `11479`, LIC `103806`, FiDi `101407`, Fishtown
+>   `100214`, Newton `100432`, and Allston `100420`. `Complimentary Child Intro
+>   Session` (`100183`) also appears at Ridge Hill, Newton, and Allston. The
+>   read-only audit does not verify candidate price, Program/location
+>   applicability, or checkout behavior. Ridge Hill's separately configured
+>   and write-proven trial Service remains `100328` (`Kid's Trial`).
+> - **Kids-trial Programs**: Brooklyn, LIC, FiDi, and Fishtown now use Program
+>   `120`; Ridge Hill remains on Program `61`. Newton and Allston expose a
+>   Program `120` catalog entry but no upcoming occurrences, so the application
+>   does not treat either as dedicated trial inventory yet.
 > - **Class inventory (60-day census)**: Brooklyn/LIC/FiDi/Fishtown/Newton
 >   each run 1,400–2,800+ upcoming classes; **Allston's audited schedule is
 >   completely empty (0 classes)**.
-> - **Read-only calendar rollout (20 Jul)**: every authorized club now opens a
->   calendar. Brooklyn, LIC, FiDi, Fishtown, and Newton show only their
->   explicitly allowlisted public kids Programs; Ridge Hill stays on dedicated
->   trial Program `61`; Allston shows an honest empty calendar. These regular
->   kids rows are labeled as planning-only schedules and cannot enter intake.
+> - **Read-only calendar rollout (31 Jul)**: Brooklyn, LIC, FiDi, and Fishtown
+>   read dedicated Program `120`; Ridge Hill stays on dedicated Program `61`;
+>   Newton shows only its explicitly allowlisted regular-kids Programs; Allston
+>   shows an honest empty calendar. Every calendar and full form remain
+>   preview-only and cannot enter intake.
 
 
-All seven sites are now API-authorized. Ridge Hill remains the configuration control because it is the only site with a discovered Kid's Trials Program (`61`) and a separately verified trial Service (`100328`). The expansion sites' regular kids calendars are now readable in a separate preview mode, but they still lack verified trial Programs, Services, trial schedules, routing, and acceptance evidence.
+All seven sites are API-authorized. Five now have verified upcoming dedicated trial inventory: Program `120` at Brooklyn, LIC, FiDi, and Fishtown, plus Program `61` at Ridge Hill. Only Ridge Hill has a separately write-proven trial Service (`100328`). The four expansion sites still need exact Service applicability, gender/relationship write acceptance, routing, E2E, and approval evidence.
 
-This proves authorization and configuration visibility only; it does not prove a club is ready for families. The 30-day re-audit found **zero upcoming Program 61 occurrences** at Ridge Hill. Ridge Hill is therefore also disabled from public trial requests. The live HubSpot family-status dropdown now exists, but a trustworthy Mindbody claim/link completion readback still does not.
+This proves authorization and calendar visibility only; it does not prove a club is ready for families. All seven remain disabled from public trial requests. The live HubSpot family-status dropdown exists, but a trustworthy Mindbody claim/link completion readback still does not.
 
 Labels used below:
 
@@ -72,13 +86,13 @@ The live API evidence used source `CedarWindSolutionsLLC`. On July 20, source-to
 
 | Club | Mindbody Site ID | Live API authorization | Kids-trial Program / Service discovery | HubSpot Deal routing in code | Readiness |
 |---|---:|---|---|---|---|
-| **Allston** | `5754600` | **Verified:** source token + six reads `200` | No trial Program; Service-name candidate `100183`; price/applicability unverified | **Partial:** live `preferred_location` value is `Allston - Massachusetts`; no verified pipeline or stages | **Blocked:** empty schedule, required `EmergContact`, routing/config/test gaps |
-| **Downtown Brooklyn** | `135479` | **Verified:** source token + six reads `200` | No trial Program or Service-name candidate found | **Recorded:** pipeline `default`; `appointmentscheduled` → `qualifiedtobuy` | **Blocked:** trial inventory/config/test gaps |
-| **Fishtown** | `5742169` | **Verified:** source token + six reads `200` | No trial Program or Service-name candidate found | **Recorded:** pipeline `1818411`; `6445996` → `1031324174` | **Blocked:** trial inventory/config/test gaps |
-| **Long Island City** | `985499` | **Verified:** source token + six reads `200` | No trial Program or Service-name candidate found | **Recorded:** pipeline `1460258`; `5321400` → `11096161` | **Blocked:** trial inventory/config/test gaps; extra gender option requires mapping |
-| **Manhattan–FiDi** | `5728093` | **Verified:** source token + six reads `200` | No trial Program or Service-name candidate found | **Recorded:** pipeline `2477627`; `8517561` → `8517634` | **Blocked:** trial inventory/config/test gaps |
-| **Newton** | `5751422` | **Verified:** source token + six reads `200` | No trial Program; Service-name candidate `100183`; price/applicability unverified | **Recorded:** pipeline `873061120`; `1307706690` → `1307706693` | **Blocked:** trial inventory/config/test gaps |
-| **Ridge Hill** | `5748154` | **Verified:** source token and all six read probes `200`; zero Program 61 occurrences in the next 30 days | **Verified live:** Program `61`; Service `100328`; required fields and family relationships visible | **Verified live:** pipeline `830977386`; `1231873814` → `1231873816`; customer workflows remain off | **Disabled control; inventory, routing test, E2E acceptance, and design approval required** |
+| **Allston** | `5754600` | **Verified:** source token + six reads `200` | Program `120` catalog entry, but zero occurrences; Service candidates `100420` and `100183`; applicability unverified | **Partial:** live `preferred_location` value is `Allston - Massachusetts`; no verified pipeline or stages | **Blocked:** empty trial schedule, required `EmergContact`, routing/config/test gaps |
+| **Downtown Brooklyn** | `135479` | **Verified:** source token + six reads `200` | **Verified calendar:** Program `120`, 3 current-window rows; Service candidate `11479` applicability unverified | **Recorded:** pipeline `default`; `appointmentscheduled` → `qualifiedtobuy` | **Blocked:** Service/write acceptance, routing test, E2E, and approval gaps |
+| **Fishtown** | `5742169` | **Verified:** source token + six reads `200` | **Verified calendar:** Program `120`, 8 current-window rows; Service candidate `100214` applicability unverified | **Recorded:** pipeline `1818411`; `6445996` → `1031324174` | **Blocked:** Service/write acceptance, routing test, E2E, and approval gaps |
+| **Long Island City** | `985499` | **Verified:** source token + six reads `200` | **Verified calendar:** Program `120`, 2 current-window rows; Service candidate `103806` applicability unverified | **Recorded:** pipeline `1460258`; `5321400` → `11096161` | **Blocked:** Service/write acceptance, extra gender mapping, routing test, E2E, and approval gaps |
+| **Manhattan–FiDi** | `5728093` | **Verified:** source token + six reads `200` | **Verified calendar:** Program `120`, 4 current-window rows; Service candidate `101407` applicability unverified | **Recorded:** pipeline `2477627`; `8517561` → `8517634` | **Blocked:** Service/write acceptance, routing test, E2E, and approval gaps |
+| **Newton** | `5751422` | **Verified:** source token + six reads `200` | Program `120` catalog entry, but zero occurrences; Service candidates `100432` and `100183`; applicability unverified | **Recorded:** pipeline `873061120`; `1307706690` → `1307706693` | **Blocked:** trial schedule, Service/write acceptance, routing test, E2E, and approval gaps |
+| **Ridge Hill** | `5748154` | **Verified:** source token and all six read probes `200` | **Verified calendar/config:** Program `61`, 1 current-window row; Service `100328`; required fields and family relationships visible | **Verified live:** pipeline `830977386`; `1231873814` → `1231873816`; customer workflows remain off | **Disabled control; routing test, E2E acceptance, and design approval required** |
 
 Known Site IDs and existing six-site pipeline mappings are configuration facts. The required-field, relationship, gender, Program, Service-name, and current class catalogs are now readable per site. Price/Program/location applicability, email settings, staff write permissions, checkout, and end-to-end behavior still require explicit per-site verification.
 
@@ -201,7 +215,7 @@ The application owns orchestration and IDs, not customer email. HubSpot owns Cou
 ## Current blockers and unsafe fallbacks
 
 1. **Authorization is complete; launch configuration is not.** All seven source tokens and read probes succeed, but authorization alone does not verify any write, checkout, notification, or family-account behavior.
-2. **Trial inventory is absent outside Ridge Hill.** No expansion club exposes a Kid's Trials Program. Brooklyn, Fishtown, LIC, and FiDi expose no kids-trial Service-name candidate; Newton and Allston expose `100183`, but its price and applicability remain unverified. Hard-coding Ridge Hill IDs across sites would corrupt relationships or fail checkout/enrollment.
+2. **Calendar inventory is present, but booking configuration is incomplete.** Brooklyn, Fishtown, LIC, and FiDi now expose Program `120` with upcoming occurrences, and Ridge Hill exposes Program `61`. The expansion clubs' `Kid's Trial` Service candidates remain unverified for price, Program/location applicability, and checkout. Newton and Allston have no Program `120` occurrences. IDs remain site-scoped; hard-coding Ridge Hill Service or relationship IDs across sites could corrupt profiles or fail checkout/enrollment.
 3. **Unsafe calendar fallback was replaced with an explicit read-only schedule boundary.** A site without `kidTrialProgramId` never runs a broad “children” query. Preview reads use dated authorization plus a site-scoped `kidsCalendarProgramIds` allowlist, query each Program separately in public consumer mode, paginate, re-filter the response, and label the rows as regular classes rather than trial availability. An empty allowlist returns an empty calendar without calling Mindbody. Booking and client creation still require the dedicated trial Program, Service, full launch evidence, and write allowlist.
 4. **The production AddClient contract must stay tied to consumer-mode evidence.** The kids-trial route now collects a real household address, separate parent/child Mindbody gender values, and a truthful emergency contact instead of writing studio, demographic, or contact placeholders. Consumer-mode reads require `EmergContact` at all seven sites. Ridge Hill also requires `ReferredBy` (the truthful application-derived value is `Online`), while LIC exposes an extra `Not Specified` gender. The six non-Ridge-Hill sites still need controlled write acceptance before launch.
 5. **Relationship catalogs match, but writes are unproven.** `-6` Parent/Guardian and `-4` Pays For appear at all seven sites. Record them per site and validate the controlled write matrix before treating the shared values as launch evidence.
@@ -217,7 +231,7 @@ The application owns orchestration and IDs, not customer email. HubSpot owns Cou
 
 ## Safety changes implemented in this branch
 
-- Added all seven Site IDs to the shared location registry. All seven are now `trialBookingEnabled=false`; Ridge Hill's verified static IDs remain recorded while its missing live evidence stays explicit.
+- Added all seven Site IDs to the shared location registry. All seven remain `trialBookingEnabled=false`; Brooklyn, LIC, FiDi, and Fishtown now use site-scoped Program `120`, Ridge Hill remains on Program `61`, and Newton/Allston remain without configured dedicated trial inventory.
 - Added a default-off global public launch gate plus per-club dated evidence for Mindbody authorization, upcoming inventory, HubSpot routing, end-to-end acceptance, and design-owner approval. Static IDs alone can no longer expose a club.
 - Added a server-only irreversible-write gate: real Mindbody writes require `MINDBODY_REAL_WRITES_ENABLED=true` and the exact Site ID in `MINDBODY_REAL_WRITE_SITE_IDS`. Production refuses the `-99` sandbox as a write target, and all four mutation helpers enforce the guard.
 - Replaced the kids-trial studio-address and hard-coded-gender placeholders with explicit household address plus parent/child Mindbody gender intake; these private fields are written only to Mindbody, not HubSpot.

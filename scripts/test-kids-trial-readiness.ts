@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import type { DealPipelineConfig } from "../config/hubspot-deals";
-import type { Location } from "../config/locations";
+import { LOCATIONS, type Location } from "../config/locations.ts";
 import type { LocationTrialConfig } from "../config/trial-config";
 
 const readinessModuleUrl = new URL("../config/kids-trial-readiness.ts", import.meta.url).href;
@@ -163,6 +163,54 @@ try {
     location: previewLocation,
   });
   assert.equal(previewWithoutService.ready, true);
+
+  // Production configuration: Program 120 is site-scoped to the four clubs
+  // with verified live occurrences. Ridge Hill remains on its established
+  // Program 61, while the two clubs still awaiting schedules stay on their
+  // explicit regular-kids preview boundaries.
+  const expectedProgramIds: Record<string, number | undefined> = {
+    brooklyn: 120,
+    lic: 120,
+    fidi: 120,
+    ridgehill: 61,
+    fishtown: 120,
+    newton: undefined,
+    allston: undefined,
+  };
+  const inventoryVerified = new Set([
+    "brooklyn",
+    "lic",
+    "fidi",
+    "ridgehill",
+    "fishtown",
+  ]);
+
+  for (const configuredLocation of LOCATIONS) {
+    const expectedProgramId = expectedProgramIds[configuredLocation.id];
+    assert.equal(configuredLocation.kidTrialProgramId, expectedProgramId);
+    assert.equal(configuredLocation.trialBookingEnabled, false);
+    assert.equal(
+      configuredLocation.trialLaunchEvidence?.upcomingTrialInventoryVerified,
+      inventoryVerified.has(configuredLocation.id),
+    );
+
+    const configuredPreview = getKidsTrialCalendarPreviewReadiness({
+      location: configuredLocation,
+    });
+    assert.equal(configuredPreview.ready, true);
+    if (!configuredPreview.ready) continue;
+
+    if (expectedProgramId != null) {
+      assert.equal(configuredPreview.scope, "trial_program");
+      assert.deepEqual(configuredPreview.programIds, [expectedProgramId]);
+    } else {
+      assert.equal(configuredPreview.scope, "kids_schedule");
+      assert.deepEqual(
+        configuredPreview.programIds,
+        configuredLocation.id === "newton" ? [37, 36] : [],
+      );
+    }
+  }
 } finally {
   if (originalPublicLaunch === undefined) {
     delete process.env.NEXT_PUBLIC_KIDS_TRIAL_PUBLIC_LAUNCH_ENABLED;
