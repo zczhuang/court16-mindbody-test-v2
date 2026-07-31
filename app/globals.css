@@ -479,8 +479,9 @@ strong { font-weight: 800; }
 .detail-count { color: var(--c16-ink-3); font-size: 9px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; }
 .class-list { max-height: calc(100vh - 205px); display: flex; flex-direction: column; gap: 10px; overflow-y: auto; padding: 0 7px 7px 0; }
 .class-card { display: flex; flex-direction: column; gap: 9px; padding: 17px; border: 2px solid var(--c16-black); border-radius: var(--r-lg); background: white; text-align: left; transition: transform .15s ease, box-shadow .15s ease, background .15s ease; }
-.class-card:hover { transform: translate(-2px, -2px); box-shadow: 5px 5px 0 var(--c16-black); }
+.class-card:hover:not(:disabled) { transform: translate(-2px, -2px); box-shadow: 5px 5px 0 var(--c16-black); }
 .class-card.on { background: var(--c16-yellow); box-shadow: 5px 5px 0 var(--c16-black); }
+.class-card--disabled { border-color: var(--c16-line); background: #f1eee5; color: var(--c16-ink-3); cursor: not-allowed; opacity: .82; }
 .cc-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .lvl-chip, .spots-chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 999px; font-size: 9px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; }
 .lvl-chip { background: var(--c16-yellow-soft); }
@@ -493,6 +494,8 @@ strong { font-weight: 800; }
 .cc-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--c16-ink-3); font-size: 12px; }
 .cc-meta .mono { color: var(--c16-black); font-weight: 800; }
 .cc-meta .sep { color: var(--c16-line); }
+.cc-window { padding: 8px 10px; border-left: 4px solid var(--c16-yellow); background: var(--c16-yellow-soft); color: var(--c16-ink-2); font-size: 11px; font-weight: 800; line-height: 1.35; }
+.class-card--disabled .cc-window { border-left-color: var(--c16-ink-3); background: white; color: var(--c16-ink-3); }
 .cc-go { display: inline-flex; align-items: center; gap: 7px; margin-top: 3px; font-size: 12px; font-weight: 800; }
 .class-list-preview-note { margin: 0 0 4px; padding: 8px 12px; border: 1.5px solid var(--c16-black); border-left: 6px solid var(--c16-yellow); border-radius: var(--r-md); background: #fff; color: var(--c16-ink-2); font-size: 12px; font-weight: 600; }
 .class-list-preview-note a { color: inherit; font-weight: 800; text-decoration: underline; text-decoration-color: var(--c16-yellow); text-underline-offset: 3px; }

@@ -37,7 +37,7 @@ import {
   siteLocalToUtcIso,
 } from "@/lib/class-utils";
 import { getLocationById } from "@/config/locations";
-import { maxBookableDateStr, TRIAL_CONFIG, TRIAL_MAX_ADVANCE_DAYS } from "@/config/trial-config";
+import { TRIAL_CONFIG } from "@/config/trial-config";
 import { getDealPipeline, getHubspotPreferredLocation } from "@/config/hubspot-deals";
 import { getKidsTrialReadiness } from "@/config/kids-trial-readiness";
 import type { MindBodyClass, TrialRequest } from "@/lib/trial-types";
@@ -67,11 +67,83 @@ import {
 import {
   buildHubspotTrialReportingFields,
 } from "@/lib/trial-reporting";
+import {
+  getTrialBookingWindowState,
+  isValidMindbodyClassStart,
+  TRIAL_BOOKING_WINDOW_DAYS,
+  TRIAL_MIN_BOOKING_NOTICE_HOURS,
+} from "@/lib/trial-booking-window";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const WAIVER_VERSION = "v1.0";
+
+function bookingWindowFailure(
+  classStartsAt: string,
+  timezone: string,
+  correlationId: string,
+): NextResponse | null {
+  if (!isValidMindbodyClassStart(classStartsAt)) {
+    return NextResponse.json(
+      {
+        ok: false,
+        correlationId,
+        code: "trial_class_start_invalid",
+        error: "The selected class start time is invalid. Please refresh and choose again.",
+      },
+      { status: 400 },
+    );
+  }
+  let classStartsAtUtc: string;
+  try {
+    classStartsAtUtc = siteLocalToUtcIso(classStartsAt, timezone);
+  } catch {
+    return NextResponse.json(
+      {
+        ok: false,
+        correlationId,
+        code: "trial_class_start_invalid",
+        error: "The selected class start time is invalid. Please refresh and choose again.",
+      },
+      { status: 400 },
+    );
+  }
+
+  const state = getTrialBookingWindowState(classStartsAtUtc);
+  if (state.status === "open") return null;
+  if (state.status === "not_open") {
+    return NextResponse.json(
+      {
+        ok: false,
+        correlationId,
+        code: "trial_booking_not_open",
+        error: `Trial booking opens ${TRIAL_BOOKING_WINDOW_DAYS} days before class. Please check back closer to the class date.`,
+      },
+      { status: 409 },
+    );
+  }
+  if (state.status === "closed") {
+    return NextResponse.json(
+      {
+        ok: false,
+        correlationId,
+        code: "trial_booking_closed",
+        error: `Online trial booking requires at least ${TRIAL_MIN_BOOKING_NOTICE_HOURS} hours' notice. Please choose another class.`,
+      },
+      { status: 409 },
+    );
+  }
+  return NextResponse.json(
+    {
+      ok: false,
+      correlationId,
+      code: "trial_class_start_invalid",
+      error: "The selected class start time is invalid. Please refresh and choose again.",
+    },
+    { status: 400 },
+  );
+}
 
 /** Map an integer age to the closest HubSpot `childage` band value. */
 function ageToBand(age: number): string {
@@ -140,6 +212,16 @@ export async function POST(req: Request) {
       { status: 409 },
     );
   }
+
+  // Reject classes outside the approved 7-day-to-48-hour window before any
+  // rate-limit, lock, or vendor state is touched. The canonical Mindbody
+  // occurrence is checked again below before writes begin.
+  const requestedWindowFailure = bookingWindowFailure(
+    body.classStartsAt!,
+    location.timezone,
+    correlationId,
+  );
+  if (requestedWindowFailure) return requestedWindowFailure;
 
   const rateLimit = consumeSignupRateLimit(req, "kid-trial", body.parentEmail);
   if (!rateLimit.ok) {
@@ -279,22 +361,6 @@ export async function POST(req: Request) {
   const ageBand = ageToBand(childAge);
   const mindbodyProfile = normalizeMindbodyProfileDetails(body);
 
-  // Booking window: reject requests beyond today + TRIAL_MAX_ADVANCE_DAYS
-  // (server-side authority — the calendar UI/API only hide far-out slots).
-  if (body.classStartsAt) {
-    const maxDate = maxBookableDateStr(location.timezone);
-    if (body.classStartsAt.slice(0, 10) > maxDate) {
-      return NextResponse.json(
-        {
-          ok: false,
-          correlationId,
-          error: `Trials can be booked at most ${TRIAL_MAX_ADVANCE_DAYS} days ahead (latest bookable date: ${maxDate})`,
-        },
-        { status: 400 },
-      );
-    }
-  }
-
   // Re-read the selected occurrence directly from Mindbody before creating
   // any client or HubSpot record. Browser-supplied IDs are only a selection
   // hint; without this check a hand-crafted request could target a regular
@@ -406,6 +472,12 @@ export async function POST(req: Request) {
   const classStartsAtUtc = body.classStartsAt
     ? siteLocalToUtcIso(body.classStartsAt, location.timezone)
     : undefined;
+  const canonicalWindowFailure = bookingWindowFailure(
+    body.classStartsAt!,
+    location.timezone,
+    correlationId,
+  );
+  if (canonicalWindowFailure) return canonicalWindowFailure;
 
   const bookingLedgerBase: Omit<BookingDealLedgerPatch, "bookingStatus"> = {
     correlationId,

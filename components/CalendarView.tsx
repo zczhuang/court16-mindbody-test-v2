@@ -11,13 +11,15 @@ interface Props {
   onSelectDate: (date: string) => void;
   onPrevMonth: () => void;
   onNextMonth: () => void;
+  /** Site-local today, so calendar boundaries do not depend on browser TZ. */
+  todayStr?: string;
   /** Changes only calendar language; regular kids schedule rows stay read-only. */
   contentScope?: "trial" | "kids_schedule";
   /**
-   * Last bookable date "YYYY-MM-DD" (inclusive). Days beyond it render
+   * Last visible date "YYYY-MM-DD" (inclusive). Days beyond it render
    * disabled and next-month nav stops once the window is exhausted.
    */
-  maxDateStr?: string;
+  maxVisibleDateStr?: string;
 }
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -40,12 +42,15 @@ export default function CalendarView({
   onSelectDate,
   onPrevMonth,
   onNextMonth,
+  todayStr: providedTodayStr,
   contentScope = "trial",
-  maxDateStr,
+  maxVisibleDateStr,
 }: Props) {
   const kidsSchedule = contentScope === "kids_schedule";
   const today = new Date();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const todayStr =
+    providedTodayStr ??
+    `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
   const classesByDate = useMemo(() => {
     const map: Record<string, TrialClass[]> = {};
@@ -68,7 +73,7 @@ export default function CalendarView({
     month === 12
       ? `${year + 1}-01-01`
       : `${year}-${String(month + 1).padStart(2, "0")}-01`;
-  const nextDisabled = !!maxDateStr && nextMonthFirst > maxDateStr;
+  const nextDisabled = !!maxVisibleDateStr && nextMonthFirst > maxVisibleDateStr;
 
   return (
     <div className={`cal ${kidsSchedule ? "cal--kids-schedule" : ""}`}>
@@ -132,7 +137,7 @@ export default function CalendarView({
           const isSelected = dateStr === selectedDate;
           const isToday = dateStr === todayStr;
           const isPast = dateStr < todayStr;
-          const isBeyondWindow = !!maxDateStr && dateStr > maxDateStr;
+          const isBeyondWindow = !!maxVisibleDateStr && dateStr > maxVisibleDateStr;
           const fullDate = FULL_DATE_FORMATTER.format(new Date(year, month - 1, day));
           const availabilityLabel = has
             ? kidsSchedule
@@ -177,7 +182,7 @@ export default function CalendarView({
 
       <div className="cal-legend">
         <span>
-          <span className="sw sw-has" /> Classes {kidsSchedule ? "scheduled" : "available"}
+          <span className="sw sw-has" /> {kidsSchedule ? "Classes scheduled" : "Trial times shown"}
         </span>
         <span>
           <span className="sw sw-sel" /> Selected

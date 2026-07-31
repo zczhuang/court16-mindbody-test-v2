@@ -25,10 +25,10 @@ import {
   filterAvailable,
 } from "@/lib/class-utils";
 import {
-  maxBookableDateStr,
+  maxCalendarDateStr,
   todayStrInTz,
   TRIAL_CONFIG,
-  TRIAL_MAX_ADVANCE_DAYS,
+  TRIAL_CALENDAR_DISPLAY_DAYS,
 } from "@/config/trial-config";
 import { getDealPipeline, getHubspotPreferredLocation } from "@/config/hubspot-deals";
 import {
@@ -39,6 +39,11 @@ import {
 import type { ChildEntry } from "@/components/AgeSelector";
 
 type Step = "location" | "calendar" | "confirmed";
+
+function siteCalendarYearMonth(location: Location): [number, number] {
+  const [year, month] = todayStrInTz(location.timezone).split("-").map(Number);
+  return [year, month];
+}
 
 function isTrialLocationReady(location: Location | undefined): boolean {
   if (!location) return false;
@@ -99,8 +104,11 @@ function TrialInner() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const now = new Date();
-  const [calYear, setCalYear] = useState(now.getFullYear());
-  const [calMonth, setCalMonth] = useState(now.getMonth() + 1);
+  const initialCalendar = preResolved
+    ? siteCalendarYearMonth(preResolved)
+    : ([now.getFullYear(), now.getMonth() + 1] as const);
+  const [calYear, setCalYear] = useState(initialCalendar[0]);
+  const [calMonth, setCalMonth] = useState(initialCalendar[1]);
   const previewScope = getTrialLocationPreviewScope(location ?? undefined);
   const previewOnly = previewScope != null;
   const kidsSchedulePreview = previewScope === "kids_schedule";
@@ -122,6 +130,9 @@ function TrialInner() {
 
     const loc = urlLocation ? getLocationById(urlLocation) : undefined;
     if (isTrialLocationBrowsable(loc)) {
+      const [year, month] = siteCalendarYearMonth(loc);
+      setCalYear(year);
+      setCalMonth(month);
       setLocation(loc);
       setGlobalLoc(loc);
       setStep("calendar");
@@ -143,11 +154,11 @@ function TrialInner() {
       setError(null);
       setAllClasses([]);
       try {
-        // Fetch the complete booking window in one request. A month-only
+        // Fetch the complete display window in one request. A month-only
         // request falsely showed an empty state near month-end when valid
         // slots existed in the first days of the next month.
         const startDate = todayStrInTz(loc.timezone);
-        const endDate = maxBookableDateStr(loc.timezone);
+        const endDate = maxCalendarDateStr(loc.timezone);
         // The server selects either the dedicated trial Program or this site's
         // explicit regular-kids Program allowlist. It never performs a broad
         // kids-trial fallback query.
@@ -218,6 +229,9 @@ function TrialInner() {
 
   function selectLoc(loc: Location) {
     if (!isTrialLocationBrowsable(loc)) return;
+    const [year, month] = siteCalendarYearMonth(loc);
+    setCalYear(year);
+    setCalMonth(month);
     setLocation(loc);
     setGlobalLoc(loc);
     setSelectedDate(null);
@@ -286,15 +300,15 @@ function TrialInner() {
   }
 
   function handleNextMonth() {
-    // Booking window: don't navigate past the month containing the last
-    // bookable date (CalendarView also disables the button; this is belt
+    // Display window: don't navigate past the month containing the last
+    // visible date (CalendarView also disables the button; this is belt
     // and suspenders).
     if (location) {
       const nextFirst =
         calMonth === 12
           ? `${calYear + 1}-01-01`
           : `${calYear}-${String(calMonth + 1).padStart(2, "0")}-01`;
-      if (nextFirst > maxBookableDateStr(location.timezone)) return;
+      if (nextFirst > maxCalendarDateStr(location.timezone)) return;
     }
     setSelectedDate(null);
     setSelectedClass(null);
@@ -443,7 +457,7 @@ function TrialInner() {
                   <p className="trial-preview-note">
                     {kidsSchedulePreview
                       ? `Schedule preview — these are regular kids classes, not confirmed trial openings. Choose a class to preview the full request form. Final submission stays locked until dedicated trial inventory and launch checks are verified for ${location.name}.`
-                      : `Trial form preview — choose a time to review the full request experience. Final submission stays locked until site-specific booking setup and launch checks are verified for ${location.name}.`}
+                      : `Trial form preview — times are shown for four weeks. Booking opens 7 days before each class and closes 48 hours before it starts. Final submission stays locked until site-specific booking setup and launch checks are verified for ${location.name}.`}
                   </p>
                 )}
               </div>
@@ -517,15 +531,13 @@ function TrialInner() {
                   {kidsSchedulePreview ? (
                     <>
                       {location.name} has no public kids classes in the next{" "}
-                      {TRIAL_MAX_ADVANCE_DAYS}
-                      {TRIAL_MAX_ADVANCE_DAYS === 1 ? " day" : " days"}. Our team can help
+                      {TRIAL_CALENDAR_DISPLAY_DAYS} days. Our team can help
                       with opening details and trial options.
                     </>
                   ) : (
                     <>
                       {location.name} has no kids-trial classes in the next{" "}
-                      {TRIAL_MAX_ADVANCE_DAYS}
-                      {TRIAL_MAX_ADVANCE_DAYS === 1 ? " day" : " days"}. Our team can help
+                      {TRIAL_CALENDAR_DISPLAY_DAYS} days. Our team can help
                       find the next opening.
                     </>
                   )}
@@ -602,14 +614,17 @@ function TrialInner() {
                       onSelectDate={handleDateSelect}
                       onPrevMonth={handlePrevMonth}
                       onNextMonth={handleNextMonth}
+                      todayStr={todayStrInTz(location.timezone)}
                       contentScope={kidsSchedulePreview ? "kids_schedule" : "trial"}
-                      maxDateStr={maxBookableDateStr(location.timezone)}
+                      maxVisibleDateStr={maxCalendarDateStr(location.timezone)}
                     />
                   </div>
                   <aside className="detail-col">
                     <DayDetail
                       classes={dayClasses}
                       date={selectedDate}
+                      timezone={location.timezone}
+                      bookingPolicy="kids_trial"
                       interaction={
                         previewScope
                           ? {

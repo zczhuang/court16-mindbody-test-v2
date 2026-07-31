@@ -2,9 +2,15 @@
 
 import type { TrialClass } from "@/lib/trial-types";
 import type { KidsTrialCalendarPreviewScope } from "@/config/kids-trial-readiness";
+import {
+  trialBookingWindowMessage,
+  type TrialBookingWindowState,
+} from "@/lib/trial-booking-window";
 
 interface Props {
   trialClass: TrialClass;
+  timezone?: string;
+  bookingWindow?: TrialBookingWindowState;
   interaction:
     | {
         kind: "select";
@@ -19,7 +25,12 @@ interface Props {
       };
 }
 
-export default function ClassCard({ trialClass, interaction }: Props) {
+export default function ClassCard({
+  trialClass,
+  timezone,
+  bookingWindow,
+  interaction,
+}: Props) {
   const spotTone =
     trialClass.spotsAvailable <= 1
       ? "low"
@@ -27,6 +38,10 @@ export default function ClassCard({ trialClass, interaction }: Props) {
         ? "mid"
         : "ok";
   const showCapacity = interaction.kind === "select" || interaction.scope === "trial_program";
+  const bookingMessage = bookingWindow
+    ? trialBookingWindowMessage(bookingWindow, timezone ?? "America/New_York")
+    : null;
+  const liveBookingLocked = interaction.kind === "select" && bookingMessage != null;
 
   const content = (
     <>
@@ -47,12 +62,15 @@ export default function ClassCard({ trialClass, interaction }: Props) {
         <span className="sep">·</span>
         <span>{trialClass.coach}</span>
       </div>
-      <div className="cc-go">
-        {interaction.kind === "select"
-          ? "Request this class"
-          : "Preview trial request"}
-        <span aria-hidden="true">→</span>
-      </div>
+      {bookingMessage && <div className="cc-window">{bookingMessage}</div>}
+      {!liveBookingLocked && (
+        <div className="cc-go">
+          {interaction.kind === "select"
+            ? "Request this class"
+            : "Preview trial request"}
+          <span aria-hidden="true">→</span>
+        </div>
+      )}
     </>
   );
 
@@ -63,7 +81,7 @@ export default function ClassCard({ trialClass, interaction }: Props) {
         className={`class-card class-card--preview ${interaction.isSelected ? "on" : ""}`}
         onClick={() => interaction.onSelect(trialClass)}
         aria-pressed={interaction.isSelected}
-        aria-label={`Preview the trial request form for ${trialClass.name}, ${trialClass.time} to ${trialClass.endTime}; final submission is unavailable until the club's booking setup and launch checks are verified`}
+        aria-label={`Preview the trial request form for ${trialClass.name}, ${trialClass.time} to ${trialClass.endTime}${bookingMessage ? `; ${bookingMessage}` : ""}; final submission is unavailable until the club's booking setup and launch checks are verified`}
       >
         {content}
       </button>
@@ -73,8 +91,12 @@ export default function ClassCard({ trialClass, interaction }: Props) {
   return (
     <button
       type="button"
-      className={`class-card ${interaction.isSelected ? "on" : ""}`}
-      onClick={() => interaction.onSelect(trialClass)}
+      className={`class-card ${liveBookingLocked ? "class-card--disabled" : ""} ${interaction.isSelected ? "on" : ""}`}
+      disabled={liveBookingLocked}
+      onClick={() => {
+        if (!liveBookingLocked) interaction.onSelect(trialClass);
+      }}
+      aria-label={`${trialClass.name}, ${trialClass.time} to ${trialClass.endTime}${bookingMessage ? `; ${bookingMessage}` : "; request this class"}`}
     >
       {content}
     </button>

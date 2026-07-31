@@ -3,10 +3,18 @@
 import ClassCard from "@/components/ClassCard";
 import type { TrialClass } from "@/lib/trial-types";
 import type { KidsTrialCalendarPreviewScope } from "@/config/kids-trial-readiness";
+import { siteLocalToUtcIso } from "@/lib/class-utils";
+import {
+  getTrialBookingWindowState,
+  isValidMindbodyClassStart,
+  type TrialBookingWindowState,
+} from "@/lib/trial-booking-window";
 
 interface Props {
   classes: TrialClass[];
   date: string | null;
+  timezone?: string;
+  bookingPolicy?: "kids_trial";
   interaction:
     | {
         kind: "select";
@@ -29,7 +37,25 @@ const MONTH_NAMES = [
   "July", "August", "September", "October", "November", "December",
 ];
 
-export default function DayDetail({ classes, date, interaction }: Props) {
+function bookingWindowForClass(
+  trialClass: TrialClass,
+  timezone: string,
+): TrialBookingWindowState {
+  if (!isValidMindbodyClassStart(trialClass.startsAt)) return { status: "invalid" };
+  try {
+    return getTrialBookingWindowState(siteLocalToUtcIso(trialClass.startsAt, timezone));
+  } catch {
+    return { status: "invalid" };
+  }
+}
+
+export default function DayDetail({
+  classes,
+  date,
+  timezone,
+  bookingPolicy,
+  interaction,
+}: Props) {
   const kidsSchedule = interaction.kind === "preview" && interaction.scope === "kids_schedule";
   const previewOnly = interaction.kind === "preview";
 
@@ -53,7 +79,7 @@ export default function DayDetail({ classes, date, interaction }: Props) {
           {kidsSchedule ? "No kids classes on this day" : "No trials on this day"}
         </div>
         <div className="es-sub">
-          Try another highlighted day for {kidsSchedule ? "scheduled kids" : "available trial"}{" "}
+          Try another highlighted day for {kidsSchedule ? "scheduled kids" : "scheduled trial"}{" "}
           classes.
         </div>
       </div>
@@ -69,7 +95,7 @@ export default function DayDetail({ classes, date, interaction }: Props) {
         <div className="eyebrow">{dLabel}</div>
         <div className="detail-count">
           {classes.length} {classes.length === 1 ? "class" : "classes"}{" "}
-          {kidsSchedule ? "scheduled" : "available"}
+          {kidsSchedule ? "scheduled" : "shown"}
         </div>
       </div>
       {previewOnly && (
@@ -84,6 +110,12 @@ export default function DayDetail({ classes, date, interaction }: Props) {
           <ClassCard
             key={`${c.classId}-${c.date}`}
             trialClass={c}
+            timezone={timezone}
+            bookingWindow={
+              bookingPolicy === "kids_trial" && timezone && !kidsSchedule
+                ? bookingWindowForClass(c, timezone)
+                : undefined
+            }
             interaction={
               interaction.kind === "preview"
                 ? {

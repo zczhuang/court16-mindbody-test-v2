@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { authedMindbodyGet } from "@/lib/mindbody";
 import { createLogger, makeCorrelationId } from "@/lib/logger";
 import { LOCATIONS, getLocationById } from "@/config/locations";
-import { maxBookableDateStr, todayStrInTz, TRIAL_CONFIG } from "@/config/trial-config";
+import { maxCalendarDateStr, todayStrInTz, TRIAL_CONFIG } from "@/config/trial-config";
 import { getDealPipeline, getHubspotPreferredLocation } from "@/config/hubspot-deals";
 import { filterConfiguredKidsSchedule } from "@/lib/kids-calendar";
 import { toCalendarClassDto } from "@/lib/calendar-dto";
@@ -159,7 +159,7 @@ export async function GET(request: NextRequest) {
   const loc = getLocationById(locationId)!;
   if (intent === "kid_trial") {
     const today = todayStrInTz(loc.timezone);
-    const maxDate = maxBookableDateStr(loc.timezone);
+    const maxDate = maxCalendarDateStr(loc.timezone);
     if (startDate < today || endDate > maxDate) {
       return NextResponse.json(
         { error: `Kids calendar dates must stay between ${today} and ${maxDate}` },
