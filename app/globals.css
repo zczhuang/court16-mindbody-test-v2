@@ -418,8 +418,6 @@ strong { font-weight: 800; }
   margin: 14px 0 0;
   padding: 10px 14px;
   border: 2px solid var(--c16-black);
-  border-left-width: 8px;
-  border-left-color: var(--c16-yellow);
   border-radius: var(--r-md);
   background: #fff;
   color: var(--c16-ink-2);
@@ -497,8 +495,6 @@ strong { font-weight: 800; }
 .cc-window { padding: 8px 10px; border-left: 4px solid var(--c16-yellow); background: var(--c16-yellow-soft); color: var(--c16-ink-2); font-size: 11px; font-weight: 800; line-height: 1.35; }
 .class-card--disabled .cc-window { border-left-color: var(--c16-ink-3); background: white; color: var(--c16-ink-3); }
 .cc-go { display: inline-flex; align-items: center; gap: 7px; margin-top: 3px; font-size: 12px; font-weight: 800; }
-.class-list-preview-note { margin: 0 0 4px; padding: 8px 12px; border: 1.5px solid var(--c16-black); border-radius: var(--r-md); background: #fff; color: var(--c16-ink-2); font-size: 12px; font-weight: 600; }
-.class-list-preview-note a { color: inherit; font-weight: 800; text-decoration: underline; text-decoration-color: var(--c16-yellow); text-underline-offset: 3px; }
 .class-card--preview { background: var(--c16-paper-2); }
 .class-card--preview .cc-go { color: var(--c16-ink-2); }
 

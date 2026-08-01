@@ -33,6 +33,12 @@ assert.match(dayDetail, /kind: "preview"[\s\S]*?onPick: \(tc: TrialClass\) => vo
 assert.match(classCard, /class-card--preview[\s\S]*?onClick=\{\(\) => interaction\.onSelect/);
 assert.doesNotMatch(classCard, /class-card--readonly/);
 
+// Keep one complete preview-policy notice above the calendar. Repeating a
+// shorter submission-lock notice in the selected-day panel wastes space and
+// makes the two-column layout feel duplicated.
+assert.match(trialPage, /className="trial-preview-note"/);
+assert.doesNotMatch(dayDetail, /class-list-preview-note/);
+
 // Only the final panel is locked: panel one can advance, but an Enter-key or
 // programmatic submit on panel two returns before the live callback.
 assert.match(requestForm, /submissionEnabled: boolean/);
