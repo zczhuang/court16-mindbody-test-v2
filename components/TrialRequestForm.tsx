@@ -440,7 +440,7 @@ export default function TrialRequestForm({
               </div>
 
               <div className="trf-section">
-                <div className="eyebrow">Child · no separate login</div>
+                <div className="eyebrow">Child</div>
                 <div className="trf-grid">
                   <Field label="First name *">
                     <input

@@ -108,6 +108,8 @@ assert(
   "both gender fields must appear before panel two",
 );
 assert.doesNotMatch(requestForm, />Profile details</);
+assert.match(requestForm, /<div className="eyebrow">Child<\/div>/);
+assert.doesNotMatch(requestForm, /Child · no separate login/);
 assert(
   genderValidation >= 0 && genderValidation < familyStepTransition,
   "gender validation must run before panel one advances",
