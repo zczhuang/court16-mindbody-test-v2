@@ -325,20 +325,24 @@ export const LOCATIONS: Location[] = [
     publicBookingEnabled: true,
     trialBookingEnabled: false,
     trialCalendarPreviewEnabled: true,
+    // Retained as the explicit regular-kids fallback; Program 120 below now
+    // drives the dedicated trial-calendar preview.
     kidsCalendarProgramIds: [37, 36],
+    // Live read-only audit 2026-08-04: Program 120 (Kids' Trials) returned
+    // ten open occurrences in the current 28-day app window.
+    kidTrialProgramId: 120,
     trialUnavailableReason: "Kids trial scheduling is being connected for this club.",
-    // Live read-only audit 2026-07-20: source token + all six probes 200
-    // after the owner approved the activation link. Authorization only —
-    // trial inventory, routing, and acceptance remain unverified.
+    // Authorization and upcoming trial inventory are verified. Booking remains
+    // gated on the site-specific Service, routing, and acceptance.
     trialLaunchEvidence: {
       mindbodySiteAuthorized: true,
-      upcomingTrialInventoryVerified: false,
+      upcomingTrialInventoryVerified: true,
       hubspotRoutingVerified: false,
       hubspotDealLedgerVerified: false,
       durableMutationLockVerified: false,
       endToEndAcceptancePassed: false,
       designOwnerApproved: false,
-      reviewedAt: "2026-07-20",
+      reviewedAt: "2026-08-04",
     },
     loginUrl: LOGIN_URLS.newton,
   },
@@ -358,21 +362,25 @@ export const LOCATIONS: Location[] = [
     publicBookingEnabled: false,
     trialBookingEnabled: false,
     trialCalendarPreviewEnabled: true,
-    // No classes appeared in either the 7-day or 60-day live audit window.
+    // Retained as an empty regular-kids fallback; Program 120 below now drives
+    // the dedicated trial-calendar preview.
     kidsCalendarProgramIds: [],
+    // Live read-only audit 2026-08-04: Program 120 (Kids' Trials) returned
+    // seven open occurrences in the current 28-day app window.
+    kidTrialProgramId: 120,
     trialUnavailableReason: "Opening details and kids trial scheduling are being finalized.",
-    // Live read-only audit 2026-07-20: source token + all six probes 200
-    // after the owner approved the activation link. Authorization only —
-    // trial inventory, routing, and acceptance remain unverified.
+    // Authorization and upcoming trial inventory are verified. Public booking
+    // also remains off while the exact address, Service, routing, and acceptance
+    // are still pending.
     trialLaunchEvidence: {
       mindbodySiteAuthorized: true,
-      upcomingTrialInventoryVerified: false,
+      upcomingTrialInventoryVerified: true,
       hubspotRoutingVerified: false,
       hubspotDealLedgerVerified: false,
       durableMutationLockVerified: false,
       endToEndAcceptancePassed: false,
       designOwnerApproved: false,
-      reviewedAt: "2026-07-20",
+      reviewedAt: "2026-08-04",
     },
   },
 ];

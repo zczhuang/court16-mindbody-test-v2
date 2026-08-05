@@ -164,18 +164,17 @@ try {
   });
   assert.equal(previewWithoutService.ready, true);
 
-  // Production configuration: Program 120 is site-scoped to the four clubs
-  // with verified live occurrences. Ridge Hill remains on its established
-  // Program 61, while the two clubs still awaiting schedules stay on their
-  // explicit regular-kids preview boundaries.
+  // Production configuration: Program 120 is site-scoped to six clubs with
+  // verified live occurrences. Ridge Hill remains on its established Program
+  // 61. Every club stays preview-only until the independent launch gates pass.
   const expectedProgramIds: Record<string, number | undefined> = {
     brooklyn: 120,
     lic: 120,
     fidi: 120,
     ridgehill: 61,
     fishtown: 120,
-    newton: undefined,
-    allston: undefined,
+    newton: 120,
+    allston: 120,
   };
   const inventoryVerified = new Set([
     "brooklyn",
@@ -183,6 +182,8 @@ try {
     "fidi",
     "ridgehill",
     "fishtown",
+    "newton",
+    "allston",
   ]);
 
   for (const configuredLocation of LOCATIONS) {
@@ -203,12 +204,6 @@ try {
     if (expectedProgramId != null) {
       assert.equal(configuredPreview.scope, "trial_program");
       assert.deepEqual(configuredPreview.programIds, [expectedProgramId]);
-    } else {
-      assert.equal(configuredPreview.scope, "kids_schedule");
-      assert.deepEqual(
-        configuredPreview.programIds,
-        configuredLocation.id === "newton" ? [37, 36] : [],
-      );
     }
   }
 } finally {

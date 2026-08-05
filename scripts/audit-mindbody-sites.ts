@@ -142,7 +142,7 @@ function toCandidate(record: NamedRecord): NamedCandidate {
 
 function isKidsTrialName(name: string): boolean {
   const childTerm = /\b(kid(?:'s|s)?|child(?:ren)?|youth|junior|teen(?:ager)?|freshman|sophomore)\b/i;
-  const trialTerm = /\b(trial|intro(?:duction|ductory)?)\b/i;
+  const trialTerm = /\b(trials?|intro(?:duction|ductory)?)\b/i;
   return childTerm.test(name) && trialTerm.test(name);
 }
 
