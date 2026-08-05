@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 const smokeModuleUrl = new URL("../lib/trial-smoke-test.ts", import.meta.url).href;
 const {
   evaluateTrialSmokeTest,
@@ -297,5 +299,55 @@ for (const reason of [
   }
   assert(threw, `asking for flags on a ${reason} rejection must throw, not return defaults`);
 }
+
+// --- Route wiring: a rejection must abort before any side effect. ---
+// Source-level assertions, matching how test-trial-e2e.ts and
+// test-trial-preview-form.ts already pin production route guarantees.
+
+const trialRoute = readFileSync(
+  new URL("../app/api/book/trial/route.ts", import.meta.url),
+  "utf8",
+);
+
+const gateCall = trialRoute.indexOf("const smokeTest = getTrialSmokeTest(");
+const gateAbort = trialRoute.indexOf('code: "trial_request_not_authorized"');
+assert(gateCall > 0, "the trial route must evaluate the smoke-test gate");
+assert(gateAbort > gateCall, "the trial route must abort on a rejected smoke result");
+
+// Every vendor/side-effect entry point must come after the abort. This is the
+// regression that matters: moving the gate below any of these would let a
+// rejected smoke request touch Mindbody or HubSpot before being refused.
+for (const sideEffect of [
+  "loadConfigFromEnv(",
+  "getMindbodyWriteGuard(",
+  "loadHubspotConfig(",
+  "getKidsTrialReadiness(",
+]) {
+  const at = trialRoute.indexOf(sideEffect);
+  assert(at > 0, `expected to find ${sideEffect} in the trial route`);
+  assert(
+    at > gateAbort,
+    `${sideEffect} must not run before a rejected smoke request is refused`,
+  );
+}
+
+// The parent AddClient call must derive its flags from the gate, never
+// hard-code them, so suppression cannot drift away from the decision.
+assert(
+  trialRoute.includes("...trialSmokeTestCommunicationFlags(smokeTest)"),
+  "parent AddClient must take its communication flags from the smoke-test gate",
+);
+assert(
+  !/^\s*SendAccountEmails:\s*true,/m.test(trialRoute),
+  "the trial route must no longer hard-code SendAccountEmails: true",
+);
+
+// The rejection reason must stay server-side; the client response must not
+// disclose which check failed or that a smoke lane exists.
+const clientFacingReason = /return NextResponse\.json\([\s\S]{0,400}?reason: smokeTest\.reason/;
+assert(
+  !clientFacingReason.test(trialRoute),
+  "the smoke-test rejection reason must not be returned to the client",
+);
 
 console.log("Trial smoke-test gate contracts passed.");

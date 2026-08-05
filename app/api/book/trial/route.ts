@@ -37,6 +37,11 @@ import {
   siteLocalToUtcIso,
 } from "@/lib/class-utils";
 import { getLocationById } from "@/config/locations";
+import {
+  TRIAL_SMOKE_TEST_HEADER,
+  getTrialSmokeTest,
+  trialSmokeTestCommunicationFlags,
+} from "@/lib/trial-smoke-test";
 import { TRIAL_CONFIG } from "@/config/trial-config";
 import { getDealPipeline, getHubspotPreferredLocation } from "@/config/hubspot-deals";
 import { getKidsTrialReadiness } from "@/config/kids-trial-readiness";
@@ -188,6 +193,34 @@ export async function POST(req: Request) {
     return NextResponse.json(
       { ok: false, correlationId, error: `unknown locationId: ${body.locationId}` },
       { status: 400 },
+    );
+  }
+
+  // Resolve smoke-test intent as soon as the club is known, before readiness,
+  // Mindbody, HubSpot, the distributed lock, or any other side effect. A
+  // request that declared smoke intent but failed to qualify must abort here,
+  // never continue as a normal booking: Mindbody has no client-delete API, so
+  // a real family record for a fake child would be permanent.
+  const smokeTest = getTrialSmokeTest(
+    location.siteId,
+    req.headers.get(TRIAL_SMOKE_TEST_HEADER),
+  );
+  if (smokeTest.mode === "rejected") {
+    log.warn("trial.smoke-test.rejected", {
+      locationId: location.id,
+      siteId: location.siteId,
+      reason: smokeTest.reason,
+    });
+    // The reason is deliberately server-side only; the client is not told
+    // whether this deployment has a smoke lane or which check failed.
+    return NextResponse.json(
+      {
+        ok: false,
+        correlationId,
+        code: "trial_request_not_authorized",
+        error: "This request could not be authorized.",
+      },
+      { status: 403 },
     );
   }
 
@@ -879,8 +912,10 @@ export async function POST(req: Request) {
           // "Add Court 16 to your Mindbody account" auto-link email actually
           // fires. MindBody defaults SendAccountEmails to false if omitted,
           // silently suppressing the canonical Mindbody Account setup CTA.
-          SendAccountEmails: true,
-          SendScheduleEmails: true,
+          // A smoke run is the only case that flips these to false. The helper
+          // throws rather than answering for a rejected request, so this line
+          // cannot silently emit production defaults for one.
+          ...trialSmokeTestCommunicationFlags(smokeTest),
         });
         trace.push({ step: "addClient (parent)", status: "ok", data: { id: parent.Id } });
         await persistFamilyProvisioningMarker(
