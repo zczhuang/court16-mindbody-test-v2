@@ -102,6 +102,23 @@ function asString(value: unknown, context: string): string {
   return value;
 }
 
+/**
+ * Like asString, but tolerates "".
+ *
+ * HubSpot permits an enumeration option whose value and label are both empty,
+ * and this portal has two of them (`test` and `type_of_class`). Rejecting the
+ * whole read for an unrelated property nobody manages here would block every
+ * plan, verify, and apply. An empty value is still a value: managed properties
+ * compare option values by exact equality, so a blank one simply fails to match
+ * a definition rather than slipping past the compatibility check.
+ */
+function asStringAllowingEmpty(value: unknown, context: string): string {
+  if (typeof value !== "string") {
+    throw new Error(`HubSpot returned an invalid ${context}.`);
+  }
+  return value;
+}
+
 function asOptionalBoolean(value: unknown, context: string): boolean | undefined {
   if (value === undefined) return undefined;
   if (typeof value !== "boolean") {
@@ -144,7 +161,10 @@ function parseProperties(value: unknown): ExistingProperty[] {
     const options = property.options.map((option, optionIndex) => {
       const parsed = asObject(option, `Deal property ${index} option ${optionIndex}`);
       return {
-        value: asString(parsed.value, `Deal property ${index} option ${optionIndex} value`),
+        value: asStringAllowingEmpty(
+          parsed.value,
+          `Deal property ${index} option ${optionIndex} value`,
+        ),
         hidden: asOptionalBoolean(
           parsed.hidden,
           `Deal property ${index} option ${optionIndex} hidden flag`,
