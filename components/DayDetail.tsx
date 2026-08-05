@@ -15,6 +15,7 @@ interface Props {
   date: string | null;
   timezone?: string;
   bookingPolicy?: "kids_trial";
+  bookingWindowNowMs?: number;
   interaction:
     | {
         kind: "select";
@@ -40,10 +41,14 @@ const MONTH_NAMES = [
 function bookingWindowForClass(
   trialClass: TrialClass,
   timezone: string,
+  now?: number,
 ): TrialBookingWindowState {
   if (!isValidMindbodyClassStart(trialClass.startsAt)) return { status: "invalid" };
   try {
-    return getTrialBookingWindowState(siteLocalToUtcIso(trialClass.startsAt, timezone));
+    return getTrialBookingWindowState(
+      siteLocalToUtcIso(trialClass.startsAt, timezone),
+      now,
+    );
   } catch {
     return { status: "invalid" };
   }
@@ -54,6 +59,7 @@ export default function DayDetail({
   date,
   timezone,
   bookingPolicy,
+  bookingWindowNowMs,
   interaction,
 }: Props) {
   const kidsSchedule = interaction.kind === "preview" && interaction.scope === "kids_schedule";
@@ -106,7 +112,7 @@ export default function DayDetail({
             timezone={timezone}
             bookingWindow={
               bookingPolicy === "kids_trial" && timezone && !kidsSchedule
-                ? bookingWindowForClass(c, timezone)
+                ? bookingWindowForClass(c, timezone, bookingWindowNowMs)
                 : undefined
             }
             interaction={

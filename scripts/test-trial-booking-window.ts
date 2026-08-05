@@ -52,13 +52,14 @@ assert.equal(
   "booking opens exactly seven days before class",
 );
 assert.equal(
-  getTrialBookingWindowState(classStart, Date.parse("2026-08-05T16:00:00.000Z")).status,
+  getTrialBookingWindowState(classStart, Date.parse("2026-08-05T15:59:59.999Z")).status,
   "open",
-  "exactly 48 hours of notice is allowed",
+  "booking remains open until the 48-hour cutoff",
 );
 assert.equal(
-  getTrialBookingWindowState(classStart, Date.parse("2026-08-05T16:00:00.001Z")).status,
+  getTrialBookingWindowState(classStart, Date.parse("2026-08-05T16:00:00.000Z")).status,
   "closed",
+  "booking is unavailable at exactly 48 hours",
 );
 assert.equal(
   getTrialBookingWindowState(classStart, Date.parse("2026-08-07T16:00:00.000Z")).status,
@@ -78,28 +79,28 @@ assert.equal(
 assert.equal(
   getTrialBookingWindowState(
     "2026-03-08T14:00:00.000Z",
-    Date.parse("2026-03-06T14:00:00.000Z"),
+    Date.parse("2026-03-06T13:59:59.999Z"),
   ).status,
   "open",
 );
 assert.equal(
   getTrialBookingWindowState(
     "2026-03-08T14:00:00.000Z",
-    Date.parse("2026-03-06T14:00:00.001Z"),
+    Date.parse("2026-03-06T14:00:00.000Z"),
   ).status,
   "closed",
 );
 assert.equal(
   getTrialBookingWindowState(
     "2026-11-01T15:00:00.000Z",
-    Date.parse("2026-10-30T15:00:00.000Z"),
+    Date.parse("2026-10-30T14:59:59.999Z"),
   ).status,
   "open",
 );
 assert.equal(
   getTrialBookingWindowState(
     "2026-11-01T15:00:00.000Z",
-    Date.parse("2026-10-30T15:00:00.001Z"),
+    Date.parse("2026-10-30T15:00:00.000Z"),
   ).status,
   "closed",
 );
@@ -115,6 +116,10 @@ const bookingRoute = readFileSync(
 );
 const classCard = readFileSync(
   new URL("../components/ClassCard.tsx", import.meta.url),
+  "utf8",
+);
+const calendarView = readFileSync(
+  new URL("../components/CalendarView.tsx", import.meta.url),
   "utf8",
 );
 const bookingWindow = readFileSync(
@@ -139,11 +144,20 @@ assert.match(bookingRoute, /code: "trial_booking_not_open"/);
 assert.match(bookingRoute, /code: "trial_booking_closed"/);
 assert.doesNotMatch(bookingRoute, /TRIAL_MAX_ADVANCE_DAYS|maxBookableDateStr/);
 
-// Preview-only cards remain traversable for design review, but a future live
-// launch cannot open the form outside the approved booking window.
-assert.match(classCard, /if \(interaction\.kind === "preview"\)[\s\S]*?onClick=\{\(\) => interaction\.onSelect/);
-assert.match(classCard, /disabled=\{liveBookingLocked\}/);
+// Both preview and live cards visibly lock outside the approved window.
+assert.match(classCard, /const bookingLocked = bookingWindow != null && bookingWindow\.status !== "open"/);
+assert.match(classCard, /if \(interaction\.kind === "preview"\)[\s\S]*?disabled=\{bookingLocked\}[\s\S]*?if \(!bookingLocked\) interaction\.onSelect/);
+assert.match(classCard, /disabled=\{bookingLocked\}/);
 assert.match(classCard, /trialBookingWindowMessage/);
 assert.match(bookingWindow, /Booking opens/);
+assert.match(trialPage, /function isTrialClassBookingOpen/);
+assert.match(trialPage, /!isTrialClassBookingOpen\(tc, location\.timezone\)[\s\S]*?return/);
+assert.match(trialPage, /showSpotCounts=\{false\}/);
+assert.match(trialPage, /bookableClassIds=\{bookableClassIds\}/);
+assert.match(trialPage, /window\.setTimeout\(\(\) => setBookingWindowNowMs\(Date\.now\(\)\)/);
+assert.match(trialPage, /If a real class crosses the cutoff while its form is already open/);
+assert.match(trialPage, /setShowFormModal\(false\);[\s\S]*?setSubmissionId\(null\);[\s\S]*?setSelectedClass\(null\);/);
+assert.match(calendarView, /outside booking window/);
+assert.match(calendarView, /className="sw sw-locked"/);
 
 console.log("Trial display and booking-window contracts passed.");

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import RedesignChrome from "@/components/RedesignChrome";
 import ProgressBar from "@/components/ProgressBar";
@@ -23,7 +23,13 @@ import {
   filterByAge,
   filterByTrialEligibility,
   filterAvailable,
+  siteLocalToUtcIso,
 } from "@/lib/class-utils";
+import {
+  getTrialBookingWindowState,
+  isValidMindbodyClassStart,
+  type TrialBookingWindowState,
+} from "@/lib/trial-booking-window";
 import {
   maxCalendarDateStr,
   todayStrInTz,
@@ -75,6 +81,26 @@ function isTrialLocationBrowsable(location: Location | undefined): location is L
   return Boolean(location) && (isTrialLocationReady(location) || isTrialLocationPreviewOnly(location));
 }
 
+function getTrialClassBookingState(
+  trialClass: TrialClass,
+  timezone: string,
+  now: Date | number = Date.now(),
+): TrialBookingWindowState {
+  if (!isValidMindbodyClassStart(trialClass.startsAt)) return { status: "invalid" };
+  try {
+    return getTrialBookingWindowState(
+      siteLocalToUtcIso(trialClass.startsAt, timezone),
+      now,
+    );
+  } catch {
+    return { status: "invalid" };
+  }
+}
+
+function isTrialClassBookingOpen(trialClass: TrialClass, timezone: string): boolean {
+  return getTrialClassBookingState(trialClass, timezone).status === "open";
+}
+
 function TrialInner() {
   const router = useRouter();
   const params = useSearchParams();
@@ -103,6 +129,7 @@ function TrialInner() {
   const [submittedStatus, setSubmittedStatus] = useState<TrialSubmissionStatus>("manual_review");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [bookingWindowNowMs, setBookingWindowNowMs] = useState(() => Date.now());
   const now = new Date();
   const initialCalendar = preResolved
     ? siteCalendarYearMonth(preResolved)
@@ -112,6 +139,78 @@ function TrialInner() {
   const previewScope = getTrialLocationPreviewScope(location ?? undefined);
   const previewOnly = previewScope != null;
   const kidsSchedulePreview = previewScope === "kids_schedule";
+
+  const bookableClassIds = useMemo<ReadonlySet<number> | undefined>(() => {
+    if (!location || kidsSchedulePreview) return undefined;
+    return new Set(
+      allClasses
+        .filter(
+          (trialClass) =>
+            getTrialClassBookingState(
+              trialClass,
+              location.timezone,
+              bookingWindowNowMs,
+            ).status === "open",
+        )
+        .map((trialClass) => trialClass.classId),
+    );
+  }, [allClasses, bookingWindowNowMs, kidsSchedulePreview, location]);
+
+  // Repaint the visible availability state at the next opening or closing
+  // boundary. The click handler also performs a fresh check as a second line
+  // of defense if a browser delays this timer in a background tab.
+  useEffect(() => {
+    if (!location || kidsSchedulePreview || allClasses.length === 0) return;
+
+    let nextBoundaryMs = Number.POSITIVE_INFINITY;
+    for (const trialClass of allClasses) {
+      const state = getTrialClassBookingState(
+        trialClass,
+        location.timezone,
+        bookingWindowNowMs,
+      );
+      const boundaryIso =
+        state.status === "not_open"
+          ? state.opensAtUtc
+          : state.status === "open"
+            ? state.closesAtUtc
+            : null;
+      if (!boundaryIso) continue;
+      const boundaryMs = Date.parse(boundaryIso);
+      if (boundaryMs < nextBoundaryMs) nextBoundaryMs = boundaryMs;
+    }
+
+    if (!Number.isFinite(nextBoundaryMs)) return;
+    const delayMs = Math.min(
+      Math.max(0, nextBoundaryMs - Date.now() + 50),
+      2_147_483_647,
+    );
+    const timer = window.setTimeout(() => setBookingWindowNowMs(Date.now()), delayMs);
+    return () => window.clearTimeout(timer);
+  }, [allClasses, bookingWindowNowMs, kidsSchedulePreview, location]);
+
+  // If a real class crosses the cutoff while its form is already open, close
+  // that stale form before it can continue to imply the time is available.
+  // Synthetic sample previews use negative IDs and remain reviewable.
+  useEffect(() => {
+    if (
+      !showFormModal ||
+      !selectedClass ||
+      selectedClass.classId <= 0 ||
+      !location ||
+      kidsSchedulePreview ||
+      getTrialClassBookingState(
+        selectedClass,
+        location.timezone,
+        bookingWindowNowMs,
+      ).status === "open"
+    ) {
+      return;
+    }
+    setShowFormModal(false);
+    setSubmissionId(null);
+    setSelectedClass(null);
+  }, [bookingWindowNowMs, kidsSchedulePreview, location, selectedClass, showFormModal]);
 
   // Keep the visible step in sync with browser Back/Forward while rejecting
   // deep links for clubs that have not passed the launch-readiness gate.
@@ -258,6 +357,18 @@ function TrialInner() {
   }
 
   function handleClassSelect(tc: TrialClass) {
+    // Recheck at interaction time so a tab left open across the 48-hour
+    // cutoff cannot open a now-unavailable class. Negative IDs belong to the
+    // synthetic no-inventory preview, and regular kids schedules are display
+    // references rather than trial inventory.
+    if (
+      tc.classId > 0 &&
+      !kidsSchedulePreview &&
+      location &&
+      !isTrialClassBookingOpen(tc, location.timezone)
+    ) {
+      return;
+    }
     setSelectedClass(tc);
     setSubmissionId(window.crypto.randomUUID());
     setShowFormModal(true);
@@ -616,6 +727,8 @@ function TrialInner() {
                       onNextMonth={handleNextMonth}
                       todayStr={todayStrInTz(location.timezone)}
                       contentScope={kidsSchedulePreview ? "kids_schedule" : "trial"}
+                      showSpotCounts={false}
+                      bookableClassIds={bookableClassIds}
                       maxVisibleDateStr={maxCalendarDateStr(location.timezone)}
                     />
                   </div>
@@ -625,6 +738,7 @@ function TrialInner() {
                       date={selectedDate}
                       timezone={location.timezone}
                       bookingPolicy="kids_trial"
+                      bookingWindowNowMs={bookingWindowNowMs}
                       interaction={
                         previewScope
                           ? {
@@ -642,6 +756,24 @@ function TrialInner() {
                     />
                   </aside>
                 </div>
+                {previewOnly &&
+                  !kidsSchedulePreview &&
+                  bookableClassIds?.size === 0 && (
+                    <div className="booking-window-preview-fallback">
+                      <p>
+                        <strong>No posted trial time is currently within the booking window.</strong>{" "}
+                        You can still review the form with clearly labeled sample details;
+                        this does not represent availability.
+                      </p>
+                      <button
+                        type="button"
+                        className="btn ghost"
+                        onClick={previewFormWithoutInventory}
+                      >
+                        Preview form with sample class
+                      </button>
+                    </div>
+                  )}
               </>
             )}
           </section>

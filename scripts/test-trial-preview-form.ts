@@ -30,7 +30,7 @@ assert.match(trialPage, /function previewFormWithoutInventory\(\)/);
 assert.match(trialPage, /Sample kids trial — inventory pending/);
 assert.match(trialPage, /onClick=\{previewFormWithoutInventory\}/);
 assert.match(dayDetail, /kind: "preview"[\s\S]*?onPick: \(tc: TrialClass\) => void/);
-assert.match(classCard, /class-card--preview[\s\S]*?onClick=\{\(\) => interaction\.onSelect/);
+assert.match(classCard, /class-card--preview[\s\S]*?disabled=\{bookingLocked\}[\s\S]*?if \(!bookingLocked\) interaction\.onSelect/);
 assert.doesNotMatch(classCard, /class-card--readonly/);
 
 // Keep one complete preview-policy notice above the calendar. Repeating a

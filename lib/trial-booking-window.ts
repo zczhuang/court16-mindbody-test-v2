@@ -45,9 +45,9 @@ export function isValidMindbodyClassStart(value: string): boolean {
 /**
  * Resolve booking eligibility from an absolute UTC class start.
  *
- * The caller converts Mindbody's site-local wall clock first. At the exact
- * seven-day opening instant and the exact 48-hour cutoff are both allowed.
- * Booking closes only after fewer than 48 hours remain.
+ * The caller converts Mindbody's site-local wall clock first. Booking opens
+ * at the exact seven-day opening instant and becomes unavailable at the exact
+ * 48-hour cutoff.
  */
 export function getTrialBookingWindowState(
   classStartsAtUtc: string,
@@ -67,7 +67,7 @@ export function getTrialBookingWindowState(
   };
 
   if (nowMs < opensAtMs) return { status: "not_open", ...window };
-  if (nowMs > closesAtMs) return { status: "closed", ...window };
+  if (nowMs >= closesAtMs) return { status: "closed", ...window };
   return { status: "open", ...window };
 }
 

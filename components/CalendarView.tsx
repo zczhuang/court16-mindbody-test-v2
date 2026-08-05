@@ -15,6 +15,10 @@ interface Props {
   todayStr?: string;
   /** Changes only calendar language; regular kids schedule rows stay read-only. */
   contentScope?: "trial" | "kids_schedule";
+  /** Show raw Mindbody spot totals only where they represent current availability. */
+  showSpotCounts?: boolean;
+  /** Dedicated-trial occurrences that are inside the active booking window. */
+  bookableClassIds?: ReadonlySet<number>;
   /**
    * Last visible date "YYYY-MM-DD" (inclusive). Days beyond it render
    * disabled and next-month nav stops once the window is exhausted.
@@ -44,6 +48,8 @@ export default function CalendarView({
   onNextMonth,
   todayStr: providedTodayStr,
   contentScope = "trial",
+  showSpotCounts = true,
+  bookableClassIds,
   maxVisibleDateStr,
 }: Props) {
   const kidsSchedule = contentScope === "kids_schedule";
@@ -134,6 +140,14 @@ export default function CalendarView({
           const dayClasses = classesByDate[dateStr] || [];
           const has = dayClasses.length > 0;
           const spots = dayClasses.reduce((s, c) => s + c.spotsAvailable, 0);
+          const bookableCount =
+            bookableClassIds == null
+              ? dayClasses.length
+              : dayClasses.filter((trialClass) => bookableClassIds.has(trialClass.classId))
+                  .length;
+          const hasBookableClass = has && bookableCount > 0;
+          const outsideBookingWindow =
+            has && bookableClassIds != null && !hasBookableClass;
           const isSelected = dateStr === selectedDate;
           const isToday = dateStr === todayStr;
           const isPast = dateStr < todayStr;
@@ -142,7 +156,11 @@ export default function CalendarView({
           const availabilityLabel = has
             ? kidsSchedule
               ? `${dayClasses.length} ${dayClasses.length === 1 ? "class" : "classes"} scheduled`
-              : `${dayClasses.length} ${dayClasses.length === 1 ? "class" : "classes"}, ${spots} ${spots === 1 ? "spot" : "spots"}`
+              : bookableClassIds != null
+                ? `${dayClasses.length} trial ${dayClasses.length === 1 ? "time" : "times"} shown; ${outsideBookingWindow ? "outside booking window" : `${bookableCount} within booking window`}`
+                : showSpotCounts
+                ? `${dayClasses.length} ${dayClasses.length === 1 ? "class" : "classes"}, ${spots} ${spots === 1 ? "spot" : "spots"}`
+                : `${dayClasses.length} trial ${dayClasses.length === 1 ? "time" : "times"} shown`
             : kidsSchedule
               ? "No kids classes"
               : "No trial classes";
@@ -151,7 +169,7 @@ export default function CalendarView({
             <button
               key={dateStr}
               type="button"
-              className={`cal-cell ${isPast || isBeyondWindow ? "past" : ""} ${has && !isBeyondWindow ? "has" : ""} ${isSelected ? "sel" : ""} ${isToday ? "today" : ""}`}
+              className={`cal-cell ${isPast || isBeyondWindow ? "past" : ""} ${hasBookableClass && !isBeyondWindow ? "has" : ""} ${outsideBookingWindow && !isPast && !isBeyondWindow ? "locked" : ""} ${isSelected ? "sel" : ""} ${isToday ? "today" : ""}`}
               disabled={!has || isPast || isBeyondWindow}
               onClick={() => onSelectDate(dateStr)}
               aria-label={`${fullDate}: ${availabilityLabel}`}
@@ -165,12 +183,25 @@ export default function CalendarView({
                   <span className="tag-count">
                     <span>{dayClasses.length}</span>{" "}
                     <span className="tag-count-label">
-                      {dayClasses.length === 1 ? "class" : "classes"}
+                      {kidsSchedule || showSpotCounts
+                        ? dayClasses.length === 1
+                          ? "class"
+                          : "classes"
+                        : dayClasses.length === 1
+                          ? "time"
+                          : "times"}
                     </span>
                   </span>
-                  {!kidsSchedule && (
+                  {!kidsSchedule && showSpotCounts && (
                     <span className="tag-spots">
                       {spots} {spots === 1 ? "spot" : "spots"}
+                    </span>
+                  )}
+                  {bookableClassIds != null && (
+                    <span className="tag-window">
+                      {outsideBookingWindow
+                        ? "Outside window"
+                        : `${bookableCount} in window`}
                     </span>
                   )}
                 </span>
@@ -182,8 +213,18 @@ export default function CalendarView({
 
       <div className="cal-legend">
         <span>
-          <span className="sw sw-has" /> {kidsSchedule ? "Classes scheduled" : "Trial times shown"}
+          <span className="sw sw-has" />{" "}
+          {kidsSchedule
+            ? "Classes scheduled"
+            : bookableClassIds != null
+              ? "Within booking window"
+              : "Trial times shown"}
         </span>
+        {bookableClassIds != null && (
+          <span>
+            <span className="sw sw-locked" /> Outside booking window
+          </span>
+        )}
         <span>
           <span className="sw sw-sel" /> Selected
         </span>
