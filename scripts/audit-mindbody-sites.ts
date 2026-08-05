@@ -8,6 +8,11 @@
  * - Credentials, bearer tokens, response bodies, and client data are never logged.
  */
 
+import {
+  resolveMindbodyPaginationPage,
+  type MindbodyPaginationMetadata,
+} from "../lib/mindbody-pagination.ts";
+
 type LocationConfig = {
   id: string;
   name: string;
@@ -73,6 +78,14 @@ const REQUEST_TIMEOUT_MS = 20_000;
 // 120 falls beyond the old 200-row audit window, even though Mindbody accepts
 // and returns it when the catalog request is widened.
 const PROGRAM_CATALOG_LIMIT = 500;
+// Brooklyn, Ridge Hill, Newton, and Allston each returned exactly 200 Services
+// on 2026-08-05 — the request cap rather than a real total. A truncated Service
+// catalog can hide a club's $0 kids-trial Service the same way the old 200-row
+// Program window hid Program 120. Mindbody may cap PageSize below the requested
+// Limit, so the Service read pages through the catalog rather than widening a
+// single request.
+const SERVICE_PAGE_LIMIT = 200;
+const SERVICE_PAGE_CAP = 25;
 const AUDIT_SCOPE = {
   kind: "read_only_preflight",
   launchApproval: false,
@@ -255,6 +268,40 @@ async function getReadEndpoint(
   return parseJsonResponse(response);
 }
 
+/** Page through a Mindbody catalog until the API reports it complete. */
+async function getAllReadEndpointRows(
+  apiKey: string,
+  siteId: number,
+  path: (typeof READ_ENDPOINTS)[keyof typeof READ_ENDPOINTS],
+  collectionKey: string,
+  token: string | undefined,
+  pageLimit: number,
+  pageCap: number,
+): Promise<unknown[]> {
+  const rows: unknown[] = [];
+  let offset = 0;
+  for (let page = 0; page < pageCap; page += 1) {
+    const body = await getReadEndpoint(
+      apiKey,
+      siteId,
+      path,
+      { Limit: pageLimit, Offset: offset },
+      token,
+    );
+    const pageRows = asArray(body[collectionKey]);
+    rows.push(...pageRows);
+    const decision = resolveMindbodyPaginationPage({
+      currentOffset: offset,
+      requestedLimit: pageLimit,
+      pageLength: pageRows.length,
+      pagination: body.PaginationResponse as MindbodyPaginationMetadata | undefined,
+    });
+    if (decision.complete) return rows;
+    offset = decision.nextOffset;
+  }
+  throw new SafeHttpError("catalog_pagination_cap_exceeded");
+}
+
 async function runProbe<T>(work: () => Promise<T>): Promise<{ status: ProbeStatus; value?: T }> {
   try {
     return { status: { status: "ok" }, value: await work() };
@@ -372,14 +419,16 @@ async function auditLocation(
         return asArray(body.Classes) as MindbodyClass[];
       }),
       runProbe(async () => {
-        const body = await getReadEndpoint(
+        const services = await getAllReadEndpointRows(
           apiKey,
           location.siteId,
           READ_ENDPOINTS.services,
-          { Limit: 200 },
+          "Services",
           token,
+          SERVICE_PAGE_LIMIT,
+          SERVICE_PAGE_CAP,
         );
-        return normalizeNamedRecords(body.Services);
+        return normalizeNamedRecords(services);
       }),
     ]);
 
