@@ -328,8 +328,9 @@ export const LOCATIONS: Location[] = [
     // Retained as the explicit regular-kids fallback; Program 120 below now
     // drives the dedicated trial-calendar preview.
     kidsCalendarProgramIds: [37, 36],
-    // Live read-only audit 2026-08-04: Program 120 (Kids' Trials) returned
-    // ten open occurrences in the current 28-day app window.
+    // Live read-only audit 2026-08-05: Program 120 (Kids' Trials) returned
+    // nine upcoming occurrences in the 30-day audit window. Parents see 28 days
+    // and can only book inside the separate 7-day/48-hour window.
     kidTrialProgramId: 120,
     trialUnavailableReason: "Kids trial scheduling is being connected for this club.",
     // Authorization and upcoming trial inventory are verified. Booking remains
@@ -365,8 +366,9 @@ export const LOCATIONS: Location[] = [
     // Retained as an empty regular-kids fallback; Program 120 below now drives
     // the dedicated trial-calendar preview.
     kidsCalendarProgramIds: [],
-    // Live read-only audit 2026-08-04: Program 120 (Kids' Trials) returned
-    // seven open occurrences in the current 28-day app window.
+    // Live read-only audit 2026-08-05: Program 120 (Kids' Trials) returned
+    // eight upcoming occurrences in the 30-day audit window, superseding the
+    // 20 Jul census that recorded an empty Allston schedule.
     kidTrialProgramId: 120,
     trialUnavailableReason: "Opening details and kids trial scheduling are being finalized.",
     // Authorization and upcoming trial inventory are verified. Public booking
