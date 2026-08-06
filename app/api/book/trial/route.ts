@@ -533,8 +533,6 @@ export async function POST(req: Request) {
     childFirstName: primaryKid.firstName,
     childLastName,
     childBirthDate: childDob,
-    childPlayingLevel: body.childPlayingLevel,
-    childSchool: body.childSchool,
     waiverVersion: WAIVER_VERSION,
     staffConfirmUrl: buildStaffUrl({ action: "confirm", correlationId, baseUrl }),
     staffReassignUrl: buildStaffUrl({ action: "reassign", correlationId, baseUrl }),
@@ -857,7 +855,6 @@ export async function POST(req: Request) {
             mindbodyMutationStatus: "not_started",
             familyProvisioningStatus: "not_started",
             mindbodyParentId: existingParent?.Id,
-            mindbodyParentUniqueId: existingParent?.UniqueId,
             familyAccountStatus: "manual_review",
             failureReason: "Existing Mindbody email requires staff to resolve the original child record.",
           }),
@@ -926,7 +923,6 @@ export async function POST(req: Request) {
             status: "parent_created",
             startedAt: familyProvisioningStartedAt,
             parentId: parent.Id,
-            parentUniqueId: parent.UniqueId,
           },
         );
 
@@ -951,7 +947,6 @@ export async function POST(req: Request) {
             status: "child_create_started",
             startedAt: familyProvisioningStartedAt,
             parentId: parent.Id,
-            parentUniqueId: parent.UniqueId,
           },
         );
         child = await addClient(mbCfg, log, {
@@ -997,9 +992,7 @@ export async function POST(req: Request) {
             status: "child_created",
             startedAt: familyProvisioningStartedAt,
             parentId: parent.Id,
-            parentUniqueId: parent.UniqueId,
             childId: child.Id,
-            childUniqueId: child.UniqueId,
           },
         );
       } catch (e) {
@@ -1074,9 +1067,7 @@ export async function POST(req: Request) {
               : "not_started",
             familyProvisioningStartedAt,
             mindbodyParentId: protectedMindbodyOwnership ? undefined : parent?.Id,
-            mindbodyParentUniqueId: protectedMindbodyOwnership ? undefined : parent?.UniqueId,
             mindbodyChildId: protectedMindbodyOwnership ? undefined : child?.Id,
-            mindbodyChildUniqueId: protectedMindbodyOwnership ? undefined : child?.UniqueId,
             familyAccountStatus: "manual_review",
             failureReason: manualFailureReason,
           }),
@@ -1130,9 +1121,7 @@ export async function POST(req: Request) {
           familyProvisioningStatus: "child_created",
           familyProvisioningStartedAt,
           mindbodyParentId: parent.Id,
-          mindbodyParentUniqueId: parent.UniqueId,
           mindbodyChildId: child.Id,
-          mindbodyChildUniqueId: child.UniqueId,
           familyAccountStatus: "parent_claim_pending",
         }),
       },
@@ -1220,9 +1209,7 @@ async function persistFamilyProvisioningMarker(
     status: FamilyProvisioningStatus;
     startedAt: Date;
     parentId?: string | number;
-    parentUniqueId?: string | number;
     childId?: string | number;
-    childUniqueId?: string | number;
   },
 ): Promise<void> {
   await updateDealProperties(hsCfg, log, dealId, {
@@ -1230,12 +1217,8 @@ async function persistFamilyProvisioningMarker(
     court16_family_provisioning_started_at: String(args.startedAt.getTime()),
     court16_mindbody_parent_id:
       args.parentId === undefined ? undefined : String(args.parentId),
-    court16_mindbody_parent_unique_id:
-      args.parentUniqueId === undefined ? undefined : String(args.parentUniqueId),
     court16_mindbody_child_id:
       args.childId === undefined ? undefined : String(args.childId),
-    court16_mindbody_child_unique_id:
-      args.childUniqueId === undefined ? undefined : String(args.childUniqueId),
   });
 }
 

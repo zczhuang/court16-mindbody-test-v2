@@ -78,6 +78,7 @@ export interface BookingDealLedgerPatch {
   activeParentKey?: string;
   intent: BookingIntent;
   bookingStatus: BookingDealStatus;
+  testRecord?: string;
   locationSlug: string;
   mindbodySiteId: string | number;
   mindbodyLocationId?: string | number;
@@ -91,16 +92,12 @@ export interface BookingDealLedgerPatch {
   childFirstName?: string;
   childLastName?: string;
   childBirthDate?: string;
-  childPlayingLevel?: string;
-  childSchool?: string;
   waiverVersion?: string;
   staffConfirmUrl?: string;
   staffReassignUrl?: string;
   staffDenyUrl?: string;
   mindbodyParentId?: string | number;
-  mindbodyParentUniqueId?: string | number;
   mindbodyChildId?: string | number;
-  mindbodyChildUniqueId?: string | number;
   familyAccountStatus?: FamilyAccountStatus;
   familyProvisioningStatus?: FamilyProvisioningStatus;
   familyProvisioningStartedAt?: string | number | Date;
@@ -123,6 +120,7 @@ export interface ParsedBookingDealLedger {
   activeParentKey?: string;
   intent: BookingIntent;
   bookingStatus: BookingDealStatus;
+  testRecord?: string;
   locationSlug: string;
   mindbodySiteId: string;
   mindbodyLocationId?: string;
@@ -136,17 +134,13 @@ export interface ParsedBookingDealLedger {
   childFirstName?: string;
   childLastName?: string;
   childBirthDate?: string;
-  childPlayingLevel?: string;
-  childSchool?: string;
   waiverVersion?: string;
   classDate?: string;
   staffConfirmUrl?: string;
   staffReassignUrl?: string;
   staffDenyUrl?: string;
   mindbodyParentId?: string;
-  mindbodyParentUniqueId?: string;
   mindbodyChildId?: string;
-  mindbodyChildUniqueId?: string;
   familyAccountStatus?: FamilyAccountStatus;
   familyProvisioningStatus?: FamilyProvisioningStatus;
   familyProvisioningStartedAt?: string;
@@ -240,6 +234,7 @@ export function buildBookingDealProperties(
     court16_active_parent_key: clean(ledger.activeParentKey),
     court16_intent: ledger.intent,
     court16_booking_status: ledger.bookingStatus,
+    court16_test_record: clean(ledger.testRecord),
     court16_location_slug: clean(ledger.locationSlug),
     court16_mindbody_site_id: stringify(ledger.mindbodySiteId),
     court16_mindbody_location_id: stringify(ledger.mindbodyLocationId),
@@ -253,16 +248,12 @@ export function buildBookingDealProperties(
     court16_child_first_name: clean(ledger.childFirstName),
     court16_child_last_name: clean(ledger.childLastName),
     court16_child_birth_date: dateToEpochMs(ledger.childBirthDate),
-    court16_child_playing_level: clean(ledger.childPlayingLevel),
-    court16_child_school: clean(ledger.childSchool),
     court16_waiver_version: clean(ledger.waiverVersion),
     court16_staff_confirm_url: clean(ledger.staffConfirmUrl),
     court16_staff_reassign_url: clean(ledger.staffReassignUrl),
     court16_staff_deny_url: clean(ledger.staffDenyUrl),
     court16_mindbody_parent_id: stringify(ledger.mindbodyParentId),
-    court16_mindbody_parent_unique_id: stringify(ledger.mindbodyParentUniqueId),
     court16_mindbody_child_id: stringify(ledger.mindbodyChildId),
-    court16_mindbody_child_unique_id: stringify(ledger.mindbodyChildUniqueId),
     court16_family_account_status: ledger.familyAccountStatus,
     court16_family_provisioning_status: ledger.familyProvisioningStatus,
     court16_family_provisioning_started_at: datetimeToEpochMs(
@@ -322,6 +313,7 @@ export function parseBookingDealLedger(
       activeParentKey: clean(properties.court16_active_parent_key),
       intent: intent as BookingIntent,
       bookingStatus: bookingStatus as BookingDealStatus,
+      testRecord: clean(properties.court16_test_record),
       locationSlug: locationSlug!,
       mindbodySiteId: mindbodySiteId!,
       mindbodyLocationId: clean(properties.court16_mindbody_location_id),
@@ -335,17 +327,13 @@ export function parseBookingDealLedger(
       childFirstName: clean(properties.court16_child_first_name),
       childLastName: clean(properties.court16_child_last_name),
       childBirthDate: clean(properties.court16_child_birth_date),
-      childPlayingLevel: clean(properties.court16_child_playing_level),
-      childSchool: clean(properties.court16_child_school),
       waiverVersion: clean(properties.court16_waiver_version),
       classDate: clean(properties.class_date),
       staffConfirmUrl: clean(properties.court16_staff_confirm_url),
       staffReassignUrl: clean(properties.court16_staff_reassign_url),
       staffDenyUrl: clean(properties.court16_staff_deny_url),
       mindbodyParentId: clean(properties.court16_mindbody_parent_id),
-      mindbodyParentUniqueId: clean(properties.court16_mindbody_parent_unique_id),
       mindbodyChildId: clean(properties.court16_mindbody_child_id),
-      mindbodyChildUniqueId: clean(properties.court16_mindbody_child_unique_id),
       familyAccountStatus:
         familyAccountStatus && FAMILY_STATUSES.has(familyAccountStatus as FamilyAccountStatus)
           ? (familyAccountStatus as FamilyAccountStatus)
@@ -546,6 +534,7 @@ export const HUBSPOT_BOOKING_DEAL_PROPERTY_NAMES = [
   "court16_active_parent_key",
   "court16_intent",
   "court16_booking_status",
+  "court16_test_record",
   "court16_failure_reason",
   "court16_location_slug",
   "court16_mindbody_site_id",
@@ -560,16 +549,12 @@ export const HUBSPOT_BOOKING_DEAL_PROPERTY_NAMES = [
   "court16_child_first_name",
   "court16_child_last_name",
   "court16_child_birth_date",
-  "court16_child_playing_level",
-  "court16_child_school",
   "court16_waiver_version",
   "court16_staff_confirm_url",
   "court16_staff_reassign_url",
   "court16_staff_deny_url",
   "court16_mindbody_parent_id",
-  "court16_mindbody_parent_unique_id",
   "court16_mindbody_child_id",
-  "court16_mindbody_child_unique_id",
   "court16_family_account_status",
   "court16_family_provisioning_status",
   "court16_family_provisioning_started_at",
@@ -637,6 +622,16 @@ export const HUBSPOT_BOOKING_DEAL_PROPERTY_DEFINITIONS: readonly HubspotDealProp
     description: "Authoritative lifecycle state for this booking request.",
     options: enumOptions([...STATUSES]),
   },
+  {
+    ...text(
+      "court16_test_record",
+      "Court 16 test record",
+      "True only when this Deal came from an internal smoke test, never from a real family.",
+    ),
+    type: "enumeration",
+    fieldType: "select",
+    options: enumOptions(["true", "false"]),
+  },
   text("court16_failure_reason", "Court 16 failure reason", "Retry, denial, or reconciliation detail for this request.", "textarea"),
   {
     name: "court16_location_slug",
@@ -664,16 +659,12 @@ export const HUBSPOT_BOOKING_DEAL_PROPERTY_DEFINITIONS: readonly HubspotDealProp
     fieldType: "date",
     description: "UTC-midnight date captured at intake.",
   },
-  text("court16_child_playing_level", "Court 16 child playing level", "Playing-level answer captured for this booking."),
-  text("court16_child_school", "Court 16 child school", "School answer captured for this booking."),
   text("court16_waiver_version", "Court 16 waiver version", "Waiver version accepted with this booking."),
   text("court16_staff_confirm_url", "Court 16 staff confirm URL", "Signed, request-scoped staff confirmation URL."),
   text("court16_staff_reassign_url", "Court 16 staff reassign URL", "Signed, request-scoped staff manual-review URL."),
   text("court16_staff_deny_url", "Court 16 staff deny URL", "Signed, request-scoped staff denial URL."),
   text("court16_mindbody_parent_id", "Court 16 Mindbody parent ID", "Site-scoped original parent Client ID."),
-  text("court16_mindbody_parent_unique_id", "Court 16 Mindbody parent Unique ID", "Mindbody cross-record parent UniqueId when returned."),
   text("court16_mindbody_child_id", "Court 16 Mindbody child ID", "Site-scoped original child Client ID used for enrollment and family completion."),
-  text("court16_mindbody_child_unique_id", "Court 16 Mindbody child Unique ID", "Mindbody cross-record child UniqueId when returned."),
   {
     name: "court16_family_account_status",
     label: "Court 16 family account status",

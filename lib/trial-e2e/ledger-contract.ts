@@ -33,7 +33,6 @@ export function assertTrialE2ELedgerContract(receipt: TrialE2EReceipt): void {
     childFirstName: "Redacted",
     childLastName: "Fixture",
     childBirthDate: "2017-06-15",
-    childPlayingLevel: "New to Tennis",
     waiverVersion: "e2e-v1",
     staffConfirmUrl: "https://e2e.invalid/confirm",
     staffReassignUrl: "https://e2e.invalid/reassign",

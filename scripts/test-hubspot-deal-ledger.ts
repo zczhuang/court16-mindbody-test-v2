@@ -19,6 +19,7 @@ const properties = buildBookingDealProperties({
   activeParentKey: buildActiveParentKey(" Parent@Example.com "),
   intent: "kid_trial",
   bookingStatus: "pending_staff",
+  testRecord: "true",
   locationSlug: "ridgehill",
   mindbodySiteId: 5748154,
   mindbodyLocationId: 1,
@@ -34,16 +35,12 @@ const properties = buildBookingDealProperties({
   childFirstName: "Alex",
   childLastName: "Example",
   childBirthDate: "2018-04-02",
-  childPlayingLevel: "New to Tennis",
-  childSchool: "PS 123",
   waiverVersion: "v1.0",
   staffConfirmUrl: "https://example.com/confirm",
   staffReassignUrl: "https://example.com/reassign",
   staffDenyUrl: "https://example.com/deny",
   mindbodyParentId: "1001",
-  mindbodyParentUniqueId: 2001,
   mindbodyChildId: "1002",
-  mindbodyChildUniqueId: 2002,
   familyAccountStatus: "parent_claim_pending",
   familyProvisioningStatus: "child_created",
   familyProvisioningStartedAt: "2026-07-18T14:28:00.000Z",
@@ -58,6 +55,7 @@ const properties = buildBookingDealProperties({
 
 assert.equal(properties.court16_booking_ledger_version, HUBSPOT_BOOKING_LEDGER_VERSION);
 assert.equal(properties.court16_booking_key, "c16-ledger-test");
+assert.equal(properties.court16_test_record, "true");
 assert.equal(
   properties.court16_active_parent_key,
   buildActiveParentKey("parent@example.com"),
@@ -79,6 +77,7 @@ const parsed = parseBookingDealLedger({ ...properties, class_date: "178438500000
 assert.equal(parsed.ok, true);
 if (parsed.ok) {
   assert.equal(parsed.value.locationSlug, "ridgehill");
+  assert.equal(parsed.value.testRecord, "true");
   assert.equal(parsed.value.mindbodyChildId, "1002");
   assert.equal(parsed.value.classDate, "1784385000000");
   assert.equal(parsed.value.enrollmentStatus, "enrollment_started");
@@ -128,10 +127,28 @@ assert.equal(
   HUBSPOT_BOOKING_DEAL_PROPERTY_NAMES.length,
   "Deal property names must be unique",
 );
+assert.equal(HUBSPOT_BOOKING_DEAL_PROPERTY_NAMES.length, 39);
 assert.deepEqual(
   new Set(HUBSPOT_BOOKING_DEAL_PROPERTY_DEFINITIONS.map((definition) => definition.name)),
   new Set(HUBSPOT_BOOKING_DEAL_PROPERTY_NAMES),
   "Every Deal ledger property must have exactly one schema definition",
+);
+assert.deepEqual(
+  HUBSPOT_BOOKING_DEAL_PROPERTY_DEFINITIONS.find(
+    (definition) => definition.name === "court16_test_record",
+  ),
+  {
+    name: "court16_test_record",
+    label: "Court 16 test record",
+    type: "enumeration",
+    fieldType: "select",
+    description:
+      "True only when this Deal came from an internal smoke test, never from a real family.",
+    options: [
+      { label: "true", value: "true", displayOrder: 0, hidden: false },
+      { label: "false", value: "false", displayOrder: 1, hidden: false },
+    ],
+  },
 );
 assert.equal(
   HUBSPOT_BOOKING_DEAL_PROPERTY_DEFINITIONS.find(

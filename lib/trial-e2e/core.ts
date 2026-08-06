@@ -170,8 +170,6 @@ export function validateTrialE2ERequest(
     "childLastName",
     "childBirthDate",
     "childGender",
-    "childPlayingLevel",
-    "childSchool",
     "leadSource",
     "householdAddress1",
     "householdAddress2",
