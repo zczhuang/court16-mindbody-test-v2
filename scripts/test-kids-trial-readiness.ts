@@ -186,10 +186,19 @@ try {
     "allston",
   ]);
 
+  // Ridge Hill was opened as the single pilot club on 6 Aug 2026 at the client's
+  // request. This assertion is deliberately "exactly one, and it is this one"
+  // rather than being dropped: opening a second club still fails the build.
+  const pilotLocationId = "ridgehill";
+
   for (const configuredLocation of LOCATIONS) {
     const expectedProgramId = expectedProgramIds[configuredLocation.id];
     assert.equal(configuredLocation.kidTrialProgramId, expectedProgramId);
-    assert.equal(configuredLocation.trialBookingEnabled, false);
+    assert.equal(
+      configuredLocation.trialBookingEnabled,
+      configuredLocation.id === pilotLocationId,
+      `${configuredLocation.id}: only ${pilotLocationId} may be booking-enabled`,
+    );
     assert.equal(
       configuredLocation.trialLaunchEvidence?.upcomingTrialInventoryVerified,
       inventoryVerified.has(configuredLocation.id),

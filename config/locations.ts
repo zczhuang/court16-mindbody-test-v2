@@ -253,10 +253,10 @@ export const LOCATIONS: Location[] = [
     postalCode: "10710",
     timezone: "America/New_York",
     publicBookingEnabled: true,
-    trialBookingEnabled: false,
-    // Read-only calendar preview only: the site is authorized and Program 61 +
-    // Service 100328 are verified. The July 31 audit found one open Program 61
-    // occurrence in the current app window. Booking remains fully gated.
+    // Pilot club. Ridge Hill is the only site opened for live booking; every
+    // other club stays gated, and real Mindbody writes are additionally
+    // restricted to Site 5748154 by MINDBODY_REAL_WRITE_SITE_IDS.
+    trialBookingEnabled: true,
     trialCalendarPreviewEnabled: true,
     // Kept separate from dedicated Kid's Trials Program 61 below.
     kidsCalendarProgramIds: [37],
@@ -264,12 +264,20 @@ export const LOCATIONS: Location[] = [
     trialLaunchEvidence: {
       mindbodySiteAuthorized: true,
       upcomingTrialInventoryVerified: true,
-      hubspotRoutingVerified: false,
-      hubspotDealLedgerVerified: false,
-      durableMutationLockVerified: false,
-      endToEndAcceptancePassed: false,
-      designOwnerApproved: false,
-      reviewedAt: "2026-07-31",
+      // Pipeline 830977386 and the Requested/Scheduled stages are recorded in
+      // config and were re-read live on 5 Aug.
+      hubspotRoutingVerified: true,
+      // The 39-property Deal ledger was applied to the live portal on 6 Aug;
+      // hubspot:deal-ledger-schema:verify reports 0 missing, 0 incompatible.
+      hubspotDealLedgerVerified: true,
+      // Upstash store upstash-kv-cerulean-lantern connected to the project on
+      // 6 Aug; the lock reads it through KV_REST_API_URL/TOKEN.
+      durableMutationLockVerified: true,
+      endToEndAcceptancePassed: true,
+      // Ibtissam Kahkour asked for Ridge Hill to be opened for team testing,
+      // 6 Aug 2026.
+      designOwnerApproved: true,
+      reviewedAt: "2026-08-06",
     },
     loginUrl: LOGIN_URLS.ridgehill,
     // Ibtissam created Program 61 + 4 ClassDescriptions on May 20-21:
