@@ -47,18 +47,48 @@ export const TRIAL_CONFIG: Record<string, LocationTrialConfig> = {
     maxTrialsPerClass: 2,
     trialServiceId: 11479,
     trialServiceName: "Kid's Trial",
+    // Relationship -6 and the active gender catalog were both read live on
+    // 5 Aug 2026 and are identical at all seven clubs. Offering the same three
+    // values Ridge Hill offers keeps the form identical to the one the client
+    // approved; "None" is a Mindbody catalog entry, not a choice to show a parent.
+    parentGuardianRelationship: {
+      Id: -6,
+      RelationshipName1: "Parent/Guardian",
+      RelationshipName2: "Child",
+    },
+    mindbodyGenderOptions: ["Female", "Male", "Undisclosed"],
   },
   lic: {
     trialEligibleClassScheduleIds: [],
     maxTrialsPerClass: 2,
     trialServiceId: 103806,
     trialServiceName: "Kid's Trial",
+    // Relationship -6 and the active gender catalog were both read live on
+    // 5 Aug 2026 and are identical at all seven clubs. Offering the same three
+    // values Ridge Hill offers keeps the form identical to the one the client
+    // approved; "None" is a Mindbody catalog entry, not a choice to show a parent.
+    parentGuardianRelationship: {
+      Id: -6,
+      RelationshipName1: "Parent/Guardian",
+      RelationshipName2: "Child",
+    },
+    mindbodyGenderOptions: ["Female", "Male", "Undisclosed"],
   },
   fidi: {
     trialEligibleClassScheduleIds: [],
     maxTrialsPerClass: 2,
     trialServiceId: 101407,
     trialServiceName: "Kid's Trial",
+    // Relationship -6 and the active gender catalog were both read live on
+    // 5 Aug 2026 and are identical at all seven clubs. Offering the same three
+    // values Ridge Hill offers keeps the form identical to the one the client
+    // approved; "None" is a Mindbody catalog entry, not a choice to show a parent.
+    parentGuardianRelationship: {
+      Id: -6,
+      RelationshipName1: "Parent/Guardian",
+      RelationshipName2: "Child",
+    },
+    mindbodyGenderOptions: ["Female", "Male", "Undisclosed"],
   },
   // RH Kid's Trial $0 service (id 100328) is tied to Program 61. AddClientToClass
   // for a Program 61 occurrence requires this service credit — without it
@@ -83,18 +113,48 @@ export const TRIAL_CONFIG: Record<string, LocationTrialConfig> = {
     maxTrialsPerClass: 2,
     trialServiceId: 100214,
     trialServiceName: "Kid's Trial",
+    // Relationship -6 and the active gender catalog were both read live on
+    // 5 Aug 2026 and are identical at all seven clubs. Offering the same three
+    // values Ridge Hill offers keeps the form identical to the one the client
+    // approved; "None" is a Mindbody catalog entry, not a choice to show a parent.
+    parentGuardianRelationship: {
+      Id: -6,
+      RelationshipName1: "Parent/Guardian",
+      RelationshipName2: "Child",
+    },
+    mindbodyGenderOptions: ["Female", "Male", "Undisclosed"],
   },
   newton: {
     trialEligibleClassScheduleIds: [],
     maxTrialsPerClass: 2,
     trialServiceId: 100432,
     trialServiceName: "Kid's Trial",
+    // Relationship -6 and the active gender catalog were both read live on
+    // 5 Aug 2026 and are identical at all seven clubs. Offering the same three
+    // values Ridge Hill offers keeps the form identical to the one the client
+    // approved; "None" is a Mindbody catalog entry, not a choice to show a parent.
+    parentGuardianRelationship: {
+      Id: -6,
+      RelationshipName1: "Parent/Guardian",
+      RelationshipName2: "Child",
+    },
+    mindbodyGenderOptions: ["Female", "Male", "Undisclosed"],
   },
   allston: {
     trialEligibleClassScheduleIds: [],
     maxTrialsPerClass: 2,
     trialServiceId: 100420,
     trialServiceName: "Kid's Trial",
+    // Relationship -6 and the active gender catalog were both read live on
+    // 5 Aug 2026 and are identical at all seven clubs. Offering the same three
+    // values Ridge Hill offers keeps the form identical to the one the client
+    // approved; "None" is a Mindbody catalog entry, not a choice to show a parent.
+    parentGuardianRelationship: {
+      Id: -6,
+      RelationshipName1: "Parent/Guardian",
+      RelationshipName2: "Child",
+    },
+    mindbodyGenderOptions: ["Female", "Male", "Undisclosed"],
   },
 };
 

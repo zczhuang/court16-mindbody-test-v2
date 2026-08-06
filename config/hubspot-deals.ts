@@ -77,6 +77,16 @@ export const DEAL_PIPELINES: Record<string, DealPipelineConfig> = {
       scheduled: "1031324174", // "Scheduled Trial"
     },
   },
+  // Read live from GET /crm/v3/pipelines/deals on 2026-08-06 when Allston was
+  // opened for booking. Without this the club is enabled but fails readiness
+  // on hubspot_pipeline, so intake refuses every request.
+  allston: {
+    pipelineId: "922409889",
+    stages: {
+      requested: "1409074569", // "Requested Trial"
+      scheduled: "1409074572", // "Scheduled Trial"
+    },
+  },
 };
 
 /**

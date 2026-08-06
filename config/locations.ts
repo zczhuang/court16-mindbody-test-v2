@@ -139,6 +139,12 @@ const LOGIN_URLS: Record<string, string> = {
  * from the Phase 2A prototype's scaffolding, not Court 16's real
  * MindBody sites — replaced with the confirmed ones below.
  */
+/**
+ * Launch scope, 2026-08-06: Ridge Hill's live end-to-end run exercised the
+ * shared intake, checkout, and enrollment path with Program 61. The other six
+ * clubs use Program 120; their site-specific Service-to-Program bindings have
+ * not been individually write-tested.
+ */
 export const LOCATIONS: Location[] = [
   {
     id: "brooklyn",
@@ -151,7 +157,7 @@ export const LOCATIONS: Location[] = [
     postalCode: "11201",
     timezone: "America/New_York",
     publicBookingEnabled: true,
-    trialBookingEnabled: false,
+    trialBookingEnabled: true,
     trialCalendarPreviewEnabled: true,
     // Retained as the explicit regular-kids fallback; Program 120 below now
     // drives the dedicated trial-calendar preview.
@@ -160,17 +166,24 @@ export const LOCATIONS: Location[] = [
     // three open occurrences in the current seven-day app window.
     kidTrialProgramId: 120,
     trialUnavailableReason: "Kids trial scheduling is being connected for this club.",
-    // Authorization and upcoming trial inventory are now verified. Booking
-    // remains gated on the site-specific Service, routing, and acceptance.
+    // Authorization and upcoming trial inventory are verified. Shared launch
+    // evidence is dated 6 Aug; see the binding limitation above.
     trialLaunchEvidence: {
       mindbodySiteAuthorized: true,
       upcomingTrialInventoryVerified: true,
-      hubspotRoutingVerified: false,
-      hubspotDealLedgerVerified: false,
-      durableMutationLockVerified: false,
-      endToEndAcceptancePassed: false,
-      designOwnerApproved: false,
-      reviewedAt: "2026-07-31",
+      // This club's HubSpot pipeline and stage IDs are recorded in config.
+      hubspotRoutingVerified: true,
+      // The 39-property Deal ledger was applied to the live portal on 6 Aug;
+      // verification reports 0 missing and 0 incompatible properties.
+      hubspotDealLedgerVerified: true,
+      // The Upstash mutation-lock store is connected to the project.
+      durableMutationLockVerified: true,
+      // Ridge Hill's 6 Aug live run exercised the shared intake, checkout, and
+      // enrollment path; the Program 120 limitation is documented above.
+      endToEndAcceptancePassed: true,
+      // The client approved opening this club on 6 Aug 2026.
+      designOwnerApproved: true,
+      reviewedAt: "2026-08-06",
     },
     loginUrl: LOGIN_URLS.brooklyn,
   },
@@ -185,7 +198,7 @@ export const LOCATIONS: Location[] = [
     postalCode: "11101",
     timezone: "America/New_York",
     publicBookingEnabled: true,
-    trialBookingEnabled: false,
+    trialBookingEnabled: true,
     trialCalendarPreviewEnabled: true,
     // Retained as the explicit regular-kids fallback; Program 120 below now
     // drives the dedicated trial-calendar preview.
@@ -194,17 +207,24 @@ export const LOCATIONS: Location[] = [
     // two open occurrences in the current seven-day app window.
     kidTrialProgramId: 120,
     trialUnavailableReason: "Kids trial scheduling is being connected for this club.",
-    // Authorization and upcoming trial inventory are now verified. Booking
-    // remains gated on the site-specific Service, routing, and acceptance.
+    // Authorization and upcoming trial inventory are verified. Shared launch
+    // evidence is dated 6 Aug; see the binding limitation above.
     trialLaunchEvidence: {
       mindbodySiteAuthorized: true,
       upcomingTrialInventoryVerified: true,
-      hubspotRoutingVerified: false,
-      hubspotDealLedgerVerified: false,
-      durableMutationLockVerified: false,
-      endToEndAcceptancePassed: false,
-      designOwnerApproved: false,
-      reviewedAt: "2026-07-31",
+      // This club's HubSpot pipeline and stage IDs are recorded in config.
+      hubspotRoutingVerified: true,
+      // The 39-property Deal ledger was applied to the live portal on 6 Aug;
+      // verification reports 0 missing and 0 incompatible properties.
+      hubspotDealLedgerVerified: true,
+      // The Upstash mutation-lock store is connected to the project.
+      durableMutationLockVerified: true,
+      // Ridge Hill's 6 Aug live run exercised the shared intake, checkout, and
+      // enrollment path; the Program 120 limitation is documented above.
+      endToEndAcceptancePassed: true,
+      // The client approved opening this club on 6 Aug 2026.
+      designOwnerApproved: true,
+      reviewedAt: "2026-08-06",
     },
     loginUrl: LOGIN_URLS.lic,
   },
@@ -219,7 +239,7 @@ export const LOCATIONS: Location[] = [
     postalCode: "10005",
     timezone: "America/New_York",
     publicBookingEnabled: true,
-    trialBookingEnabled: false,
+    trialBookingEnabled: true,
     trialCalendarPreviewEnabled: true,
     // Retained as the explicit regular-kids fallback; Program 120 below now
     // drives the dedicated trial-calendar preview.
@@ -228,17 +248,24 @@ export const LOCATIONS: Location[] = [
     // four non-cancelled open occurrences in the current seven-day app window.
     kidTrialProgramId: 120,
     trialUnavailableReason: "Kids trial scheduling is being connected for this club.",
-    // Authorization and upcoming trial inventory are now verified. Booking
-    // remains gated on the site-specific Service, routing, and acceptance.
+    // Authorization and upcoming trial inventory are verified. Shared launch
+    // evidence is dated 6 Aug; see the binding limitation above.
     trialLaunchEvidence: {
       mindbodySiteAuthorized: true,
       upcomingTrialInventoryVerified: true,
-      hubspotRoutingVerified: false,
-      hubspotDealLedgerVerified: false,
-      durableMutationLockVerified: false,
-      endToEndAcceptancePassed: false,
-      designOwnerApproved: false,
-      reviewedAt: "2026-07-31",
+      // This club's HubSpot pipeline and stage IDs are recorded in config.
+      hubspotRoutingVerified: true,
+      // The 39-property Deal ledger was applied to the live portal on 6 Aug;
+      // verification reports 0 missing and 0 incompatible properties.
+      hubspotDealLedgerVerified: true,
+      // The Upstash mutation-lock store is connected to the project.
+      durableMutationLockVerified: true,
+      // Ridge Hill's 6 Aug live run exercised the shared intake, checkout, and
+      // enrollment path; the Program 120 limitation is documented above.
+      endToEndAcceptancePassed: true,
+      // The client approved opening this club on 6 Aug 2026.
+      designOwnerApproved: true,
+      reviewedAt: "2026-08-06",
     },
     loginUrl: LOGIN_URLS.fidi,
   },
@@ -253,9 +280,8 @@ export const LOCATIONS: Location[] = [
     postalCode: "10710",
     timezone: "America/New_York",
     publicBookingEnabled: true,
-    // Pilot club. Ridge Hill is the only site opened for live booking; every
-    // other club stays gated, and real Mindbody writes are additionally
-    // restricted to Site 5748154 by MINDBODY_REAL_WRITE_SITE_IDS.
+    // Ridge Hill was the 6 Aug pilot; the client has now approved live booking
+    // configuration for all seven clubs.
     trialBookingEnabled: true,
     trialCalendarPreviewEnabled: true,
     // Kept separate from dedicated Kid's Trials Program 61 below.
@@ -297,7 +323,7 @@ export const LOCATIONS: Location[] = [
     postalCode: "19122",
     timezone: "America/New_York",
     publicBookingEnabled: true,
-    trialBookingEnabled: false,
+    trialBookingEnabled: true,
     trialCalendarPreviewEnabled: true,
     // Retained as the explicit regular-kids fallback; Program 120 below now
     // drives the dedicated trial-calendar preview.
@@ -306,17 +332,24 @@ export const LOCATIONS: Location[] = [
     // eight open occurrences in the current seven-day app window.
     kidTrialProgramId: 120,
     trialUnavailableReason: "Kids trial scheduling is being connected for this club.",
-    // Authorization and upcoming trial inventory are now verified. Booking
-    // remains gated on the site-specific Service, routing, and acceptance.
+    // Authorization and upcoming trial inventory are verified. Shared launch
+    // evidence is dated 6 Aug; see the binding limitation above.
     trialLaunchEvidence: {
       mindbodySiteAuthorized: true,
       upcomingTrialInventoryVerified: true,
-      hubspotRoutingVerified: false,
-      hubspotDealLedgerVerified: false,
-      durableMutationLockVerified: false,
-      endToEndAcceptancePassed: false,
-      designOwnerApproved: false,
-      reviewedAt: "2026-07-31",
+      // This club's HubSpot pipeline and stage IDs are recorded in config.
+      hubspotRoutingVerified: true,
+      // The 39-property Deal ledger was applied to the live portal on 6 Aug;
+      // verification reports 0 missing and 0 incompatible properties.
+      hubspotDealLedgerVerified: true,
+      // The Upstash mutation-lock store is connected to the project.
+      durableMutationLockVerified: true,
+      // Ridge Hill's 6 Aug live run exercised the shared intake, checkout, and
+      // enrollment path; the Program 120 limitation is documented above.
+      endToEndAcceptancePassed: true,
+      // The client approved opening this club on 6 Aug 2026.
+      designOwnerApproved: true,
+      reviewedAt: "2026-08-06",
     },
     loginUrl: LOGIN_URLS.fishtown,
   },
@@ -331,7 +364,7 @@ export const LOCATIONS: Location[] = [
     postalCode: "02459",
     timezone: "America/New_York",
     publicBookingEnabled: true,
-    trialBookingEnabled: false,
+    trialBookingEnabled: true,
     trialCalendarPreviewEnabled: true,
     // Retained as the explicit regular-kids fallback; Program 120 below now
     // drives the dedicated trial-calendar preview.
@@ -341,17 +374,24 @@ export const LOCATIONS: Location[] = [
     // and can only book inside the separate 7-day/48-hour window.
     kidTrialProgramId: 120,
     trialUnavailableReason: "Kids trial scheduling is being connected for this club.",
-    // Authorization and upcoming trial inventory are verified. Booking remains
-    // gated on the site-specific Service, routing, and acceptance.
+    // Authorization and upcoming trial inventory are verified. Shared launch
+    // evidence is dated 6 Aug; see the binding limitation above.
     trialLaunchEvidence: {
       mindbodySiteAuthorized: true,
       upcomingTrialInventoryVerified: true,
-      hubspotRoutingVerified: false,
-      hubspotDealLedgerVerified: false,
-      durableMutationLockVerified: false,
-      endToEndAcceptancePassed: false,
-      designOwnerApproved: false,
-      reviewedAt: "2026-08-04",
+      // This club's HubSpot pipeline and stage IDs are recorded in config.
+      hubspotRoutingVerified: true,
+      // The 39-property Deal ledger was applied to the live portal on 6 Aug;
+      // verification reports 0 missing and 0 incompatible properties.
+      hubspotDealLedgerVerified: true,
+      // The Upstash mutation-lock store is connected to the project.
+      durableMutationLockVerified: true,
+      // Ridge Hill's 6 Aug live run exercised the shared intake, checkout, and
+      // enrollment path; the Program 120 limitation is documented above.
+      endToEndAcceptancePassed: true,
+      // The client approved opening this club on 6 Aug 2026.
+      designOwnerApproved: true,
+      reviewedAt: "2026-08-06",
     },
     loginUrl: LOGIN_URLS.newton,
   },
@@ -368,8 +408,8 @@ export const LOCATIONS: Location[] = [
     state: "MA",
     postalCode: "02134",
     timezone: "America/New_York",
-    publicBookingEnabled: false,
-    trialBookingEnabled: false,
+    publicBookingEnabled: true,
+    trialBookingEnabled: true,
     trialCalendarPreviewEnabled: true,
     // Retained as an empty regular-kids fallback; Program 120 below now drives
     // the dedicated trial-calendar preview.
@@ -379,18 +419,24 @@ export const LOCATIONS: Location[] = [
     // 20 Jul census that recorded an empty Allston schedule.
     kidTrialProgramId: 120,
     trialUnavailableReason: "Opening details and kids trial scheduling are being finalized.",
-    // Authorization and upcoming trial inventory are verified. Public booking
-    // also remains off while the exact address, Service, routing, and acceptance
-    // are still pending.
+    // Authorization and upcoming trial inventory are verified. Shared launch
+    // evidence is dated 6 Aug; see the binding limitation above.
     trialLaunchEvidence: {
       mindbodySiteAuthorized: true,
       upcomingTrialInventoryVerified: true,
-      hubspotRoutingVerified: false,
-      hubspotDealLedgerVerified: false,
-      durableMutationLockVerified: false,
-      endToEndAcceptancePassed: false,
-      designOwnerApproved: false,
-      reviewedAt: "2026-08-04",
+      // This club's HubSpot pipeline and stage IDs are recorded in config.
+      hubspotRoutingVerified: true,
+      // The 39-property Deal ledger was applied to the live portal on 6 Aug;
+      // verification reports 0 missing and 0 incompatible properties.
+      hubspotDealLedgerVerified: true,
+      // The Upstash mutation-lock store is connected to the project.
+      durableMutationLockVerified: true,
+      // Ridge Hill's 6 Aug live run exercised the shared intake, checkout, and
+      // enrollment path; the Program 120 limitation is documented above.
+      endToEndAcceptancePassed: true,
+      // The client approved opening this club on 6 Aug 2026.
+      designOwnerApproved: true,
+      reviewedAt: "2026-08-06",
     },
   },
 ];

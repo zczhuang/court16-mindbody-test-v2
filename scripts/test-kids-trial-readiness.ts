@@ -166,7 +166,7 @@ try {
 
   // Production configuration: Program 120 is site-scoped to six clubs with
   // verified live occurrences. Ridge Hill remains on its established Program
-  // 61. Every club stays preview-only until the independent launch gates pass.
+  // 61, and all seven clubs have now passed the configured launch gates.
   const expectedProgramIds: Record<string, number | undefined> = {
     brooklyn: 120,
     lic: 120,
@@ -186,18 +186,25 @@ try {
     "allston",
   ]);
 
-  // Ridge Hill was opened as the single pilot club on 6 Aug 2026 at the client's
-  // request. This assertion is deliberately "exactly one, and it is this one"
-  // rather than being dropped: opening a second club still fails the build.
-  const pilotLocationId = "ridgehill";
+  // All seven clubs were approved for live booking on 6 Aug 2026. Keep this
+  // explicit so any club silently returning to preview-only fails the build.
+  const bookingEnabledLocationIds = new Set([
+    "brooklyn",
+    "lic",
+    "fidi",
+    "ridgehill",
+    "fishtown",
+    "newton",
+    "allston",
+  ]);
 
   for (const configuredLocation of LOCATIONS) {
     const expectedProgramId = expectedProgramIds[configuredLocation.id];
     assert.equal(configuredLocation.kidTrialProgramId, expectedProgramId);
     assert.equal(
       configuredLocation.trialBookingEnabled,
-      configuredLocation.id === pilotLocationId,
-      `${configuredLocation.id}: only ${pilotLocationId} may be booking-enabled`,
+      bookingEnabledLocationIds.has(configuredLocation.id),
+      `${configuredLocation.id}: all seven configured clubs must be booking-enabled`,
     );
     assert.equal(
       configuredLocation.trialLaunchEvidence?.upcomingTrialInventoryVerified,
