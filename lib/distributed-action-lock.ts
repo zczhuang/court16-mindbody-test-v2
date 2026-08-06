@@ -136,8 +136,17 @@ export async function withDistributedActionLock<T>(
 }
 
 function loadRedisRestConfig(): RedisRestConfig {
-  const url = process.env.UPSTASH_REDIS_REST_URL?.trim().replace(/\/+$/, "");
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN?.trim();
+  // Vercel's Upstash marketplace integration provisions KV_REST_API_URL and
+  // KV_REST_API_TOKEN rather than the UPSTASH_REDIS_REST_* pair. Accept either
+  // name for the same REST endpoint so a store connected through the Vercel
+  // dashboard works without copying secret values into duplicate variables.
+  // UPSTASH_REDIS_REST_* still wins when both are present.
+  const url = (process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL)
+    ?.trim()
+    .replace(/\/+$/, "");
+  const token = (
+    process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN
+  )?.trim();
   if (!url || !token) {
     throw new DistributedActionLockError(
       "not_configured",

@@ -148,8 +148,14 @@ export function getTrialE2EPolicy(): TrialE2EPolicyResult {
     realWritesEnabled: process.env.MINDBODY_REAL_WRITES_ENABLED,
     redisUrl: process.env.E2E_UPSTASH_REDIS_REST_URL,
     redisToken: process.env.E2E_UPSTASH_REDIS_REST_TOKEN,
-    productionRedisUrl: process.env.UPSTASH_REDIS_REST_URL,
-    productionRedisToken: process.env.UPSTASH_REDIS_REST_TOKEN,
+    // Mirror the production lock's accepted names (lib/distributed-action-lock.ts).
+    // A store connected through Vercel's Upstash integration arrives as
+    // KV_REST_API_*, and the isolation check must compare against whichever
+    // pair production actually uses or it silently compares against undefined.
+    productionRedisUrl:
+      process.env.UPSTASH_REDIS_REST_URL ?? process.env.KV_REST_API_URL,
+    productionRedisToken:
+      process.env.UPSTASH_REDIS_REST_TOKEN ?? process.env.KV_REST_API_TOKEN,
   });
 }
 
