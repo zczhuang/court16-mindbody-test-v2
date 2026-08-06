@@ -434,7 +434,41 @@ async function confirmBooking(payload: ReturnType<typeof verifyToken>) {
         }
       }
 
-      if (readOnlyReconciliation && !retryableError) {
+      // The visit lookup above ran before we knew the credit readback was
+      // denied, so it demanded a product and service name Mindbody never
+      // recorded for this booking. Retry it on identity alone before declaring
+      // the outcome unresolved — otherwise a request that did enroll stays
+      // stuck in reconciliation forever, and no retry can ever clear it.
+      if (clientServiceReadbackDenied && !verifiedVisit && !retryableError) {
+        try {
+          verifiedVisit = await readExactActiveVisit(
+            mbCfg,
+            log,
+            clientId,
+            classId,
+            undefined,
+            undefined,
+            undefined,
+            location.siteId,
+            mindbodyLocationId,
+            visitWindow,
+            readOnlyReconciliation ? 3 : 1,
+          );
+          if (verifiedVisit) {
+            log.info("staff.confirm.visit-verified-by-identity", {
+              clientId,
+              classId,
+              visitId: verifiedVisit.Id,
+            });
+          }
+        } catch (e) {
+          retryableError = e;
+        }
+      }
+
+      if (verifiedVisit) {
+        // Enrollment is proven; fall through to the normal completion path.
+      } else if (readOnlyReconciliation && !retryableError) {
         retryableError = new Error(
           "A prior enrollment outcome is unresolved; this retry performed read-only reconciliation and did not call Checkout or AddClientToClass",
         );
