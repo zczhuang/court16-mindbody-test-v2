@@ -39,8 +39,8 @@ assert.doesNotMatch(classCard, /class-card--readonly/);
 assert.match(trialPage, /className="trial-preview-note"/);
 assert.doesNotMatch(dayDetail, /class-list-preview-note/);
 
-// Only the final panel is locked: panel one can advance, but an Enter-key or
-// programmatic submit on panel two returns before the live callback.
+// The form is a single panel. An Enter-key or programmatic submit returns
+// before validation and before the live callback whenever submission is off.
 assert.match(requestForm, /submissionEnabled: boolean/);
 assert.doesNotMatch(requestForm, /submissionEnabled\s*=\s*true/);
 const previewGuard = requestForm.indexOf("if (!submissionEnabled) {");
@@ -50,27 +50,22 @@ assert(previewGuard >= 0, "preview submit guard is missing");
 assert(firstLiveValidation > previewGuard, "preview guard must run before live validation");
 assert(liveCallback > previewGuard, "preview guard must run before the live submit callback");
 assert.match(requestForm, /noValidate=\{previewOnly\}/);
-assert.match(
-  requestForm,
-  /disabled=\{submitting \|\| \(formStep === "mindbody" && !submissionEnabled\)\}/,
-);
+assert.match(requestForm, /disabled=\{submitting \|\| !submissionEnabled\}/);
+// A single panel means there is no intermediate "advance" state left that could
+// re-open a submit path; the step machine must be gone entirely.
+assert.doesNotMatch(requestForm, /formStep/);
 assert.match(requestForm, /isn&apos;t fully launch-ready yet/);
 assert.match(requestForm, /autoComplete=\{testMode \|\| previewOnly \? "off" : undefined\}/);
 
-// Gender belongs with each person's core details on panel one, beside date of
-// birth, and live intake must validate both selections before panel two opens.
+// Gender belongs with each person's core details, beside date of birth, and
+// live intake must validate both selections before the live submit callback.
 const parentDobField = requestForm.indexOf('label="Your date of birth *"');
 const parentGenderField = requestForm.indexOf(
   'label="Parent or guardian gender *"',
 );
 const childDobField = requestForm.indexOf('label="Child\'s date of birth *"');
 const childGenderField = requestForm.indexOf('label="Child gender *"');
-const secondPanelHeading = requestForm.indexOf("Keep the family profile accurate.");
 const genderValidation = requestForm.indexOf("if (!parentGender || !childGender)");
-const familyStepTransition = requestForm.indexOf(
-  'if (formStep === "family") {',
-  firstLiveValidation,
-);
 const parentDetailsGridStart = requestForm.lastIndexOf(
   '<div className="trf-grid">',
   parentDobField,
@@ -103,23 +98,22 @@ assert.equal(
   1,
   "child gender must appear exactly once",
 );
-assert(
-  secondPanelHeading > childGenderField,
-  "both gender fields must appear before panel two",
-);
 assert.doesNotMatch(requestForm, />Profile details</);
 assert.match(requestForm, /<div className="eyebrow">Child<\/div>/);
 assert.doesNotMatch(requestForm, /Child · no separate login/);
 assert(
-  genderValidation >= 0 && genderValidation < familyStepTransition,
-  "gender validation must run before panel one advances",
+  genderValidation >= 0 && genderValidation < liveCallback,
+  "gender validation must run before the live submit callback",
 );
 
 // The live consumer-mode AddClient contract requires a real emergency contact
 // at every Court 16 site. One alternate contact supports the adult profile;
 // the child payload reuses the registering parent as its truthful contact.
 const emergencySection = requestForm.indexOf("Alternate emergency contact");
-assert(emergencySection > secondPanelHeading, "emergency contact must be on panel two");
+assert(
+  emergencySection > childGenderField,
+  "emergency contact must follow the child section",
+);
 for (const key of [
   "parentEmergencyContactName",
   "parentEmergencyContactPhone",

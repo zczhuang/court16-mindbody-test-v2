@@ -27,7 +27,6 @@ interface Props {
   onCancel: () => void;
 }
 
-type FormStep = "family" | "mindbody";
 
 const TRIAL_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
   weekday: "long",
@@ -81,7 +80,6 @@ export default function TrialRequestForm({
   );
   const [parentEmergencyContactRelationship, setParentEmergencyContactRelationship] =
     useState(initialValues?.parentEmergencyContactRelationship ?? "");
-  const [formStep, setFormStep] = useState<FormStep>("family");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dialogCardRef = useRef<HTMLDivElement>(null);
@@ -127,12 +125,11 @@ export default function TrialRequestForm({
   }, []);
 
   useEffect(() => {
-    // Each panel has a different height. Reset the internal scroll position
-    // and announce the new heading so keyboard and screen-reader users land
-    // at the start instead of inheriting the prior panel's scroll offset.
+    // Announce the heading when the dialog opens so keyboard and screen-reader
+    // users land at the start of the form rather than wherever the page was.
     formBodyRef.current?.scrollTo({ top: 0, behavior: "auto" });
     formTitleRef.current?.focus({ preventScroll: true });
-  }, [formStep]);
+  }, []);
 
   const derivedAge = childBirthDate ? ageFromDob(childBirthDate) : NaN;
   const trialDateLabel = TRIAL_DATE_FORMATTER.format(
@@ -148,17 +145,15 @@ export default function TrialRequestForm({
     e.preventDefault();
     setError(null);
 
-    // Production preview is a design-review lane, not an intake lane. Let a
-    // reviewer see both panels without entering real personal information,
-    // then stop every panel-two submission before validation or onSubmit.
+    // Production preview is a design-review lane, not an intake lane. A
+    // reviewer can read the whole form without entering real personal
+    // information; every submission stops here, before validation or onSubmit.
     if (!submissionEnabled) {
-      if (formStep === "family") setFormStep("mindbody");
       return;
     }
 
-    // Revalidate the first panel in React as well as with native form
-    // constraints. Those inputs are unmounted on panel two, so a server
-    // response must not be the first time the family learns one is invalid.
+    // Revalidate in React as well as with native form constraints, so a server
+    // response is never the first time the family learns a field is invalid.
     if (!parentFirstName.trim() || !parentLastName.trim()) {
       setError("Enter the parent or guardian's first and last name.");
       return;
@@ -191,10 +186,6 @@ export default function TrialRequestForm({
     }
     if (!parentGender || !childGender) {
       setError("Select the required gender field for both the parent and child.");
-      return;
-    }
-    if (formStep === "family") {
-      setFormStep("mindbody");
       return;
     }
     setSubmitting(true);
@@ -265,8 +256,7 @@ export default function TrialRequestForm({
         <div className="trf-head">
           <div>
             <div className="eyebrow" style={{ marginBottom: 4 }}>
-              {previewOnly ? "Trial form preview" : "Final details"} ·{" "}
-              {formStep === "family" ? "1 of 2" : "2 of 2"}
+              {previewOnly ? "Trial form preview" : "Final details"}
             </div>
             <h3
               ref={formTitleRef}
@@ -274,9 +264,7 @@ export default function TrialRequestForm({
               className="trf-title"
               tabIndex={-1}
             >
-              {formStep === "family"
-                ? "Tell us about your player."
-                : "Finish your family details."}
+              Tell us about your player.
             </h3>
             <div className="trf-meta">
               <strong>{trialClass.name}</strong>
@@ -308,8 +296,6 @@ export default function TrialRequestForm({
           noValidate={previewOnly}
         >
           <fieldset className="trf-fields" disabled={testMode}>
-            {formStep === "family" ? (
-            <>
               <div className="trf-account-note">
                 <strong>
                   {testMode
@@ -322,7 +308,7 @@ export default function TrialRequestForm({
                   {testMode
                     ? "This exact production form is connected only to the protected E2E lane. Court 16 notification adapters are absent; Site -99 mode also requests native email and text suppression."
                     : previewOnly
-                      ? `Move through both panels without entering real personal information. Final submission will open after Court 16 verifies site-specific booking setup and the launch workflow for ${locationName}.`
+                      ? `Read through the form without entering real personal information. Final submission will open after Court 16 verifies site-specific booking setup and the launch workflow for ${locationName}.`
                       : "No credit card is needed. We'll use these details to prepare the family records, and Mindbody will send any secure account email."}
                 </span>
               </div>
@@ -514,24 +500,13 @@ export default function TrialRequestForm({
                   login. Court 16 staff will help with any final family-account link.
                 </div>
               </div>
-            </>
-            ) : (
-            <>
-              <div className="trf-account-note">
-                <strong>
-                  {previewOnly
-                    ? "Preview only — nothing will be sent."
-                    : "Keep the family profile accurate."}
-                </strong>
-                <span id={previewOnly ? "trial-form-preview-note" : undefined}>
-                  {previewOnly
-                    ? `Complete this panel to review the experience. Final submission will open after Court 16 verifies site-specific booking setup and the launch workflow for ${locationName}.`
-                    : "Mindbody asks for the details below when a new account is prepared. We use the household address for both parent and child and protect it under Court 16's Privacy Policy."}
-                </span>
-              </div>
-
               <div className="trf-section">
                 <div className="eyebrow">Household address</div>
+                <div className="trf-family-note">
+                  Mindbody requires an address to create the family&apos;s account. We use
+                  it for both parent and child, and protect it under Court 16&apos;s
+                  Privacy Policy.
+                </div>
                 <Field label="Street address *">
                   <input
                     type="text"
@@ -649,9 +624,6 @@ export default function TrialRequestForm({
                   </Field>
                 </div>
               </div>
-
-            </>
-            )}
           </fieldset>
 
           <p className="trf-privacy">
@@ -683,7 +655,7 @@ export default function TrialRequestForm({
             </div>
           )}
 
-          {previewOnly && formStep === "mindbody" && (
+          {previewOnly && (
             <div id="trial-submission-lock" className="trf-submit-lock">
               <strong>Submission locked.</strong>
               <span>
@@ -700,34 +672,25 @@ export default function TrialRequestForm({
             type="button"
             onClick={() => {
               setError(null);
-              if (formStep === "mindbody") setFormStep("family");
-              else onCancel();
+              onCancel();
             }}
             className="btn ghost"
             disabled={submitting}
           >
-            ← {formStep === "mindbody" ? "Player details" : "Back"}
+            ← Back
           </button>
           <button
             type="submit"
             form="trial-request-form"
-            disabled={submitting || (formStep === "mindbody" && !submissionEnabled)}
-            aria-describedby={
-              formStep === "mindbody" && !submissionEnabled
-                ? "trial-submission-lock"
-                : undefined
-            }
+            disabled={submitting || !submissionEnabled}
+            aria-describedby={!submissionEnabled ? "trial-submission-lock" : undefined}
             className="btn primary"
           >
             {submitting
-                ? "Sending…"
-                : formStep === "family"
-                  ? previewOnly
-                    ? "Preview family details"
-                    : "Continue"
-                  : testMode
-                    ? "Run safe test request"
-                    : "Send trial request"}
+              ? "Sending…"
+              : testMode
+                ? "Run safe test request"
+                : "Send trial request"}
             <span aria-hidden="true">→</span>
           </button>
         </div>
