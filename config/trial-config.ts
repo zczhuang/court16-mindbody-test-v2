@@ -39,9 +39,27 @@ export interface LocationTrialConfig {
 }
 
 export const TRIAL_CONFIG: Record<string, LocationTrialConfig> = {
-  brooklyn: { trialEligibleClassScheduleIds: [], maxTrialsPerClass: 2 },
-  lic: { trialEligibleClassScheduleIds: [], maxTrialsPerClass: 2 },
-  fidi: { trialEligibleClassScheduleIds: [], maxTrialsPerClass: 2 },
+  // These six Service IDs came from the 5 Aug 2026 read-only audit. Program/location
+  // applicability is unverified: Ridge Hill's Service 100328 is tied to Program 61
+  // while these clubs run Program 120; a mismatch returns `ClassRequiresPayment`.
+  brooklyn: {
+    trialEligibleClassScheduleIds: [],
+    maxTrialsPerClass: 2,
+    trialServiceId: 11479,
+    trialServiceName: "Kid's Trial",
+  },
+  lic: {
+    trialEligibleClassScheduleIds: [],
+    maxTrialsPerClass: 2,
+    trialServiceId: 103806,
+    trialServiceName: "Kid's Trial",
+  },
+  fidi: {
+    trialEligibleClassScheduleIds: [],
+    maxTrialsPerClass: 2,
+    trialServiceId: 101407,
+    trialServiceName: "Kid's Trial",
+  },
   // RH Kid's Trial $0 service (id 100328) is tied to Program 61. AddClientToClass
   // for a Program 61 occurrence requires this service credit — without it
   // Mindbody returns `ClassRequiresPayment` (verified smoke #M3 v1, May 22).
@@ -60,9 +78,24 @@ export const TRIAL_CONFIG: Record<string, LocationTrialConfig> = {
     // Active Ridge Hill catalog values observed via GET /site/genders.
     mindbodyGenderOptions: ["Female", "Male", "Undisclosed"],
   },
-  fishtown: { trialEligibleClassScheduleIds: [], maxTrialsPerClass: 2 },
-  newton: { trialEligibleClassScheduleIds: [], maxTrialsPerClass: 2 },
-  allston: { trialEligibleClassScheduleIds: [], maxTrialsPerClass: 2 },
+  fishtown: {
+    trialEligibleClassScheduleIds: [],
+    maxTrialsPerClass: 2,
+    trialServiceId: 100214,
+    trialServiceName: "Kid's Trial",
+  },
+  newton: {
+    trialEligibleClassScheduleIds: [],
+    maxTrialsPerClass: 2,
+    trialServiceId: 100432,
+    trialServiceName: "Kid's Trial",
+  },
+  allston: {
+    trialEligibleClassScheduleIds: [],
+    maxTrialsPerClass: 2,
+    trialServiceId: 100420,
+    trialServiceName: "Kid's Trial",
+  },
 };
 
 /**
