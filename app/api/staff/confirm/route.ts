@@ -510,8 +510,8 @@ async function confirmBooking(payload: ReturnType<typeof verifyToken>) {
                 log,
                 clientId,
                 classId,
-                trialServiceId,
-                trialServiceName,
+                clientServiceReadbackDenied ? undefined : trialServiceId,
+                clientServiceReadbackDenied ? undefined : trialServiceName,
                 undefined,
                 location.siteId,
                 mindbodyLocationId,
@@ -611,8 +611,14 @@ async function confirmBooking(payload: ReturnType<typeof verifyToken>) {
           log,
           clientId,
           classId,
-          trialServiceId,
-          trialServiceName,
+          // With the credit readback denied we cannot bind the visit to a
+          // specific credit, and Mindbody may record the booking under its own
+          // pricing label (Ridge Hill returns ServiceName "Free Class" for a
+          // comped trial). Identity is still proven exactly: same client, same
+          // occurrence, same site and location, not cancelled, missed, or
+          // waitlisted. Claiming credit verification here would be false.
+          clientServiceReadbackDenied ? undefined : trialServiceId,
+          clientServiceReadbackDenied ? undefined : trialServiceName,
           verifiedClientService?.Id,
           location.siteId,
           mindbodyLocationId,
