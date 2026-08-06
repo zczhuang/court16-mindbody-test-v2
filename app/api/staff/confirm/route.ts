@@ -370,6 +370,10 @@ async function confirmBooking(payload: ReturnType<typeof verifyToken>) {
   // keep its retryable pre-write statuses instead of being frozen into
   // read-only reconciliation (which would also block the Deny link).
   let mindbodyWriteMarked = false;
+  // Set when Mindbody refuses the ClientService readback outright. The confirm
+  // then relies on the configured Service ID and the Visit readback instead of
+  // an exact credit lookup. See isClientServiceReadbackDenied.
+  let clientServiceReadbackDenied = false;
   const priorLedgerPreWrite =
     (ledger.enrollmentStatus === "not_started" ||
       ledger.enrollmentStatus === "service_verified") &&
@@ -417,7 +421,17 @@ async function confirmBooking(payload: ReturnType<typeof verifyToken>) {
           readOnlyReconciliation ? 3 : 1,
         );
       } catch (e) {
-        retryableError = e;
+        if (isClientServiceReadbackDenied(e)) {
+          clientServiceReadbackDenied = true;
+          log.warn("staff.confirm.client-service-readback.denied", {
+            clientId,
+            siteId: location.siteId,
+            detail:
+              "Mindbody refused /client/clientservices for this source; continuing on the configured Service and the Visit readback.",
+          });
+        } else {
+          retryableError = e;
+        }
       }
 
       if (readOnlyReconciliation && !retryableError) {
@@ -504,7 +518,7 @@ async function confirmBooking(payload: ReturnType<typeof verifyToken>) {
                 visitWindow,
                 3,
               );
-              if (!verifiedVisit) {
+              if (!verifiedVisit && !clientServiceReadbackDenied) {
                 verifiedClientService = await readExactClientService(
                   mbCfg,
                   log,
@@ -516,10 +530,19 @@ async function confirmBooking(payload: ReturnType<typeof verifyToken>) {
                 );
               }
             } catch (e) {
-              retryableError = checkoutError ?? e;
+              if (isClientServiceReadbackDenied(e)) {
+                clientServiceReadbackDenied = true;
+              } else {
+                retryableError = checkoutError ?? e;
+              }
             }
           }
-          if (!verifiedVisit && !verifiedClientService && !retryableError) {
+          if (
+            !verifiedVisit &&
+            !verifiedClientService &&
+            !clientServiceReadbackDenied &&
+            !retryableError
+          ) {
             retryableError =
               checkoutError ??
               new Error("Checkout returned without an exact Visit or ClientService readback");
@@ -527,12 +550,18 @@ async function confirmBooking(payload: ReturnType<typeof verifyToken>) {
         }
       }
 
-      if (verifiedClientService?.Id != null && !verifiedVisit && !retryableError) {
+      // With the readback denied there is no credit instance ID to bind, so the
+      // enrollment uses the configured Service ID exactly as `main` did. The
+      // Visit readback below is then the proof that enrollment succeeded.
+      const enrollmentClientServiceId =
+        verifiedClientService?.Id ?? (clientServiceReadbackDenied ? trialServiceId : undefined);
+
+      if (enrollmentClientServiceId != null && !verifiedVisit && !retryableError) {
         try {
           await persistMutationMarker(hsCfg, log, bookingDeal.id, ledger, {
             enrollmentStatus: "enrollment_started",
             mutationStatus: "add_to_class_started",
-            mindbodyClientServiceId: verifiedClientService.Id,
+            mindbodyClientServiceId: verifiedClientService?.Id,
             mindbodySaleId: purchaseSaleId,
           });
           mindbodyWriteMarked = true;
@@ -547,7 +576,7 @@ async function confirmBooking(payload: ReturnType<typeof verifyToken>) {
             const addResult = await addClientToClass(mbCfg, log, {
               ClientId: clientId,
               ClassId: classId,
-              ClientServiceId: Number(verifiedClientService.Id),
+              ClientServiceId: Number(enrollmentClientServiceId),
             });
             if (addResult.Visit) {
               verifiedVisit = findExactActiveClientVisit([addResult.Visit], {
@@ -557,7 +586,7 @@ async function confirmBooking(payload: ReturnType<typeof verifyToken>) {
                 locationId: mindbodyLocationId,
                 productId: trialServiceId,
                 serviceName: trialServiceName,
-                clientServiceId: verifiedClientService.Id,
+                clientServiceId: verifiedClientService?.Id,
               });
               if (verifiedVisit) {
                 log.info("staff.confirm.add.direct-visit-verified", {
@@ -855,6 +884,31 @@ function findAvailableClientService(
       );
     })
     .sort((a, b) => Date.parse(b.PaymentDate ?? "") - Date.parse(a.PaymentDate ?? ""))[0];
+}
+
+/**
+ * True when Mindbody refuses the readback itself, rather than telling us
+ * something is wrong with the booking.
+ *
+ * The source is not granted regional access to `/client/clientservices` at
+ * every Court 16 organization — Ridge Hill returns
+ * `403 DeniedAccess: "The SourceName provided does not have regional access to
+ * the organization in which this site belongs"` — while `/client/clientvisits`,
+ * checkout, and enrollment all succeed. That is a permissions gap, not evidence
+ * that the trial credit is missing, so it must not fail the confirm closed:
+ * `main` never performed this readback at all and enrolled successfully
+ * throughout the May pilot.
+ *
+ * "I could not check" and "the check failed" are different outcomes and are
+ * handled differently. When the readback is denied the confirm degrades to the
+ * proven path — checkout, then AddClientToClass bound to the configured
+ * Service — and enrollment is still proven by the Visit readback, which is
+ * permitted.
+ */
+function isClientServiceReadbackDenied(error: unknown): boolean {
+  if (!(error instanceof MindbodyError) || error.status !== 403) return false;
+  const code = (error.body as { Error?: { Code?: unknown } } | undefined)?.Error?.Code;
+  return code === "DeniedAccess";
 }
 
 async function readExactClientService(
