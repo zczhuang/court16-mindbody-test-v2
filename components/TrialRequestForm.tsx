@@ -148,7 +148,12 @@ export default function TrialRequestForm({
     // Production preview is a design-review lane, not an intake lane. A
     // reviewer can read the whole form without entering real personal
     // information; every submission stops here, before validation or onSubmit.
+    // The button stays pressable rather than disabled so the form does not read
+    // as broken, so pressing it must explain itself instead of doing nothing.
     if (!submissionEnabled) {
+      document
+        .getElementById("trial-submission-lock")
+        ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
       return;
     }
 
@@ -682,7 +687,7 @@ export default function TrialRequestForm({
           <button
             type="submit"
             form="trial-request-form"
-            disabled={submitting || !submissionEnabled}
+            disabled={submitting}
             aria-describedby={!submissionEnabled ? "trial-submission-lock" : undefined}
             className="btn primary"
           >

@@ -50,7 +50,13 @@ assert(previewGuard >= 0, "preview submit guard is missing");
 assert(firstLiveValidation > previewGuard, "preview guard must run before live validation");
 assert(liveCallback > previewGuard, "preview guard must run before the live submit callback");
 assert.match(requestForm, /noValidate=\{previewOnly\}/);
-assert.match(requestForm, /disabled=\{submitting \|\| !submissionEnabled\}/);
+// The submit button stays pressable so the locked form does not read as broken.
+// That makes the in-handler guard the only thing standing between a preview
+// click and a live booking, so its ordering assertions above carry the whole
+// contract and must not be relaxed.
+assert.match(requestForm, /disabled=\{submitting\}/);
+assert.doesNotMatch(requestForm, /disabled=\{submitting \|\| !submissionEnabled\}/);
+assert.match(requestForm, /getElementById\("trial-submission-lock"\)/);
 // A single panel means there is no intermediate "advance" state left that could
 // re-open a submit path; the step machine must be gone entirely.
 assert.doesNotMatch(requestForm, /formStep/);
