@@ -516,6 +516,11 @@ export async function POST(req: Request) {
     correlationId,
     activeParentKey: buildActiveParentKey(body.parentEmail),
     intent: "kid_trial",
+    // Tag records created by the smoke-test lane so test data is separable from
+    // real families in reporting and cleanup. Only a request that qualified for
+    // smoke mode is marked; an ordinary booking leaves this unset rather than
+    // writing "false", so the property means "this is test data" when present.
+    testRecord: smokeTest.mode === "smoke" ? "true" : undefined,
     locationSlug: location.id,
     mindbodySiteId: mbCfg.siteId,
     mindbodyLocationId: verifiedMindbodyLocationId,

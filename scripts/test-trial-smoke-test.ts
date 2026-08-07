@@ -331,6 +331,14 @@ for (const sideEffect of [
   );
 }
 
+// Records created by the smoke lane must be tagged, so test data stays
+// separable from real families. Only a qualifying smoke request is marked;
+// an ordinary booking must leave the property unset rather than write "false".
+assert(
+  /testRecord:\s*smokeTest\.mode === "smoke" \? "true" : undefined/.test(trialRoute),
+  "the trial route must tag smoke-lane bookings with court16_test_record",
+);
+
 // The parent AddClient call must derive its flags from the gate, never
 // hard-code them, so suppression cannot drift away from the decision.
 assert(
