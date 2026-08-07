@@ -809,6 +809,80 @@ export async function addClientToClass(
   });
 }
 
+export interface RemoveClientFromClassInput {
+  ClientId: string | number;
+  ClassId: number;
+}
+
+/**
+ * Remove a client from one class occurrence.
+ *
+ * Only staff reassign calls this, and only after the replacement booking has
+ * been read back as a live visit — never as a standalone cancellation. The two
+ * flags are deliberate:
+ *
+ *   • `SendEmail: false` — Mindbody would otherwise mail the family a
+ *     cancellation for a class we are moving them out of, seconds after they
+ *     were added to the new one. Court 16 tells the parent about the move once.
+ *   • `LateCancel: false` — a late cancel burns the trial credit. A move should
+ *     return it, so a subsequent reassign of the same request still has a
+ *     credit to spend.
+ *
+ * Consumer mode is rejected on this endpoint (unlike AddClientToClass), so it
+ * runs on the source-staff Bearer, same as the cart checkout.
+ */
+export async function removeClientsFromClasses(
+  cfg: MindbodyConfig,
+  log: Logger,
+  input: RemoveClientFromClassInput,
+): Promise<void> {
+  assertMindbodyWriteAllowed(cfg.siteId, "RemoveClientsFromClasses");
+  const bearer = await issueSourceStaffToken(cfg, log);
+  const started = Date.now();
+  const res = await fetch(`${cfg.baseUrl}/class/removeclientsfromclasses`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Api-Key": cfg.apiKey,
+      SiteId: cfg.siteId,
+      Authorization: `Bearer ${bearer}`,
+    },
+    body: JSON.stringify({
+      Details: [
+        {
+          ClientIds: [String(input.ClientId)],
+          ClassId: input.ClassId,
+          SendEmail: false,
+          LateCancel: false,
+        },
+      ],
+    }),
+  });
+  const ms = Date.now() - started;
+  const text = await res.text();
+  let parsed: unknown = text;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    /* leave as text */
+  }
+  if (!res.ok) {
+    log.error("mindbody.remove-from-class.fail", {
+      clientId: input.ClientId,
+      classId: input.ClassId,
+      status: res.status,
+      ms,
+      body: parsed,
+    });
+    throw new MindbodyError(`remove from class → ${res.status}`, res.status, parsed);
+  }
+  log.info("mindbody.remove-from-class.ok", {
+    clientId: input.ClientId,
+    classId: input.ClassId,
+    ms,
+  });
+}
+
 export interface CheckoutTrialBookingInput {
   ClientId: string | number;
   ServiceId: number;

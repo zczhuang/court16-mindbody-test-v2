@@ -25,6 +25,7 @@
     "test:mindbody-pagination": "node --no-warnings --experimental-strip-types scripts/test-mindbody-pagination.ts",
     "test:mindbody-write-guard": "node --no-warnings --experimental-strip-types scripts/test-mindbody-write-guard.ts",
     "test:trial-smoke-test": "node --no-warnings --experimental-strip-types scripts/test-trial-smoke-test.ts",
+    "test:staff-reassign": "node --no-warnings --experimental-strip-types scripts/test-staff-reassign.ts",
     "validate:trial-config": "node --no-warnings --experimental-strip-types scripts/validate-trial-config.ts",
     "audit:mindbody-sites": "node --env-file-if-exists=.env.local --no-warnings --experimental-strip-types scripts/audit-mindbody-sites.ts",
     "hubspot:deal-ledger-schema": "node --env-file-if-exists=.env.local --no-warnings --experimental-strip-types scripts/sync-hubspot-deal-ledger-schema.ts",
