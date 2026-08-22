@@ -1,0 +1,652 @@
+<title>Court 16 Build Anthology</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap">
+
+<style>
+  /* ---------- tokens: light (bare :root = complete palette) ---------- */
+  :root {
+    --ink:        #1a1a1a;
+    --ink-soft:   #3d3a33;
+    --muted:      #6b6558;
+    --faint:      #918a79;
+    --canvas:     #fffdf4;
+    --card:       #ffffff;
+    --sunken:     #faf7ea;
+    --rule:       #e5e0d2;
+    --rule-soft:  #efebdd;
+    --accent:     #ffe033;
+    --accent-ink: #1a1a1a;
+    --accent-deep:#b8961a;
+
+    --ok:      #16a34a;
+    --ok-bg:   #e9f7ee;
+    --warn:    #b45309;
+    --warn-bg: #fdf1de;
+    --stop:    #c2261d;
+    --stop-bg: #fceceb;
+    --plan:    #4f6070;
+    --plan-bg: #eef2f5;
+
+    --shadow: 0 1px 2px rgba(26,26,26,.04), 0 6px 20px -12px rgba(26,26,26,.14);
+
+    --display: "Bricolage Grotesque", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --body: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+
+  /* ---------- tokens: dark via system preference (unless light is stamped) ---------- */
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink:        #f6f3e8;
+      --ink-soft:   #ddd8c8;
+      --muted:      #a49d8b;
+      --faint:      #837c6b;
+      --canvas:     #15140f;
+      --card:       #1e1c15;
+      --sunken:     #1a1812;
+      --rule:       #35311f;
+      --rule-soft:  #2a2719;
+      --accent:     #ffe033;
+      --accent-ink: #1a1a1a;
+      --accent-deep:#ffe033;
+
+      --ok:      #4ade80;
+      --ok-bg:   #14301f;
+      --warn:    #fbbf24;
+      --warn-bg: #33260c;
+      --stop:    #f87171;
+      --stop-bg: #351817;
+      --plan:    #9fb3c4;
+      --plan-bg: #1c2530;
+
+      --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -14px rgba(0,0,0,.7);
+    }
+  }
+
+  /* ---------- tokens: dark stamped explicitly ---------- */
+  :root[data-theme="dark"] {
+    --ink:        #f6f3e8;
+    --ink-soft:   #ddd8c8;
+    --muted:      #a49d8b;
+    --faint:      #837c6b;
+    --canvas:     #15140f;
+    --card:       #1e1c15;
+    --sunken:     #1a1812;
+    --rule:       #35311f;
+    --rule-soft:  #2a2719;
+    --accent:     #ffe033;
+    --accent-ink: #1a1a1a;
+    --accent-deep:#ffe033;
+
+    --ok:      #4ade80;
+    --ok-bg:   #14301f;
+    --warn:    #fbbf24;
+    --warn-bg: #33260c;
+    --stop:    #f87171;
+    --stop-bg: #351817;
+    --plan:    #9fb3c4;
+    --plan-bg: #1c2530;
+
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px -14px rgba(0,0,0,.7);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: var(--body);
+    font-size: 16px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 0 28px 96px;
+  }
+
+  .prose { max-width: 68ch; }
+
+  /* ---------- masthead ---------- */
+  .masthead {
+    padding: 56px 0 30px;
+    border-bottom: 2px solid var(--ink);
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .kicker {
+    font-family: var(--body);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+  }
+  .kicker .dot { color: var(--rule); }
+  h1 {
+    font-family: var(--display);
+    font-size: clamp(2.4rem, 6vw, 3.9rem);
+    font-weight: 800;
+    letter-spacing: -.033em;
+    line-height: 1.02;
+    margin: 0;
+    text-wrap: balance;
+  }
+  h1 .hl {
+    background: linear-gradient(transparent 62%, var(--accent) 62%, var(--accent) 94%, transparent 94%);
+    padding: 0 .06em;
+  }
+  .standfirst {
+    font-size: 1.16rem;
+    color: var(--ink-soft);
+    max-width: 62ch;
+    margin: 0;
+    text-wrap: pretty;
+  }
+  .meta-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 26px;
+    font-size: 13.5px;
+    color: var(--muted);
+    padding-top: 4px;
+  }
+  .meta-row b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- sections ---------- */
+  section { padding-top: 54px; }
+  .eyebrow {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .eyebrow::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+  }
+  h2 {
+    font-family: var(--display);
+    font-size: clamp(1.6rem, 3.2vw, 2.15rem);
+    font-weight: 700;
+    letter-spacing: -.024em;
+    line-height: 1.12;
+    margin: 0 0 14px;
+    text-wrap: balance;
+  }
+  h3 {
+    font-family: var(--display);
+    font-size: 1.16rem;
+    font-weight: 700;
+    letter-spacing: -.014em;
+    margin: 30px 0 8px;
+  }
+  p { margin: 0 0 15px; text-wrap: pretty; }
+  a { color: var(--ink); text-decoration-color: var(--accent-deep); text-underline-offset: 3px; text-decoration-thickness: 2px; }
+  a:hover { text-decoration-color: var(--ink); }
+  :focus-visible { outline: 2.5px solid var(--accent-deep); outline-offset: 3px; border-radius: 3px; }
+  code {
+    font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+    font-size: .875em;
+    background: var(--sunken);
+    border: 1px solid var(--rule-soft);
+    border-radius: 4px;
+    padding: .08em .34em;
+    color: var(--ink-soft);
+    word-break: break-word;
+  }
+
+  /* ---------- the read (pull panel) ---------- */
+  .read {
+    margin-top: 34px;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-left: 5px solid var(--accent);
+    border-radius: 3px;
+    padding: 26px 30px;
+    box-shadow: var(--shadow);
+  }
+  .read p:last-child { margin-bottom: 0; }
+  .read p { font-size: 1.04rem; max-width: 74ch; }
+
+  /* ---------- chips ---------- */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    padding: 3px 9px;
+    border-radius: 999px;
+    white-space: nowrap;
+    line-height: 1.5;
+  }
+  .chip::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex: none; }
+  .c-live  { color: var(--ok);   background: var(--ok-bg); }
+  .c-block { color: var(--warn); background: var(--warn-bg); }
+  .c-broke { color: var(--stop); background: var(--stop-bg); }
+  .c-plan  { color: var(--plan); background: var(--plan-bg); }
+
+  /* ---------- tables ---------- */
+  .tscroll { overflow-x: auto; margin: 20px 0 6px; border: 1px solid var(--rule); border-radius: 3px; background: var(--card); }
+  table { border-collapse: collapse; width: 100%; min-width: 660px; font-size: 14.5px; }
+  th {
+    text-align: left;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 12px 16px;
+    border-bottom: 1.5px solid var(--rule);
+    background: var(--sunken);
+    vertical-align: bottom;
+    white-space: nowrap;
+  }
+  td { padding: 13px 16px; border-bottom: 1px solid var(--rule-soft); vertical-align: top; color: var(--ink-soft); }
+  tbody tr:last-child td { border-bottom: none; }
+  td strong { color: var(--ink); font-weight: 600; }
+  .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .t-tight td, .t-tight th { padding-top: 10px; padding-bottom: 10px; }
+
+  /* ---------- priority ladder ---------- */
+  .ladder { display: flex; flex-direction: column; gap: 16px; margin-top: 26px; counter-reset: rung; }
+  .rung {
+    display: grid;
+    grid-template-columns: 62px 1fr;
+    gap: 22px;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 24px 26px;
+    box-shadow: var(--shadow);
+  }
+  .rung-n {
+    font-family: var(--display);
+    font-size: 2.5rem;
+    font-weight: 800;
+    line-height: .9;
+    letter-spacing: -.05em;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .rung.top { border-left: 5px solid var(--accent); }
+  .rung.top .rung-n { color: var(--accent-deep); }
+  .rung h3 { margin: -3px 0 4px; font-size: 1.3rem; }
+  .rung-why { font-size: 12.5px; color: var(--muted); margin: 0 0 12px; }
+  .rung p { font-size: 15px; max-width: 70ch; }
+  .rung p:last-of-type { margin-bottom: 0; }
+  .needs {
+    margin-top: 15px;
+    padding-top: 14px;
+    border-top: 1px dashed var(--rule);
+    font-size: 13.5px;
+    color: var(--muted);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+  }
+  .needs b { color: var(--ink); font-weight: 600; }
+
+  /* ---------- owner cards ---------- */
+  .owners { display: grid; grid-template-columns: repeat(auto-fit, minmax(268px, 1fr)); gap: 14px; margin-top: 24px; }
+  .owner {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 20px 22px;
+    box-shadow: var(--shadow);
+  }
+  .owner-h { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 3px; }
+  .owner-h strong { font-family: var(--display); font-size: 1.06rem; font-weight: 700; letter-spacing: -.012em; }
+  .owner-role { font-size: 11px; letter-spacing: .09em; text-transform: uppercase; color: var(--faint); font-weight: 600; }
+  .owner ul { margin: 12px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 9px; }
+  .owner li { font-size: 13.5px; color: var(--ink-soft); padding-left: 16px; position: relative; line-height: 1.5; }
+  .owner li::before { content: ""; position: absolute; left: 0; top: .55em; width: 6px; height: 2px; background: var(--accent-deep); }
+  .owner .eta { color: var(--faint); }
+
+  /* ---------- correction callouts ---------- */
+  .correction {
+    background: var(--sunken);
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    padding: 20px 24px;
+    margin-top: 16px;
+  }
+  .correction h3 { margin: 0 0 6px; font-size: 1.04rem; }
+  .correction p { font-size: 14.5px; margin-bottom: 0; max-width: 76ch; }
+  .correction p + p { margin-top: 10px; }
+
+  /* ---------- not-yet list ---------- */
+  .notyet { list-style: none; padding: 0; margin: 22px 0 0; display: flex; flex-direction: column; gap: 12px; }
+  .notyet li {
+    display: grid;
+    grid-template-columns: minmax(150px, 210px) 1fr;
+    gap: 8px 20px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--rule-soft);
+    font-size: 14.5px;
+    color: var(--ink-soft);
+  }
+  .notyet li:last-child { border-bottom: none; }
+  .notyet b { color: var(--ink); font-weight: 600; }
+
+  footer {
+    margin-top: 70px;
+    padding-top: 22px;
+    border-top: 2px solid var(--ink);
+    font-size: 13px;
+    color: var(--muted);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 24px;
+    justify-content: space-between;
+  }
+
+  @media (max-width: 640px) {
+    .wrap { padding: 0 18px 64px; }
+    .rung { grid-template-columns: 1fr; gap: 8px; padding: 20px; }
+    .rung-n { font-size: 1.9rem; }
+    .notyet li { grid-template-columns: 1fr; gap: 2px; }
+    .read { padding: 20px 22px; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="kicker">
+      <span>Court 16 × Cedarwind</span><span class="dot">/</span>
+      <span>For Anthony, Dakota &amp; Andrew</span><span class="dot">/</span>
+      <span>22 August 2026</span>
+    </div>
+    <h1>Everything we&#8217;ve built, and <span class="hl">what to do next</span></h1>
+    <p class="standfirst">A complete index of the Court 16 codebase and consulting work — eight repositories, five shipped packages, three unbuilt proposals — followed by a recommended order of attack.</p>
+    <div class="meta-row">
+      <span><b>8</b> repositories</span>
+      <span><b>~27,800</b> lines of application code</span>
+      <span><b>$11,500</b> of $15,000 SOW shipped</span>
+      <span><b>4</b> live deployments</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="read">
+      <p><strong>The sign-up flow is finished and smoke-tested against real MindBody, and it is not taking bookings.</strong> Five of five test scenarios passed against production Ridge Hill on 22 May. Since then it has sat behind a single environment flag, waiting on about 45 minutes of HubSpot clicks that nobody has done. That is the whole gap between built and earning.</p>
+      <p>Everything else in this portfolio is either downstream of that flip or waiting on the same kind of unlock — a two-minute admin toggle in MindBody, a ten-second checkbox in HubSpot. <strong>The engineering is not the bottleneck and hasn&#8217;t been for months.</strong> Six owner-actions, none longer than an hour, stand between the current state and a six-club booking system with revenue reporting on top of it.</p>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">The portfolio</p>
+    <h2>Six workstreams</h2>
+    <div class="prose">
+      <p>Three are live and running. Two are built and blocked on somebody outside Cedarwind. One is written down but not built.</p>
+    </div>
+
+    <div class="tscroll">
+      <table>
+        <thead>
+          <tr><th>Workstream</th><th>What it is</th><th>Size</th><th>State</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Sign-up / booking app</strong><br><span style="font-size:13px;color:var(--faint)">court16-mindbody-test-v2</span></td>
+            <td>Kids trial and adult intro flows. Dedupes against MindBody, creates parent and child accounts, links the guardian relationship, books the class, writes a HubSpot contact and deal, and issues signed one-click staff confirm / reassign / deny links.</td>
+            <td class="num">12,561 lines</td>
+            <td><span class="chip c-block">Built, gated</span></td>
+          </tr>
+          <tr>
+            <td><strong>Campaign console</strong><br><span style="font-size:13px;color:var(--faint)">court16-campaigns</span></td>
+            <td>The orchestration tool. Calendar and list of 109 classified campaigns across all six clubs, auto-matched to HubSpot campaigns with a confidence score, plus a Google-sign-in approval workflow with per-campaign audit trail and a no-LLM recommendations engine.</td>
+            <td class="num">7,439 lines</td>
+            <td><span class="chip c-live">Live</span></td>
+          </tr>
+          <tr>
+            <td><strong>HubSpot pipeline &amp; automation</strong><br><span style="font-size:13px;color:var(--faint)">&#8220;Package A&#8221;</span></td>
+            <td>17 custom contact properties, six per-club deal pipelines wired to the booking app, four assembled workflow shells, four drafted emails, and a copy-paste handoff document.</td>
+            <td class="num">2,500 lines of spec</td>
+            <td><span class="chip c-block">Awaiting toggles</span></td>
+          </tr>
+          <tr>
+            <td><strong>Site redesign prototype</strong><br><span style="font-size:13px;color:var(--faint)">/redesign</span></td>
+            <td>Eleven-page prototype of the full Court 16 site with real photography, a six-club carousel, reworked mega-nav and a live handoff into the booking flow. Built to host the sign-up app in a realistic context.</td>
+            <td class="num">4,202 lines</td>
+            <td><span class="chip c-live">Live prototype</span></td>
+          </tr>
+          <tr>
+            <td><strong>Class Concierge chatbot</strong></td>
+            <td>Answers class and pricing questions from a live MindBody feed, gates on audience (adult / kid), books into the trial flow, and captures a HubSpot lead when someone abandons.</td>
+            <td class="num">208-line KB</td>
+            <td><span class="chip c-live">Live</span></td>
+          </tr>
+          <tr>
+            <td><strong>Marketing measurement program</strong></td>
+            <td>Three proposals: a marketing command center joining HubSpot + MindBody + ad spend, a full-funnel attribution spec, and a media-mix build plan. Architecture, costs and phasing are specified. None of it is built.</td>
+            <td class="num">1,371 lines</td>
+            <td><span class="chip c-plan">Proposed</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">The anthology</p>
+    <h2>Every repository, in order</h2>
+    <div class="prose">
+      <p>Four of these are history. Knowing which is which saves anyone new a week of reading the wrong code.</p>
+    </div>
+
+    <div class="tscroll">
+      <table class="t-tight">
+        <thead>
+          <tr><th>Repository</th><th class="num">First push</th><th>Role</th><th>Standing</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>court16-phase1-demo</code></td><td class="num">15 Apr</td><td>Single-page concept demo.</td><td>Superseded</td></tr>
+          <tr><td><code>court16-trial-booking</code></td><td class="num">15 Apr</td><td>First booking prototype; carried an <code>/embed</code> route for a Squarespace iframe.</td><td>Superseded</td></tr>
+          <tr><td><code>court16-mindbody-test</code></td><td class="num">19 Apr</td><td>The happy-path harness that proved the four MindBody write calls BLINK got wrong. Its README is still the clearest account of that fix.</td><td>Superseded, worth keeping</td></tr>
+          <tr><td><code>court16-tracker-comments</code></td><td class="num">24 Apr</td><td>Comment backend for the engagement tracker.</td><td>Supporting</td></tr>
+          <tr><td><code>court16-booking-ideal</code></td><td class="num">25 May</td><td><strong>The ideal-state fork.</strong> Parent creates their MindBody account inside the wizard via OAuth, and the trial confirms automatically — no staff click, straight to Scheduled. Working end-to-end smoke on 25 May.</td><td>Live fork, undecided</td></tr>
+          <tr><td><code>court16-mindbody-test-v2</code></td><td class="num">25 May</td><td><strong>Production.</strong> The booking app, the redesign, the chatbot, Package A specs, the tracker and both measurement proposals all ship from here. 53 commits through 10 July.</td><td>Current</td></tr>
+          <tr><td><code>court16-marketing-workflow</code></td><td class="num">26 May</td><td>Standalone guide to running marketing email automation with Claude Cowork and HubSpot.</td><td>Reference</td></tr>
+          <tr><td><code>court16-campaigns</code></td><td class="num">31 May</td><td><strong>The campaign console</strong>, plus the growth and media-mix build plan.</td><td>Current</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Live right now</h3>
+    <div class="prose">
+      <p>All four responded when this document was compiled: the <a href="https://court16-mindbody-test.vercel.app">booking app</a>, the <a href="https://court16-campaigns.vercel.app">campaign console</a>, the <a href="https://court16-mindbody-test.vercel.app/tracker.html">engagement tracker</a>, and the <a href="https://court16-mindbody-test.vercel.app/redesign/index.html">site redesign prototype</a>.</p>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Two corrections</p>
+    <h2>Things that aren&#8217;t what they sound like</h2>
+
+    <div class="correction">
+      <h3>There is no mobile app.</h3>
+      <p>Nothing native exists — no React Native, Expo or Capacitor anywhere in the eight repositories. Every surface is responsive web. Real mobile engineering did happen (the redesign&#8217;s nav was reworked across roughly a dozen commits for small screens), but there is no App Store deliverable and none was scoped. If a native app is wanted, that is a new conversation, not a finishing touch.</p>
+    </div>
+
+    <div class="correction">
+      <h3>The marketing spend audit doesn&#8217;t exist yet — and that&#8217;s the finding.</h3>
+      <p>Three capability audits were done: a live tag audit of court16.com on 18 June, a probe of what HubSpot&#8217;s API will and won&#8217;t return on the current tier, and a map of the MindBody revenue endpoints. What none of them could produce is an audit of spend, for a simple reason: <strong>ad spend is not connected to any system Court 16 owns.</strong> It lives inside Meta and Google and reaches nothing else. Spend in the campaign console is a number somebody types in.</p>
+      <p>So the honest position is that marketing investment is currently <em>unauditable</em>, not un-audited. You can see who opened an email; you cannot see whether a campaign produced a single member or a single dollar. Priorities 4 through 6 below are the fix, in the order that costs least.</p>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">The blocker map</p>
+    <h2>Who owns the six things in the way</h2>
+    <div class="prose">
+      <p>None of these are engineering tasks. Total hands-on time across everyone is under four hours, spread across five people.</p>
+    </div>
+
+    <div class="owners">
+      <div class="owner">
+        <div class="owner-h"><strong>Anthony</strong><span class="owner-role">MindBody owner</span></div>
+        <ul>
+          <li>Authorize the Cedarwind API source on the five remaining clubs <span class="eta">— ~2 min each</span></li>
+          <li>Confirm Tennis Intro, Pickleball Intro and Ball Machine are flagged sellable-online at Ridge Hill</li>
+          <li>Chase MindBody Support on Branded Web Tools provisioning <span class="eta">— case 05440928</span></li>
+          <li>Point a subdomain at the deployment <span class="eta">— DNS, one record</span></li>
+          <li>Grant GA4 and Google Ads access <span class="eta">— gates all measurement work</span></li>
+        </ul>
+      </div>
+      <div class="owner">
+        <div class="owner-h"><strong>Ibtissam</strong><span class="owner-role">Head of Marketing</span></div>
+        <ul>
+          <li>Enable the four HubSpot workflows — all four are assembled and sitting disabled <span class="eta">— the single go-live blocker</span></li>
+          <li>Paste and publish the four email bodies <span class="eta">— ~45 min, copy is ready</span></li>
+          <li>Turn off reCAPTCHA on the trial form <span class="eta">— 10 seconds; unblocks fallback lead capture</span></li>
+        </ul>
+      </div>
+      <div class="owner">
+        <div class="owner-h"><strong>Jane</strong><span class="owner-role">Operations</span></div>
+        <ul>
+          <li>Create a &#8220;Kid&#8217;s Trials&#8221; program and matching $0 service at each of the five remaining clubs <span class="eta">— ~10 min each</span></li>
+        </ul>
+      </div>
+      <div class="owner">
+        <div class="owner-h"><strong>Club staff</strong><span class="owner-role">Per site</span></div>
+        <ul>
+          <li>Populate trial class schedules under the new program — each club picks its own days, times and age bands <span class="eta">— Ridge Hill runs four schedules</span></li>
+        </ul>
+      </div>
+      <div class="owner">
+        <div class="owner-h"><strong>Director of Sales</strong><span class="owner-role">Adult programming</span></div>
+        <ul>
+          <li>Per-club adult offer pricing and MindBody service IDs <span class="eta">— non-blocking; fallback pricing works</span></li>
+        </ul>
+      </div>
+      <div class="owner">
+        <div class="owner-h"><strong>Romain</strong><span class="owner-role">Legal</span></div>
+        <ul>
+          <li>Review the participation waiver text <span class="eta">— 1–2 hours; the app already versions and timestamps acceptance</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Recommendation</p>
+    <h2>What to pursue, in order</h2>
+    <div class="prose">
+      <p>Ordered by return per hour of Court 16&#8217;s time, not by how interesting the work is. The first two are almost entirely other people&#8217;s clicks.</p>
+    </div>
+
+    <div class="ladder">
+
+      <div class="rung top">
+        <div class="rung-n">1</div>
+        <div>
+          <h3>Go live at Ridge Hill</h3>
+          <p class="rung-why">Highest return, lowest cost, already paid for</p>
+          <p>Everything is built and it passed five of five scenarios against production MindBody on 22 May — book, staff confirm, reassign, deny, and the 24-hour reminder trigger. Three bugs were caught and fixed in that session. Since then the app has been sitting in test mode.</p>
+          <p>What stands in the way is Ibtissam&#8217;s four workflow toggles and about 45 minutes of copy-paste, then one environment flag on our side. Nothing engineering-side is pending. Every week this waits is a week of trial signups still going through the twelve-field form and the two-to-five-day silence.</p>
+          <div class="needs"><b>Needs:</b> <span>Ibtissam · ~45 min</span> <span>then Cedarwind · one flag</span></div>
+        </div>
+      </div>
+
+      <div class="rung">
+        <div class="rung-n">2</div>
+        <div>
+          <h3>Roll out the remaining five clubs</h3>
+          <p class="rung-why">Turns a pilot into the business case — and unlocks everything below it</p>
+          <p>The same four-step pattern that landed at Ridge Hill, repeated: authorize the API source, create the trial program and $0 service, populate the schedule, then we capture the IDs and run the same five-scenario smoke. Roughly 25 minutes of admin per club, split across Anthony, Jane and club staff.</p>
+          <p>Do this early even if the pilot is still settling, because it is also a hard prerequisite for measurement: <strong>five of the six clubs return no API data at all until their source is authorized.</strong> Every revenue and attribution item below is blocked on this step for five-sixths of the business.</p>
+          <div class="needs"><b>Needs:</b> <span>Anthony · 10 min total</span> <span>Jane · 50 min total</span> <span>Club staff · scheduling</span></div>
+        </div>
+      </div>
+
+      <div class="rung">
+        <div class="rung-n">3</div>
+        <div>
+          <h3>Resolve adult payment</h3>
+          <p class="rung-why">The one genuinely broken customer path</p>
+          <p>The adult intro cart link drops people on MindBody&#8217;s Enrollments tab showing &#8220;No Scheduled Workshops&#8221; instead of a checkout. We diagnosed it and tried the modern hosted-cart URL; Ridge Hill returned 404 on every endpoint because the site isn&#8217;t provisioned with MindBody&#8217;s Branded Web Tools. A comparable site redirects correctly, which confirms the diagnosis. It&#8217;s reverted to the wrong-tab-but-loads state and filed with MindBody Support.</p>
+          <p>Two possible gates, and they may both apply: Branded Web Tools provisioning, and the sellable-online flags on the three adult services. If Support stalls, the documented fallback is MindBody&#8217;s Healcode embeddable widgets — about 15 minutes per club, and it gets us the fully-embedded checkout we originally wanted. <strong>The kids trial is unaffected; don&#8217;t let this hold up items 1 or 2.</strong></p>
+          <div class="needs"><b>Needs:</b> <span>Anthony · MindBody Support + sellable-online flags</span></div>
+        </div>
+      </div>
+
+      <div class="rung">
+        <div class="rung-n">4</div>
+        <div>
+          <h3>Start the attribution clock</h3>
+          <p class="rung-why">Hours of clicks, no code — and the cost of waiting is permanent</p>
+          <p>Confirm or create GA4, deploy the HubSpot and GA4 tags on the booking subdomain, add a self-referral exclusion, and remove the dead Universal Analytics tag that&#8217;s been collecting nothing since 2023. That&#8217;s the whole of phase zero.</p>
+          <p>It ranks this high for one reason: <strong>the GA4 export to BigQuery is not retroactive.</strong> History only starts accruing the day it&#8217;s switched on, so every week of delay is a week you can never analyze later. It also lights up HubSpot source attribution that is <em>already coded and dormant</em> — the booking form reads and forwards the HubSpot visitor cookie today, but the cookie is never set on the booking subdomain, so the field arrives empty.</p>
+          <div class="needs"><b>Needs:</b> <span>Anthony · GA4 access</span> <span>Cedarwind · hours, not days</span></div>
+        </div>
+      </div>
+
+      <div class="rung">
+        <div class="rung-n">5</div>
+        <div>
+          <h3>Make the money visible</h3>
+          <p class="rung-why">The first time anyone can say &#8220;this club drove N members and $X&#8221;</p>
+          <p>Two to three weeks. The only genuinely new engineering is the MindBody read side — sales, visits and contracts per club — because the authentication, token caching and pagination all already exist. Output is dollars per club: new members, new-member revenue, monthly recurring revenue, trial-to-member rate, blended acquisition cost and marketing efficiency ratio.</p>
+          <p>Deliberately no data warehouse at this stage. The whole dataset is two tables and a few tens of thousands of rows; Postgres and SQL views answer it for essentially nothing. We&#8217;d graduate to BigQuery when ad spend makes it a real multi-source join — not before.</p>
+          <div class="needs"><b>Needs:</b> <span>item 2 complete for all six clubs</span> <span>~$0–5/month to run</span></div>
+        </div>
+      </div>
+
+      <div class="rung">
+        <div class="rung-n">6</div>
+        <div>
+          <h3>Connect spend and close the loop</h3>
+          <p class="rung-why">Where the ads start optimizing on members instead of form-fills</p>
+          <p>Manual and CSV spend entry first — it ships in week one with no integrations, and it&#8217;s the permanent home for the print, event and signage spend no ad API will ever see. Then the ROI view in the campaign console, where the existing double-down / investigate / cut engine finally has dollars behind it rather than email opens.</p>
+          <p>Then the payoff: when MindBody confirms a membership, push that back to Google Ads as a conversion so bidding optimizes on real members. The Ads account is already tagged, so this is thinner than it sounds. <strong>One thing to start now regardless — apply for the Google developer token; the 5-to-14-day approval is the long pole on the whole sequence.</strong></p>
+          <div class="needs"><b>Needs:</b> <span>Anthony · Google Ads access + who runs the ads</span> <span>a UTM naming convention everyone follows</span></div>
+        </div>
+      </div>
+
+    </div>
+
+    <h3>One standing decision, alongside all of the above</h3>
+    <div class="prose">
+      <p>The <code>court16-booking-ideal</code> fork removes the manual staff-confirm click entirely — the parent creates their MindBody account inside the wizard through OAuth, the booking confirms immediately, and staff get an FYI with an escape-hatch deny link instead of a task. It has a clean end-to-end smoke run behind it.</p>
+      <p>That directly changes the acceptance criteria for priority 1, which currently promises 95% of submissions confirmed within one business day — a bar that depends on staff clicking promptly. The fork makes it structural instead. It&#8217;s a real architectural choice and it deserves a decision rather than continuing to sit as a parallel branch.</p>
+    </div>
+  </section>
+
+  <section>
+    <p class="eyebrow">Deliberately deferred</p>
+    <h2>What we&#8217;re not doing, and why</h2>
+    <ul class="notyet">
+      <li><b>Statistical media-mix modelling</b><span>Wants 104+ weeks of clean weekly data and costs around $50k/year from a vendor. Six clubs, no spend history. The manual spend table in priority 6 is the on-ramp; revisit in roughly two years. The realistic advanced step is a geo-holdout test — the six clubs are natural test cells, which is a cleaner read on causality than any attribution model.</span></li>
+      <li><b>Server-side tag management</b><span>Its main benefit doesn&#8217;t apply here — attribution is handed off to the HubSpot contact at form submit, so the cookie only needs to survive minutes. Revisit when paid spend is large enough to pay for the server.</span></li>
+      <li><b>Meta conversions API</b><span>No Meta pixel exists on the site. Google goes first because the Ads account is already tagged.</span></li>
+      <li><b>The redesign as a real project</b><span>Eleven polished pages exist and they&#8217;re live, but they were built as a realistic host for the booking flow, not as a committed site rebuild. Worth a decision — it shouldn&#8217;t drift as an unowned prototype.</span></li>
+      <li><b>Fuzzy identity matching</b><span>Only email and the hard MindBody-to-HubSpot key for now. Falsely merging two real members is worse than missing a match, so name-based matching goes to a human review queue if it&#8217;s ever needed.</span></li>
+    </ul>
+  </section>
+
+  <footer>
+    <span>Prepared by Cedarwind Consulting · stuart@cedarwind.io</span>
+    <span>Compiled 22 August 2026 from the live repositories</span>
+  </footer>
+
+</div>
