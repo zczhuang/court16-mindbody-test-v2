@@ -1,5 +1,69 @@
 # Court 16 — MindBody Happy-Path Test
 
+> [!IMPORTANT]
+> **AI-agent handoff (August 24, 2026):** the default `main` branch is a
+> historical harness baseline. The current trial-product candidate is
+> [`agent/family-account-handoff`](https://github.com/zczhuang/court16-mindbody-test-v2/tree/agent/family-account-handoff)
+> at `ebdf254`, reviewed through draft
+> [PR #12](https://github.com/zczhuang/court16-mindbody-test-v2/pull/12).
+> Start new work from that branch, not from `main`.
+
+## AI agent: start here
+
+**Business objective:** make the path from family interest to an attended trial
+dependable across all seven Court 16 clubs, with clear staff follow-up and no
+duplicate or ambiguous bookings.
+
+**Current status:** write-capable canonical candidate, not approved for release.
+The August 7 production artifact was recorded from a dirty working tree. A clean
+checkout of `ebdf254` must reproduce the intended behavior before merge or
+redeploy.
+
+```bash
+git fetch origin agent/family-account-handoff
+git switch --track origin/agent/family-account-handoff
+npm install
+npm run dev
+```
+
+Run the non-writing checks before proposing a change:
+
+```bash
+npm run typecheck
+npm run build
+npm run validate:trial-config
+npm run test:trial-intake
+npm run test:hubspot-deal-ledger
+npm run test:mindbody-write-guard
+```
+
+Start with these files on the handoff branch:
+
+- `app/trial/page.tsx` — family-facing trial journey.
+- `app/api/book/trial/route.ts` — guarded trial intake and booking boundary.
+- `app/api/staff/confirm/route.ts` — staff confirmation path.
+- `lib/hubspot-deal-ledger.ts` — request-state source of truth.
+- `lib/mindbody-write-guard.ts` — write authorization checks.
+- `config/locations.ts` and `config/kids-trial-readiness.ts` — seven-club setup.
+- `docs/multi-site-automation-audit.md` — operating and automation context.
+
+**Non-negotiable boundary:** `MINDBODY_WRITE_MODE=test` is not a universal
+kill switch. Some consumer-mode Mindbody calls reject or ignore the `Test`
+flag and can persist on real Court 16 sites. Keep real-write gates and public
+launch gates off. Never submit a live fixture, enable a HubSpot workflow, or
+use customer data without an explicit approver, named test identity, cleanup
+owner, result readback, and rollback plan.
+
+**Next decision:** reconcile the clean branch against the deployed artifact,
+review PR #12, then run the controlled seven-club acceptance matrix.
+
+---
+
+## Historical `main`-branch harness notes
+
+The material below documents the original narrow Mindbody test harness. It is
+retained for provenance and must not be treated as current release guidance.
+
 A minimal Next.js 16 app that runs the four MindBody write calls that BLINK got wrong:
 
 1. `GetClients` by email (so we never duplicate a record)
@@ -8,7 +72,10 @@ A minimal Next.js 16 app that runs the four MindBody write calls that BLINK got 
 4. `AddClientRelationship` linking parent → child (Guardian, RelationshipId 20)
 5. `AddClientToClass` (optional, only if a ClassId is supplied)
 
-Every write call ships with `Test=true` until you explicitly flip `MINDBODY_WRITE_MODE=live`. Every run gets a short correlation ID that is stamped into every log line and returned in the response, so a single happy-path execution is trivially traceable across the four calls.
+The harness requests `Test=true` where the endpoint supports it. That flag is
+not accepted consistently by consumer-mode create and booking endpoints, so a
+real Court 16 site ID must always be treated as write-capable. Every run gets a
+short correlation ID for traceability.
 
 This is **not** the Phase 3 app — it's a test harness designed to prove the one thing that broke the previous vendor's build. Once it runs end-to-end in the sandbox, we know the risk is de-risked.
 
@@ -22,7 +89,9 @@ The ONE thing you may not have yet is a **MindBody developer API key**. The sand
 2. Create an app → copy the `Api-Key`.
 3. Activate your key against sandbox Site `-99` (free; no approval needed).
 
-If you already have a production Court 16 Api-Key, that works too — but keep `MINDBODY_WRITE_MODE=test` and point `MINDBODY_SITE_ID` at `-99` until we're ready for a live dry-run against a real site.
+Use sandbox site `-99` for this historical harness. Do not point the default
+branch at a real Court 16 site or assume `MINDBODY_WRITE_MODE=test` prevents
+persistent client or booking writes.
 
 > HubSpot and Squarespace creds are **not** needed for this test. The happy path we scoped is MindBody-only. I'll flag this whenever we extend scope.
 
@@ -50,7 +119,10 @@ Plug any `ClassId` into the form or the curl below.
 
 ---
 
-## Deploy to Vercel
+## Historical deployment notes — do not run from this branch
+
+Do not deploy this default branch as the current trial product. The commands
+below are retained only to explain the original harness setup.
 
 ### One command (recommended)
 
@@ -79,7 +151,7 @@ npx vercel env add MINDBODY_API_KEY production
 npx vercel env add MINDBODY_SITE_ID production            # -99
 npx vercel env add MINDBODY_STAFF_USERNAME production     # mindbodysandboxsite@gmail.com
 npx vercel env add MINDBODY_STAFF_PASSWORD production     # Apitest1234
-npx vercel env add MINDBODY_WRITE_MODE production         # test  (flip to live later)
+npx vercel env add MINDBODY_WRITE_MODE production         # partial endpoint behavior; not a kill switch
 npx vercel env add TEST_API_TOKEN production              # optional, recommended
 npx vercel --prod
 ```
@@ -88,7 +160,9 @@ Or, via the Vercel dashboard: Import Git repo → Project Settings → Environme
 
 **Recommended:** set `TEST_API_TOKEN` on the deployed instance so random people can't hit your endpoints. Leave it blank locally for convenience.
 
-**Safety switch default:** `MINDBODY_WRITE_MODE=test`. Site `-99` is the MindBody public sandbox and is disposable — you can flip to `live` there without risk to any real Court 16 data. That's the only way to demonstrate the dedup branch via back-to-back same-email runs (in `test` mode, `AddClient` returns `Id: null` and doesn't persist, so the second run's `GetClients` comes back empty).
+**Safety boundary:** use only sandbox site `-99` for these historical recipes.
+The environment value controls whether supported endpoints receive `Test=true`;
+it does not make a real Court 16 site safe.
 
 ---
 
@@ -177,16 +251,18 @@ curl "https://YOUR-APP.vercel.app/api/mindbody/get-clients?email=stuart+run1@ced
 
 ---
 
-## The safety switch
+## The historical mode flag
 
-`MINDBODY_WRITE_MODE` does exactly one thing: controls whether the client sends `Test=true` on every `Add*` call.
+`MINDBODY_WRITE_MODE` controls whether the harness requests `Test=true` on
+endpoints that support it. It is not a global write lock.
 
 | Value  | Behavior                                                        |
 |--------|-----------------------------------------------------------------|
-| `test` | (default) Every write gets `Test=true`. Nothing is persisted.   |
-| `live` | Writes are real. Flip only when we're ready for a live dry-run. |
+| `test` | Requests `Test=true` where accepted; real-site consumer calls may still persist. |
+| `live` | Requests persistent writes. Use only with explicit authorization. |
 
-To flip to live on Vercel: `npx vercel env add MINDBODY_WRITE_MODE production` and paste `live`. Redeploy.
+Do not change this value or redeploy without explicit authorization and a
+named test/cleanup/readback plan.
 
 Before flipping:
 - Point at a real site ID (not `-99`)
@@ -241,6 +317,7 @@ This test is the first slice of §6.3 "Account Provisioning" and §6.4 "Booking 
 - `lib/mindbody.ts` gets pulled into a shared `packages/mindbody-adapter/` and grown to include GetClientServices, GetEnrollments, AddClientToEnrollment, and webhook handlers.
 - The happy-path route becomes one of several orchestration flows (kids-trial, adult-intro, returning-member-drop-in).
 - The correlation-ID log pattern carries forward as the basis for the "observability" requirements in §6.9.
-- The `MINDBODY_WRITE_MODE` safety gate stays — in production it'll default to `live` but flip to `test` per-environment (staging is always `test`).
+- Treat `MINDBODY_WRITE_MODE` as an endpoint-mode request, not a safety gate;
+  site authorization and the branch's explicit real-write guards control risk.
 
 Once this harness successfully runs the full sequence twice in a row (second run proving the de-dup works), BLINK's failure mode is formally de-risked and we can greenlight the Phase 3 build.
