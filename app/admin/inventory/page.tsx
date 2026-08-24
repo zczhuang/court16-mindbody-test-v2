@@ -675,7 +675,7 @@ export default async function InventoryPage({
       <Section
         id="mb-required-fields"
         title="Required client fields (Consumer Mode AddClient)"
-        subtitle="Which fields a consumer-mode AddClient call must include. Our booking app provides all of these as defaults when the form doesn't capture them (address from location, gender = `Female` placeholder, etc.)."
+        subtitle="Which fields a consumer-mode AddClient call must include. The kids-trial form now collects the family's real household address and separate parent/child Mindbody gender values; it does not write club-address or demographic placeholders."
         bag={inv.mbRequiredFields}
         render={(data) => {
           const fields = (data as { RequiredClientFields: string[] }).RequiredClientFields;

@@ -10,9 +10,9 @@ import DayDetail from "@/components/DayDetail";
 import AdultRequestForm, { type AdultRequest } from "@/components/AdultRequestForm";
 import StaffAssistConfirmation from "@/components/StaffAssistConfirmation";
 import { getLocationById, type Location } from "@/config/locations";
-import type { AdultOffer } from "@/config/adult-config";
-import type { TrialClass, MindBodyClass } from "@/lib/trial-types";
-import { parseClass, filterAdultOnly, filterAvailable } from "@/lib/class-utils";
+import { isAdultOfferReadyAtLocation, type AdultOffer } from "@/config/adult-config";
+import type { CalendarClassDto, TrialClass } from "@/lib/trial-types";
+import { parseClass, filterAvailable } from "@/lib/class-utils";
 import { useSelectedLocation } from "@/lib/location-state";
 
 type Step = "setup" | "calendar";
@@ -22,15 +22,30 @@ function IntroInner() {
   const params = useSearchParams();
   const { location: globalLoc, setLocation: setGlobalLoc } = useSelectedLocation();
   const urlLocation = params.get("location");
-  const preResolved =
-    (urlLocation ? getLocationById(urlLocation) : null) ?? globalLoc ?? null;
+  const urlCandidate = urlLocation ? getLocationById(urlLocation) : undefined;
+  const preResolved = urlLocation
+    ? urlCandidate?.publicBookingEnabled
+      ? urlCandidate
+      : null
+    : globalLoc?.publicBookingEnabled
+      ? globalLoc
+      : null;
 
   const [step, setStep] = useState<Step>("setup");
   const [location, setLocation] = useState<Location | null>(preResolved);
   useEffect(() => {
     if (urlLocation) {
       const loc = getLocationById(urlLocation);
-      if (loc && loc.id !== globalLoc?.id) setGlobalLoc(loc);
+      if (loc?.publicBookingEnabled) {
+        setLocation(loc);
+        if (loc.id !== globalLoc?.id) setGlobalLoc(loc);
+      } else {
+        setLocation(null);
+        if (globalLoc?.id === urlLocation) setGlobalLoc(null);
+      }
+    } else if (globalLoc && !globalLoc.publicBookingEnabled) {
+      setLocation(null);
+      setGlobalLoc(null);
     }
   }, [urlLocation, globalLoc, setGlobalLoc]);
   const [offer, setOffer] = useState<AdultOffer | null>(null);
@@ -62,13 +77,12 @@ function IntroInner() {
         const lastDay = new Date(year, month, 0).getDate();
         const endDate = `${year}-${String(month).padStart(2, "0")}-${lastDay}`;
         const resp = await fetch(
-          `/api/mindbody/calendar?locationId=${loc.id}&startDate=${startDate}&endDate=${endDate}`,
+          `/api/mindbody/calendar?locationId=${loc.id}&startDate=${startDate}&endDate=${endDate}&intent=adult_intro`,
         );
         if (!resp.ok) throw new Error("Failed to load classes");
         const data = await resp.json();
-        const mbClasses: MindBodyClass[] = data.classes || [];
-        const adultClasses = filterAdultOnly(mbClasses);
-        const parsed = adultClasses.map(parseClass);
+        const calendarClasses: CalendarClassDto[] = data.classes || [];
+        const parsed = calendarClasses.map(parseClass);
         const available = filterAvailable(parsed);
         available.sort((a, b) => {
           const d = a.date.localeCompare(b.date);
@@ -91,6 +105,10 @@ function IntroInner() {
   }, [location, step, calYear, calMonth, fetchClasses]);
 
   const setupValid = location !== null && offer !== null;
+
+  useEffect(() => {
+    if (location && offer && !isAdultOfferReadyAtLocation(offer, location.id)) setOffer(null);
+  }, [location, offer]);
 
   function continueToCalendar() {
     if (setupValid) setStep("calendar");
@@ -168,6 +186,13 @@ function IntroInner() {
       const returnUrl =
         `${window.location.origin}/intro/confirmed?correlationId=${data.correlationId}`;
       sessionStorage.setItem(`intro-return-${data.correlationId}`, returnUrl);
+      sessionStorage.setItem(
+        "court16-intro-pending",
+        JSON.stringify({
+          correlationId: data.correlationId,
+          confirmationToken: data.confirmationToken,
+        }),
+      );
       window.location.href = data.cartUrl;
       return;
     }
@@ -213,8 +238,8 @@ function IntroInner() {
                 Book an adult <em>intro</em>
               </h1>
               <p className="section-sub">
-                Pick a Court 16 club and the intro offer you want. Tennis $75 or
-                Pickleball $58 — one session, no commitment.
+                Pick a Court 16 club and an offer marked ready. Checkout stays off until
+                that club&apos;s live Mindbody service and price are verified.
               </p>
             </div>
 
@@ -222,7 +247,7 @@ function IntroInner() {
               <h2
                 style={{
                   fontFamily: "var(--f-display)",
-                  fontWeight: 700,
+                  fontWeight: 800,
                   fontSize: 20,
                   letterSpacing: "-0.025em",
                   margin: "0 0 16px",
@@ -248,7 +273,7 @@ function IntroInner() {
               <h2
                 style={{
                   fontFamily: "var(--f-display)",
-                  fontWeight: 700,
+                  fontWeight: 800,
                   fontSize: 20,
                   letterSpacing: "-0.025em",
                   margin: "0 0 16px",
@@ -258,6 +283,7 @@ function IntroInner() {
               </h2>
               <OfferPicker
                 selectedKey={offer?.key ?? null}
+                locationId={location?.id ?? ""}
                 onSelect={(o) => setOffer(o)}
               />
             </section>
@@ -351,8 +377,11 @@ function IntroInner() {
                   <DayDetail
                     classes={dayClasses}
                     date={selectedDate}
-                    selectedClassId={selectedClass?.classScheduleId ?? null}
-                    onPick={handleClassSelect}
+                    interaction={{
+                      kind: "select",
+                      selectedClassId: selectedClass?.classId ?? null,
+                      onPick: handleClassSelect,
+                    }}
                   />
                 </aside>
               </div>

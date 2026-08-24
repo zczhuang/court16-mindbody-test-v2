@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Court 16 Family Account Handoff</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+  <style>
+    .handoff-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .handoff-card { display: flex; flex-direction: column; min-height: 220px; padding: 24px; border: 1px solid var(--border); border-radius: 16px; background: var(--surface); }
+    .handoff-card h2 { margin: 10px 0 8px; }
+    .handoff-card p { flex: 1; color: var(--muted); }
+    .handoff-card a { align-self: flex-start; font-weight: 700; }
+    @media (max-width: 720px) { .handoff-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<main class="wrap">
+  <div class="eyebrow">Court 16 · Ibtissam review</div>
+  <h1>Family account handoff</h1>
+  <p class="lead">Two short documents: the proposed email and automation changes, followed by the staff procedure for completing and verifying a parent-child family account.</p>
+
+  <section class="summary-pkg" aria-label="Current family account decision">
+    <dl>
+      <dt>Current decision · 18 Jul 2026</dt><dd>Use the parent's email on both original Mindbody records. Create exactly one parent and one child, and write the site-validated Parent/Guardian relationship.</dd>
+      <dt>Secure messages</dt><dd>Mindbody alone sends password, verification, and child-link tokens. HubSpot may explain or remind. Trusted nudge workflow <code>1853127851</code> now has the pending-state re-check and remains off; all other Cedarwind workflows are also off.</dd>
+      <dt>Completion</dt><dd>Reuse the original child Client ID—never recreate the child. The family is complete only when that child shows <strong>Manage Family Account</strong> and is manageable from the parent's consumer account.</dd>
+      <dt>Rollout state</dt><dd>All seven Mindbody sites are API-authorized, and all seven public kids-trial locations remain disabled. Ridge Hill has no upcoming Program 61 occurrences in the current audit window and still needs controlled write acceptance. The six expansion sites still need their own trial Program, Service applicability, schedule, routing, and end-to-end acceptance verified.</dd>
+      <dt>HubSpot cutover</dt><dd>The app now skips the legacy form event by default, preventing the old 11-step account guide and legacy Deal workflows from also firing. Keep <code>HUBSPOT_SUBMIT_LEGACY_TRIAL_FORM=false</code>.</dd>
+    </dl>
+    <p><a href="https://github.com/zczhuang/court16-mindbody-test-v2/blob/agent/family-account-handoff/docs/multi-site-automation-audit.md">Open the current multi-site readiness audit on GitHub →</a></p>
+  </section>
+
+  <div class="handoff-grid">
+    <section class="handoff-card">
+      <div class="eyebrow">01 · Decision document</div>
+      <h2>Email + automation handoff</h2>
+      <p>The proposed Mindbody and HubSpot ownership model, decision points, verified workflow-off state, and remaining implementation work.</p>
+      <a href="./06-password-setup-email.html">Open decision document →</a>
+    </section>
+
+    <section class="handoff-card">
+      <div class="eyebrow">02 · Staff procedure</div>
+      <h2>Family account completion guide</h2>
+      <p>The four screen states staff should recognize, the exact parent nudges to send, and the success gate before closing the task.</p>
+      <a href="./10-family-account-staff-guide.html">Open staff guide →</a>
+    </section>
+  </div>
+</main>
+</body>
+</html>

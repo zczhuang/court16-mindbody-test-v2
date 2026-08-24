@@ -3,11 +3,13 @@
 // Design notes (these matter — BLINK failed exactly here):
 //   1. NEVER call AddClient without GetClients first. Duplicate client records
 //      are the #1 cause of "sync is broken" support tickets.
-//   2. Every write call defaults to Test=true unless MINDBODY_WRITE_MODE === "live".
-//      Even in live mode, individual callers can still opt-in to Test=true.
-//   3. The StaffUserToken is cached in-process for ~50 minutes (MindBody tokens
-//      live for ~60 minutes). In a serverless world this means each cold lambda
-//      does one token issue, not four.
+//   2. MINDBODY_WRITE_MODE controls Test=true only on endpoints that support
+//      it. Consumer-mode AddClient/AddClientToClass reject Test on real sites,
+//      so those calls omit the flag and persist. Site authorization and
+//      application launch gates are the production safety boundary.
+//   3. StaffUserTokens are cached per SiteId for ~50 minutes (MindBody tokens
+//      live for ~60 minutes). A token issued for one club must never be reused
+//      against another club during a multi-site serverless invocation.
 //   4. Every call gets a correlation ID in the log stream so we can trace a
 //      happy-path run end-to-end.
 //
@@ -16,6 +18,13 @@
 // layer — this file is the MindBody adapter, not the app's business logic.
 
 import type { Logger } from "./logger";
+import { assertMindbodyWriteAllowed } from "./mindbody-write-guard.ts";
+import {
+  findExactActiveClientVisit,
+  parseCheckoutTrialBookingResponse,
+} from "./mindbody-booking-evidence.ts";
+
+export { findExactActiveClientVisit, parseCheckoutTrialBookingResponse };
 
 export interface MindbodyConfig {
   apiKey: string;
@@ -56,12 +65,13 @@ interface CachedToken {
 }
 
 const TOKEN_TTL_MS = 50 * 60 * 1000; // MindBody tokens live ~60min, refresh at 50.
-let cachedToken: CachedToken | null = null;
+const cachedTokens = new Map<string, CachedToken>();
 
 export async function issueStaffUserToken(cfg: MindbodyConfig, log: Logger): Promise<string> {
-  if (cachedToken && cachedToken.expiresAt > Date.now()) {
-    log.debug("mindbody.token.cache-hit");
-    return cachedToken.token;
+  const cached = cachedTokens.get(cfg.siteId);
+  if (cached && cached.expiresAt > Date.now()) {
+    log.debug("mindbody.token.cache-hit", { siteId: cfg.siteId });
+    return cached.token;
   }
   log.info("mindbody.token.issue.start");
   const res = await fetch(`${cfg.baseUrl}/usertoken/issue`, {
@@ -78,8 +88,14 @@ export async function issueStaffUserToken(cfg: MindbodyConfig, log: Logger): Pro
     log.error("mindbody.token.issue.fail", { status: res.status, body });
     throw new MindbodyError("usertoken/issue failed", res.status, body);
   }
-  cachedToken = { token: body.AccessToken, expiresAt: Date.now() + TOKEN_TTL_MS };
-  log.info("mindbody.token.issue.ok", { tokenPrefix: body.AccessToken.slice(0, 8) });
+  cachedTokens.set(cfg.siteId, {
+    token: body.AccessToken,
+    expiresAt: Date.now() + TOKEN_TTL_MS,
+  });
+  log.info("mindbody.token.issue.ok", {
+    siteId: cfg.siteId,
+    tokenPrefix: body.AccessToken.slice(0, 8),
+  });
   return body.AccessToken;
 }
 
@@ -87,8 +103,8 @@ export async function issueStaffUserToken(cfg: MindbodyConfig, log: Logger): Pro
 
 /**
  * Thrown by `issueSourceStaffToken` when MINDBODY_SOURCE_PASSWORD is not set.
- * Callers (notably the calendar route's `staffMode` fall-through) catch this
- * specifically and degrade to consumer mode rather than failing the request.
+ * Callers catch this specifically and attempt consumer mode; that request can
+ * still fail when the API key is not authorized for the Site ID.
  */
 export class MindbodySourceCredsMissingError extends Error {
   constructor() {
@@ -206,9 +222,9 @@ export async function issueSourceStaffToken(
  *     stored as MINDBODY_SOURCE_PASSWORD). This Bearer carries `access: Staff`
  *     and reveals hidden classes — critical for /api/mindbody/calendar so
  *     Program 61 (Ridge Hill Kid's Trials) occurrences surface in the form's
- *     calendar. If MINDBODY_SOURCE_PASSWORD is unset, gracefully falls back
- *     to consumer mode (calendar still loads but hidden classes won't show)
- *     and emits a `mindbody.staff-mode.degraded` warn log.
+ *     calendar. If source authentication fails, it attempts consumer mode
+ *     and emits a `mindbody.staff-mode.degraded` warning; unauthorized sites
+ *     still fail the underlying request.
  *
  *   • default (neither flag) — staff-user token issued from
  *     MINDBODY_STAFF_USERNAME/PASSWORD. Legacy path, kept for the few
@@ -278,14 +294,14 @@ async function consumerFetch<T>(
  * flagged "hidden" in MindBody admin (per the v6 release notes — see
  * `issueSourceStaffToken` doc).
  *
- * Gracefully degrades to consumer mode when:
+ * Attempts consumer mode when:
  *   • MINDBODY_SOURCE_PASSWORD is unset (e.g. local dev without the password),
  *   • or /usertoken/issue rejects the source credentials (e.g. credentials
  *     rotated, network blip).
  *
- * The fall-through never throws — the calendar always loads, it just
- * loses visibility into hidden classes. Logs `mindbody.staff-mode.degraded`
- * with the reason so we can spot the regression in monitoring.
+ * The follow-up consumer request can still fail when the API key is not
+ * authorized for that Site ID. Logs `mindbody.staff-mode.degraded` before
+ * attempting the request so the loss of staff visibility is observable.
  */
 async function staffFetch<T>(
   cfg: MindbodyConfig,
@@ -370,10 +386,11 @@ async function authedFetch<T>(
      * `InvalidPermissionConfiguration`.
      *
      * Consumer-mode AddClient on real sites must satisfy the SITE's
-     * `RequiredClientFields` config (probe via GET /client/requiredclientfields).
-     * For RH that means: AddressLine1, City, State, PostalCode, ReferredBy,
-     * BirthDate, MobilePhone, Email, Gender, plus all 4
-     * EmergencyContactInfo* subfields.
+     * `RequiredClientFields` config (probe the same endpoint WITHOUT a bearer).
+     * The source-staff bearer returns a materially different list. The Jul 23
+     * 2026 RH consumer readback returns AddressLine1, City, State, PostalCode,
+     * ReferredBy, BirthDate, MobilePhone, Email, EmergContact, and IsMale.
+     * Re-probe every site rather than copying one club's list.
      */
     consumerMode?: boolean;
   },
@@ -524,13 +541,15 @@ export interface AddClientInput {
   FirstName: string;
   LastName: string;
 
-  // Required by site 5748154 (RH) consumer-mode config — probe via
-  // GET /client/requiredclientfields. Other sites may differ; callers
-  // should provide all of these so the helper works site-agnostic.
+  // Court 16 keeps a real email on every profile for duplicate protection,
+  // family claiming, and usable account contact. The site's consumer-mode
+  // GET /client/requiredclientfields decides which remaining fields AddClient
+  // enforces; do not use the source-staff bearer result for this contract.
   Email: string;
   BirthDate?: string; // ISO "YYYY-MM-DD"
   MobilePhone?: string;
   AddressLine1?: string;
+  AddressLine2?: string;
   City?: string;
   State?: string;
   PostalCode?: string;
@@ -541,6 +560,7 @@ export interface AddClientInput {
    * genders return `InvalidPermissionConfiguration` in consumer mode.
    */
   Gender?: string;
+  // The API reports this four-field bundle as `EmergContact`.
   EmergencyContactInfoName?: string;
   EmergencyContactInfoPhone?: string;
   EmergencyContactInfoEmail?: string;
@@ -657,6 +677,7 @@ export async function addClient(
   log: Logger,
   input: AddClientInput,
 ): Promise<MindbodyClient> {
+  assertMindbodyWriteAllowed(cfg.siteId, "AddClient");
   const res = await authedFetch<MindbodyClient & { Client?: MindbodyClient }>(cfg, log, {
     method: "POST",
     path: "/client/addclient",
@@ -692,6 +713,7 @@ export async function addClientRelationship(
   log: Logger,
   input: AddRelationshipInput,
 ): Promise<unknown> {
+  assertMindbodyWriteAllowed(cfg.siteId, "UpdateClient relationship");
   const clientPayload = {
     Id: input.ClientId,
     ClientRelationships: [
@@ -751,12 +773,16 @@ export async function getClasses(
 export interface AddClientToClassInput {
   ClientId: string | number;
   ClassId: number;
-  /** Pricing option / service id. Optional — MindBody will pick the first applicable pricing if omitted. */
+  /** ClientService instance ID from GET /client/clientservices. */
   ClientServiceId?: number;
   /** If true, waitlist if class is full instead of erroring. */
   SendEmail?: boolean;
   Waitlist?: boolean;
   CrossRegionalBookingClientId?: string | number;
+}
+
+export interface AddClientToClassResponse {
+  Visit?: ClientVisit;
 }
 
 /**
@@ -772,8 +798,9 @@ export async function addClientToClass(
   cfg: MindbodyConfig,
   log: Logger,
   input: AddClientToClassInput,
-): Promise<unknown> {
-  return authedFetch(cfg, log, {
+): Promise<AddClientToClassResponse> {
+  assertMindbodyWriteAllowed(cfg.siteId, "AddClientToClass");
+  return authedFetch<AddClientToClassResponse>(cfg, log, {
     method: "POST",
     path: "/class/addclienttoclass",
     body: input,
@@ -782,15 +809,120 @@ export async function addClientToClass(
   });
 }
 
-export interface PurchaseTrialServiceInput {
+export interface RemoveClientFromClassInput {
   ClientId: string | number;
-  ServiceId: number;
-  Notes?: string;
+  ClassId: number;
 }
 
-export interface PurchaseTrialServiceResult {
+/**
+ * Remove a client from one class occurrence.
+ *
+ * Only staff reassign calls this, and only after the replacement booking has
+ * been read back as a live visit — never as a standalone cancellation. The two
+ * flags are deliberate:
+ *
+ *   • `SendEmail: false` — Mindbody would otherwise mail the family a
+ *     cancellation for a class we are moving them out of, seconds after they
+ *     were added to the new one. Court 16 tells the parent about the move once.
+ *   • `LateCancel: false` — a late cancel burns the trial credit. A move should
+ *     return it, so a subsequent reassign of the same request still has a
+ *     credit to spend.
+ *
+ * Consumer mode is rejected on this endpoint (unlike AddClientToClass), so it
+ * runs on the source-staff Bearer, same as the cart checkout.
+ */
+export async function removeClientsFromClasses(
+  cfg: MindbodyConfig,
+  log: Logger,
+  input: RemoveClientFromClassInput,
+): Promise<void> {
+  assertMindbodyWriteAllowed(cfg.siteId, "RemoveClientsFromClasses");
+  const bearer = await issueSourceStaffToken(cfg, log);
+  const started = Date.now();
+  const res = await fetch(`${cfg.baseUrl}/class/removeclientsfromclasses`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Api-Key": cfg.apiKey,
+      SiteId: cfg.siteId,
+      Authorization: `Bearer ${bearer}`,
+    },
+    body: JSON.stringify({
+      Details: [
+        {
+          ClientIds: [String(input.ClientId)],
+          ClassId: input.ClassId,
+          SendEmail: false,
+          LateCancel: false,
+        },
+      ],
+    }),
+  });
+  const ms = Date.now() - started;
+  const text = await res.text();
+  let parsed: unknown = text;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    /* leave as text */
+  }
+  if (!res.ok) {
+    log.error("mindbody.remove-from-class.fail", {
+      clientId: input.ClientId,
+      classId: input.ClassId,
+      status: res.status,
+      ms,
+      body: parsed,
+    });
+    throw new MindbodyError(`remove from class → ${res.status}`, res.status, parsed);
+  }
+  log.info("mindbody.remove-from-class.ok", {
+    clientId: input.ClientId,
+    classId: input.ClassId,
+    ms,
+  });
+}
+
+export interface CheckoutTrialBookingInput {
+  ClientId: string | number;
+  ServiceId: number;
+  ClassId: number;
+  LocationId: number;
+  CorrelationId: string;
+}
+
+export interface CheckoutTrialBookingResult {
   saleId: number;
   serviceName: string;
+  visit?: ClientVisit;
+}
+
+export function buildCheckoutTrialBookingBody(input: CheckoutTrialBookingInput) {
+  if (!Number.isInteger(input.LocationId) || input.LocationId <= 0) {
+    throw new Error("CheckoutShoppingCart requires a positive Mindbody LocationId.");
+  }
+  return {
+    ClientId: String(input.ClientId),
+    Test: false,
+    InStore: true,
+    LocationId: input.LocationId,
+    EnforceLocationRestrictions: true,
+    Items: [
+      {
+        Item: { Type: "Service", Metadata: { Id: input.ServiceId } },
+        DiscountAmount: 0,
+        Quantity: 1,
+        ClassIds: [input.ClassId],
+        SalesNotes: `Court16:${input.CorrelationId}`,
+      },
+    ],
+    Payments: [
+      {
+        Type: "Comp",
+        Metadata: { Amount: 0 },
+      },
+    ],
+  };
 }
 
 /**
@@ -814,30 +946,14 @@ export interface PurchaseTrialServiceResult {
  * Consumer mode is rejected by /sale/checkoutshoppingcart with
  * `InvalidPermissionConfiguration`.
  */
-export async function purchaseTrialService(
+export async function checkoutTrialBooking(
   cfg: MindbodyConfig,
   log: Logger,
-  input: PurchaseTrialServiceInput,
-): Promise<PurchaseTrialServiceResult> {
+  input: CheckoutTrialBookingInput,
+): Promise<CheckoutTrialBookingResult> {
+  assertMindbodyWriteAllowed(cfg.siteId, "CheckoutShoppingCart");
   const bearer = await issueSourceStaffToken(cfg, log);
-  const body = {
-    ClientId: String(input.ClientId),
-    Test: false,
-    InStore: true,
-    Items: [
-      {
-        Item: { Type: "Service", Metadata: { Id: input.ServiceId } },
-        DiscountAmount: 0,
-        Quantity: 1,
-      },
-    ],
-    Payments: [
-      {
-        Type: "Comp",
-        Metadata: { Amount: 0, Notes: input.Notes ?? "Court 16 trial — Cedarwind staff confirm" },
-      },
-    ],
-  };
+  const body = buildCheckoutTrialBookingBody(input);
   const started = Date.now();
   const res = await fetch(`${cfg.baseUrl}/sale/checkoutshoppingcart`, {
     method: "POST",
@@ -861,24 +977,27 @@ export async function purchaseTrialService(
     log.error("mindbody.purchase-trial.fail", {
       clientId: input.ClientId,
       serviceId: input.ServiceId,
+      locationId: input.LocationId,
       status: res.status,
       ms,
       body: parsed,
     });
     throw new MindbodyError(`purchase trial service → ${res.status}`, res.status, parsed);
   }
-  const cart = (parsed as { ShoppingCart?: { SaleId?: number; CartItems?: Array<{ Item?: { Name?: string } }> } })
-    .ShoppingCart;
-  const saleId = cart?.SaleId ?? 0;
-  const serviceName = cart?.CartItems?.[0]?.Item?.Name ?? "trial service";
+  const { saleId, serviceName, visit } = parseCheckoutTrialBookingResponse<ClientVisit>(
+    parsed,
+    input,
+  );
   log.info("mindbody.purchase-trial.ok", {
     clientId: input.ClientId,
     serviceId: input.ServiceId,
+    locationId: input.LocationId,
     saleId,
     serviceName,
+    visitId: visit?.Id,
     ms,
   });
-  return { saleId, serviceName };
+  return { saleId, serviceName, visit };
 }
 
 /**
@@ -892,21 +1011,41 @@ export function isAlreadyBookedError(err: unknown): boolean {
   return body?.Error?.Code === "ClientIsAlreadyBooked";
 }
 
+export function isClassRequiresPaymentError(err: unknown): boolean {
+  if (!(err instanceof MindbodyError)) return false;
+  const body = (err as unknown as { body?: { Error?: { Code?: string } } }).body;
+  return body?.Error?.Code === "ClassRequiresPayment";
+}
+
 export interface ClientService {
   Id?: number;
+  /** Sale Service / pricing-option ID that produced this client-owned instance. */
+  ProductId?: number;
   Count?: number;
   Remaining?: number;
   Name?: string;
   PaymentDate?: string;
   ActiveDate?: string;
   ExpirationDate?: string;
+  SiteId?: number;
+  LocationId?: number;
   [k: string]: unknown;
 }
 
 export interface GetClientServicesResponse {
   ClientServices?: ClientService[];
-  PaginationResponse?: unknown;
+  PaginationResponse?: {
+    RequestedLimit?: number;
+    RequestedOffset?: number;
+    PageSize?: number;
+    TotalResults?: number;
+  };
 }
+
+const CLIENT_SERVICES_START_DATE = "2000-01-01";
+const CLIENT_SERVICES_END_DATE = "2100-01-01";
+const CLIENT_SERVICES_PAGE_LIMIT = 200;
+const CLIENT_SERVICES_MAX_PAGES = 10;
 
 /**
  * List the pricing options / service credits on a client. Used after an
@@ -918,12 +1057,92 @@ export async function getClientServices(
   log: Logger,
   clientId: string | number,
 ): Promise<ClientService[]> {
-  const res = await authedFetch<GetClientServicesResponse>(cfg, log, {
-    method: "GET",
-    path: "/client/clientservices",
-    query: { ClientId: String(clientId), Limit: 50 },
+  const services: ClientService[] = [];
+  let offset = 0;
+
+  for (let page = 0; page < CLIENT_SERVICES_MAX_PAGES; page += 1) {
+    const res = await staffFetch<GetClientServicesResponse>(cfg, log, {
+      path: "/client/clientservices",
+      query: {
+        ClientId: String(clientId),
+        StartDate: CLIENT_SERVICES_START_DATE,
+        EndDate: CLIENT_SERVICES_END_DATE,
+        CrossRegionalLookup: true,
+        Limit: CLIENT_SERVICES_PAGE_LIMIT,
+        Offset: offset,
+      },
+    });
+    const pageServices = res.ClientServices ?? [];
+    services.push(...pageServices);
+
+    const pagination = res.PaginationResponse;
+    const requestedOffset = nonNegativeInteger(pagination?.RequestedOffset) ?? offset;
+    const pageSize = nonNegativeInteger(pagination?.PageSize) ?? pageServices.length;
+    const totalResults = nonNegativeInteger(pagination?.TotalResults);
+    const nextOffset = requestedOffset + pageSize;
+
+    if (pageServices.length === 0) return services;
+    if (totalResults !== undefined && nextOffset >= totalResults) return services;
+    if (totalResults === undefined && pageServices.length < CLIENT_SERVICES_PAGE_LIMIT) {
+      return services;
+    }
+    if (nextOffset <= offset) {
+      throw new Error("Mindbody GetClientServices pagination did not advance");
+    }
+    offset = nextOffset;
+  }
+
+  log.error("mindbody.client-services.pagination-cap", {
+    clientId,
+    pages: CLIENT_SERVICES_MAX_PAGES,
+    services: services.length,
   });
-  return res.ClientServices ?? [];
+  throw new Error("Mindbody GetClientServices exceeded the safe pagination cap");
+}
+
+function nonNegativeInteger(value: number | undefined): number | undefined {
+  return Number.isInteger(value) && Number(value) >= 0 ? Number(value) : undefined;
+}
+
+export interface ClientVisit {
+  Id?: number;
+  ClientId?: string | number;
+  SiteId?: number;
+  LocationId?: number;
+  ClassId?: number;
+  ClassScheduleId?: number;
+  ProductId?: number;
+  ServiceId?: number;
+  ServiceName?: string;
+  StartDateTime?: string;
+  AppointmentStatus?: string;
+  Status?: string;
+  LateCancelled?: boolean;
+  Missed?: boolean;
+  WaitlistEntryId?: number;
+  [k: string]: unknown;
+}
+
+interface GetClientVisitsResponse {
+  Visits?: ClientVisit[];
+}
+
+/** Read a client's class visits without changing enrollment state. */
+export async function getClientVisits(
+  cfg: MindbodyConfig,
+  log: Logger,
+  input: { clientId: string | number; startDate: string; endDate: string },
+): Promise<ClientVisit[]> {
+  const res = await staffFetch<GetClientVisitsResponse>(cfg, log, {
+    path: "/client/clientvisits",
+    query: {
+      ClientId: String(input.clientId),
+      StartDate: input.startDate,
+      EndDate: input.endDate,
+      Limit: 200,
+    },
+  });
+  return res.Visits ?? [];
 }
 
 /**
@@ -1008,4 +1227,23 @@ export function checkCallerToken(req: Request): { ok: true } | { ok: false; stat
     return { ok: false, status: 401, reason: "Missing or invalid Bearer token (set TEST_API_TOKEN)" };
   }
   return { ok: true };
+}
+
+/**
+ * Strict variant for diagnostic endpoints that expose client data or perform
+ * direct Mindbody writes. These routes are disabled unless TEST_API_TOKEN is
+ * explicitly configured; public booking routes continue to use the optional
+ * caller-token behavior above.
+ */
+export function checkDiagnosticToken(
+  req: Request,
+): { ok: true } | { ok: false; status: number; reason: string } {
+  if (!process.env.TEST_API_TOKEN) {
+    return {
+      ok: false,
+      status: 503,
+      reason: "Diagnostic endpoint disabled (TEST_API_TOKEN is not configured)",
+    };
+  }
+  return checkCallerToken(req);
 }

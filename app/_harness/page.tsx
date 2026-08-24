@@ -91,7 +91,8 @@ export default function Home() {
         <h1 style={{ fontSize: 28, margin: "4px 0 8px" }}>MindBody Happy-Path Test</h1>
         <p style={{ color: "#555", margin: 0 }}>
           Runs: GetClients → AddClient (parent, if new) → AddClient (child) → AddClientRelationship → AddClientToClass.
-          All writes go in <code>Test</code> mode until <code>MINDBODY_WRITE_MODE=live</code>.
+          Use sandbox Site -99 for non-persistent tests. <code>MINDBODY_WRITE_MODE=test</code> does not stop
+          AddClient or AddClientToClass from persisting on real sites.
         </p>
       </header>
 

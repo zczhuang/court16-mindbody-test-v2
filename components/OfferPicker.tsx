@@ -1,13 +1,18 @@
 "use client";
 
-import { ADULT_OFFERS, type AdultOffer } from "@/config/adult-config";
+import {
+  ADULT_OFFERS,
+  isAdultOfferReadyAtLocation,
+  type AdultOffer,
+} from "@/config/adult-config";
 
 interface Props {
   selectedKey: string | null;
+  locationId: string;
   onSelect: (offer: AdultOffer) => void;
 }
 
-export default function OfferPicker({ selectedKey, onSelect }: Props) {
+export default function OfferPicker({ selectedKey, locationId, onSelect }: Props) {
   return (
     <div
       className="loc-grid"
@@ -15,16 +20,25 @@ export default function OfferPicker({ selectedKey, onSelect }: Props) {
     >
       {ADULT_OFFERS.map((offer) => {
         const on = selectedKey === offer.key;
+        const enabled = isAdultOfferReadyAtLocation(offer, locationId);
         return (
           <button
             key={offer.key}
             type="button"
             onClick={() => onSelect(offer)}
             aria-pressed={on}
-            className={`loc-card ${on ? "on" : ""}`}
+            disabled={!enabled}
+            aria-label={
+              enabled
+                ? `Choose ${offer.displayName}`
+                : `${offer.displayName}: checkout setup in progress for this club`
+            }
+            className={`loc-card ${on ? "on" : ""} ${!enabled ? "is-unavailable" : ""}`}
           >
             <div className="loc-top">
-              <span className="state-chip">${offer.priceUsd}</span>
+              <span className="state-chip">
+                {enabled ? `$${offer.priceUsd}` : "Price check"}
+              </span>
               <span className="loc-check" aria-hidden="true">
                 {on ? (
                   <svg viewBox="0 0 20 20" width="20" height="20">
@@ -32,7 +46,7 @@ export default function OfferPicker({ selectedKey, onSelect }: Props) {
                     <path
                       d="M5.5 10.5l3 3 6-7"
                       fill="none"
-                      stroke="#FFE033"
+                      stroke="#FFFA00"
                       strokeWidth="2.4"
                       strokeLinecap="round"
                       strokeLinejoin="round"
@@ -49,7 +63,7 @@ export default function OfferPicker({ selectedKey, onSelect }: Props) {
             <div className="loc-addr">{offer.subtitle}</div>
             <div className="loc-foot">
               <span className="loc-go">
-                {on ? "Selected" : "Choose this offer"}
+                {enabled ? (on ? "Selected" : "Choose this offer") : "Checkout setup in progress"}
                 <svg viewBox="0 0 16 16" width="14" height="14">
                   <path
                     d="M2 8h11M9 4l4 4-4 4"

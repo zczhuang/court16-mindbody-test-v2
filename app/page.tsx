@@ -15,7 +15,7 @@ export default function Home() {
           </h1>
           <p className="section-sub" style={{ marginTop: 14 }}>
             Six clubs across NY, PA &amp; MA. Pick the path that fits — kids trial is
-            free and staff-confirmed; adult intros are one-session drop-ins for $58–$75.
+            free and staff-confirmed; adult intro availability and pricing vary by club.
           </p>
         </section>
 
@@ -33,12 +33,12 @@ export default function Home() {
               description="Ages 3–17. Browse real classes, pick a time, and staff confirms within a few hours."
               cta="Start kids trial"
               href="/trial"
-              accentColor="#FFE033"
+              accentColor="#FFFA00"
             />
             <PathCard
               eyebrow="For you"
               title="Adult intro"
-              description="Tennis Intro Special ($75) or Pickleball Clinic Intro ($58). Book a session and pay online in a few clicks."
+              description="Choose from the adult offers whose live Mindbody service and price are verified for your club."
               cta="Start adult intro"
               href="/intro"
               accentColor="#1a1a1a"
@@ -50,7 +50,7 @@ export default function Home() {
           <h2
             style={{
               fontFamily: "var(--f-display)",
-              fontWeight: 700,
+              fontWeight: 800,
               fontSize: "clamp(22px, 3vw, 28px)",
               letterSpacing: "-0.025em",
               textAlign: "center",
@@ -102,7 +102,7 @@ function Feature({ icon, title, body }: { icon: string; title: string; body: str
       <h3
         style={{
           fontFamily: "var(--f-display)",
-          fontWeight: 700,
+          fontWeight: 800,
           fontSize: 18,
           letterSpacing: "-0.02em",
           margin: "0 0 6px",

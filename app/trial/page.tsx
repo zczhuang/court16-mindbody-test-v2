@@ -1,7 +1,7 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import RedesignChrome from "@/components/RedesignChrome";
 import ProgressBar from "@/components/ProgressBar";
 import LocationSelector from "@/components/LocationSelector";
@@ -9,60 +9,237 @@ import CalendarView from "@/components/CalendarView";
 import DayDetail from "@/components/DayDetail";
 import TrialRequestForm from "@/components/TrialRequestForm";
 import ConfirmationScreen from "@/components/ConfirmationScreen";
+import TrialSiteFooter from "@/components/TrialSiteFooter";
 import { getLocationById, type Location } from "@/config/locations";
-import type { TrialClass, TrialRequest, MindBodyClass } from "@/lib/trial-types";
+import type {
+  CalendarClassDto,
+  TrialClass,
+  TrialRequest,
+  TrialSubmissionStatus,
+} from "@/lib/trial-types";
 import { useSelectedLocation } from "@/lib/location-state";
 import {
   parseClass,
   filterByAge,
   filterByTrialEligibility,
-  filterChildrenOnly,
   filterAvailable,
+  siteLocalToUtcIso,
 } from "@/lib/class-utils";
-import { maxBookableDateStr } from "@/config/trial-config";
+import {
+  getTrialBookingWindowState,
+  isValidMindbodyClassStart,
+  type TrialBookingWindowState,
+} from "@/lib/trial-booking-window";
+import {
+  maxCalendarDateStr,
+  todayStrInTz,
+  TRIAL_CONFIG,
+  TRIAL_CALENDAR_DISPLAY_DAYS,
+} from "@/config/trial-config";
+import { getDealPipeline, getHubspotPreferredLocation } from "@/config/hubspot-deals";
+import {
+  getKidsTrialCalendarPreviewReadiness,
+  getKidsTrialReadiness,
+  type KidsTrialCalendarPreviewScope,
+} from "@/config/kids-trial-readiness";
 import type { ChildEntry } from "@/components/AgeSelector";
 
 type Step = "location" | "calendar" | "confirmed";
 
+function siteCalendarYearMonth(location: Location): [number, number] {
+  const [year, month] = todayStrInTz(location.timezone).split("-").map(Number);
+  return [year, month];
+}
+
+function isTrialLocationReady(location: Location | undefined): boolean {
+  if (!location) return false;
+  return getKidsTrialReadiness({
+    location,
+    trialConfig: TRIAL_CONFIG[location.id],
+    pipeline: getDealPipeline(location.id),
+    preferredLocation: getHubspotPreferredLocation(location.id),
+  }).ready;
+}
+
+/** Preview-only: the calendar and form may be reviewed, but nothing can be submitted. */
+function isTrialLocationPreviewOnly(location: Location | undefined): boolean {
+  if (!location) return false;
+  if (isTrialLocationReady(location)) return false;
+  return getKidsTrialCalendarPreviewReadiness({ location }).ready;
+}
+
+function getTrialLocationPreviewScope(
+  location: Location | undefined,
+): KidsTrialCalendarPreviewScope | null {
+  if (!location || isTrialLocationReady(location)) return null;
+  const preview = getKidsTrialCalendarPreviewReadiness({ location });
+  return preview.ready ? preview.scope : null;
+}
+
+/** Fully ready OR preview-only — either way the calendar and form may render. */
+function isTrialLocationBrowsable(location: Location | undefined): location is Location {
+  return Boolean(location) && (isTrialLocationReady(location) || isTrialLocationPreviewOnly(location));
+}
+
+function getTrialClassBookingState(
+  trialClass: TrialClass,
+  timezone: string,
+  now: Date | number = Date.now(),
+): TrialBookingWindowState {
+  if (!isValidMindbodyClassStart(trialClass.startsAt)) return { status: "invalid" };
+  try {
+    return getTrialBookingWindowState(
+      siteLocalToUtcIso(trialClass.startsAt, timezone),
+      now,
+    );
+  } catch {
+    return { status: "invalid" };
+  }
+}
+
+function isTrialClassBookingOpen(trialClass: TrialClass, timezone: string): boolean {
+  return getTrialClassBookingState(trialClass, timezone).status === "open";
+}
+
 function TrialInner() {
+  const router = useRouter();
   const params = useSearchParams();
-  const { location: globalLoc, setLocation: setGlobalLoc } = useSelectedLocation();
+  const { setLocation: setGlobalLoc } = useSelectedLocation();
   const urlLocation = params.get("location");
-  // Default to Ridge Hill when no URL hint and no remembered location:
-  // it's the only club with a working MindBody trial pipeline today
-  // (Brooklyn/LIC/FiDi/Fishtown/Newton return upstream errors on Vercel).
-  // Once the other sites are wired, drop the explicit fallback.
-  const DEFAULT_LOCATION_ID = "ridgehill";
-  const preResolved =
-    (urlLocation ? getLocationById(urlLocation) : null) ??
-    globalLoc ??
-    getLocationById(DEFAULT_LOCATION_ID) ??
-    null;
+  // A bare /trial always starts at club selection. A location deep link may
+  // skip ahead only when that club's trial pipeline is verified and enabled.
+  const urlResolved = urlLocation ? getLocationById(urlLocation) : undefined;
+  const preResolved = isTrialLocationBrowsable(urlResolved) ? urlResolved : null;
 
   const [step, setStep] = useState<Step>(preResolved ? "calendar" : "location");
   const [location, setLocation] = useState<Location | null>(preResolved);
+  const syncedUrlLocationRef = useRef<string | null | undefined>(undefined);
+  const renderedStepRef = useRef<Step>(step);
 
-  // Mirror into global state the first time we see a URL-provided location.
-  useEffect(() => {
-    if (urlLocation) {
-      const loc = getLocationById(urlLocation);
-      if (loc && loc.id !== globalLoc?.id) setGlobalLoc(loc);
-    }
-  }, [urlLocation, globalLoc, setGlobalLoc]);
   const [allClasses, setAllClasses] = useState<TrialClass[]>([]);
   const [ageFilter, setAgeFilter] = useState<number | null>(null);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [selectedClass, setSelectedClass] = useState<TrialClass | null>(null);
   const [showFormModal, setShowFormModal] = useState(false);
+  const [submissionId, setSubmissionId] = useState<string | null>(null);
   const [submittedRequest, setSubmittedRequest] = useState<TrialRequest | null>(null);
   const [submittedCorrelationId, setSubmittedCorrelationId] = useState<string | undefined>(
     undefined,
   );
+  const [submittedStatus, setSubmittedStatus] = useState<TrialSubmissionStatus>("manual_review");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [bookingWindowNowMs, setBookingWindowNowMs] = useState(() => Date.now());
   const now = new Date();
-  const [calYear, setCalYear] = useState(now.getFullYear());
-  const [calMonth, setCalMonth] = useState(now.getMonth() + 1);
+  const initialCalendar = preResolved
+    ? siteCalendarYearMonth(preResolved)
+    : ([now.getFullYear(), now.getMonth() + 1] as const);
+  const [calYear, setCalYear] = useState(initialCalendar[0]);
+  const [calMonth, setCalMonth] = useState(initialCalendar[1]);
+  const previewScope = getTrialLocationPreviewScope(location ?? undefined);
+  const previewOnly = previewScope != null;
+  const kidsSchedulePreview = previewScope === "kids_schedule";
+
+  const bookableClassIds = useMemo<ReadonlySet<number> | undefined>(() => {
+    if (!location || kidsSchedulePreview) return undefined;
+    return new Set(
+      allClasses
+        .filter(
+          (trialClass) =>
+            getTrialClassBookingState(
+              trialClass,
+              location.timezone,
+              bookingWindowNowMs,
+            ).status === "open",
+        )
+        .map((trialClass) => trialClass.classId),
+    );
+  }, [allClasses, bookingWindowNowMs, kidsSchedulePreview, location]);
+
+  // Repaint the visible availability state at the next opening or closing
+  // boundary. The click handler also performs a fresh check as a second line
+  // of defense if a browser delays this timer in a background tab.
+  useEffect(() => {
+    if (!location || kidsSchedulePreview || allClasses.length === 0) return;
+
+    let nextBoundaryMs = Number.POSITIVE_INFINITY;
+    for (const trialClass of allClasses) {
+      const state = getTrialClassBookingState(
+        trialClass,
+        location.timezone,
+        bookingWindowNowMs,
+      );
+      const boundaryIso =
+        state.status === "not_open"
+          ? state.opensAtUtc
+          : state.status === "open"
+            ? state.closesAtUtc
+            : null;
+      if (!boundaryIso) continue;
+      const boundaryMs = Date.parse(boundaryIso);
+      if (boundaryMs < nextBoundaryMs) nextBoundaryMs = boundaryMs;
+    }
+
+    if (!Number.isFinite(nextBoundaryMs)) return;
+    const delayMs = Math.min(
+      Math.max(0, nextBoundaryMs - Date.now() + 50),
+      2_147_483_647,
+    );
+    const timer = window.setTimeout(() => setBookingWindowNowMs(Date.now()), delayMs);
+    return () => window.clearTimeout(timer);
+  }, [allClasses, bookingWindowNowMs, kidsSchedulePreview, location]);
+
+  // If a real class crosses the cutoff while its form is already open, close
+  // that stale form before it can continue to imply the time is available.
+  // Synthetic sample previews use negative IDs and remain reviewable.
+  useEffect(() => {
+    if (
+      !showFormModal ||
+      !selectedClass ||
+      selectedClass.classId <= 0 ||
+      !location ||
+      kidsSchedulePreview ||
+      getTrialClassBookingState(
+        selectedClass,
+        location.timezone,
+        bookingWindowNowMs,
+      ).status === "open"
+    ) {
+      return;
+    }
+    setShowFormModal(false);
+    setSubmissionId(null);
+    setSelectedClass(null);
+  }, [bookingWindowNowMs, kidsSchedulePreview, location, selectedClass, showFormModal]);
+
+  // Keep the visible step in sync with browser Back/Forward while rejecting
+  // deep links for clubs that have not passed the launch-readiness gate.
+  useEffect(() => {
+    if (submittedRequest || syncedUrlLocationRef.current === urlLocation) return;
+    syncedUrlLocationRef.current = urlLocation;
+
+    // A history navigation represents a new visible step, so discard any
+    // modal or class state from the page we just left. Forward navigation may
+    // restore the club/calendar, but never a stale, previously open form.
+    setShowFormModal(false);
+    setSubmissionId(null);
+    setSelectedClass(null);
+    setSelectedDate(null);
+    setAgeFilter(null);
+
+    const loc = urlLocation ? getLocationById(urlLocation) : undefined;
+    if (isTrialLocationBrowsable(loc)) {
+      const [year, month] = siteCalendarYearMonth(loc);
+      setCalYear(year);
+      setCalMonth(month);
+      setLocation(loc);
+      setGlobalLoc(loc);
+      setStep("calendar");
+    } else {
+      setLocation(null);
+      setStep("location");
+    }
+  }, [urlLocation, submittedRequest, setGlobalLoc]);
 
   const visibleClasses =
     ageFilter != null ? filterByAge(allClasses, ageFilter) : allClasses;
@@ -71,70 +248,107 @@ function TrialInner() {
     : [];
 
   const fetchClasses = useCallback(
-    async (loc: Location, year: number, month: number) => {
+    async (loc: Location, signal?: AbortSignal) => {
       setLoading(true);
       setError(null);
+      setAllClasses([]);
       try {
-        const startDate = `${year}-${String(month).padStart(2, "0")}-01`;
-        const lastDay = new Date(year, month, 0).getDate();
-        const endDate = `${year}-${String(month).padStart(2, "0")}-${lastDay}`;
-        // intent=kid_trial → server-side narrows to Program 61 (Kid's Trials)
-        // at sites with kidTrialProgramId set in config/locations.ts. Falls
-        // back to legacy unfiltered + filterChildrenOnly behavior for sites
-        // that haven't created a Kid's Trials program yet (Ibtissam May 21
-        // — RH is the only one wired today).
+        // Fetch the complete display window in one request. A month-only
+        // request falsely showed an empty state near month-end when valid
+        // slots existed in the first days of the next month.
+        const startDate = todayStrInTz(loc.timezone);
+        const endDate = maxCalendarDateStr(loc.timezone);
+        // The server selects either the dedicated trial Program or this site's
+        // explicit regular-kids Program allowlist. It never performs a broad
+        // kids-trial fallback query.
         const resp = await fetch(
           `/api/mindbody/calendar?locationId=${loc.id}&startDate=${startDate}&endDate=${endDate}&intent=kid_trial`,
+          { signal },
         );
         if (!resp.ok) throw new Error("Failed to load classes");
         const data = await resp.json();
-        const mbClasses: MindBodyClass[] = data.classes || [];
+        const calendarClasses: CalendarClassDto[] = data.classes || [];
+        const expectedScope =
+          getTrialLocationPreviewScope(loc) === "kids_schedule"
+            ? "kids_schedule"
+            : "trial_program";
+        const expectedPreviewOnly = isTrialLocationPreviewOnly(loc);
+        if (
+          data.calendarScope !== expectedScope ||
+          data.previewOnly !== expectedPreviewOnly
+        ) {
+          throw new Error("Calendar configuration changed. Please choose the club again.");
+        }
 
-        // If the server narrowed to a kid-trial Program, the response is
-        // already restricted to trial-eligible occurrences — skip the
-        // legacy filterChildrenOnly post-filter (which only matches the
-        // generic "Children's Classes" program label and would wrongly
-        // exclude Program 61's "Kid's Trials"). For sites without a
-        // configured trial program, fall back to the legacy filter.
-        const childrenClasses = data.filteredByProgramId
-          ? mbClasses
-          : filterChildrenOnly(mbClasses);
-        const parsed = childrenClasses.map(parseClass);
-        const eligibleFiltered = filterByTrialEligibility(parsed, loc.id);
-        const available = filterAvailable(eligibleFiltered);
+        const parsed = calendarClasses.map(parseClass);
+        const eligibleFiltered =
+          expectedScope === "trial_program"
+            ? filterByTrialEligibility(parsed, loc.id)
+            : parsed;
+        // Regular schedule previews include every public, non-cancelled row;
+        // WebCapacity=0 is common and does not mean the class is unscheduled.
+        // Fully launched trial booking still requires live web capacity.
+        const displayClasses =
+          expectedScope === "kids_schedule"
+            ? eligibleFiltered
+            : filterAvailable(eligibleFiltered);
 
-        available.sort((a, b) => {
-          const d = a.date.localeCompare(b.date);
-          if (d !== 0) return d;
-          return a.time.localeCompare(b.time);
+        displayClasses.sort((a, b) => {
+          return a.startsAt.localeCompare(b.startsAt);
         });
-        setAllClasses(available);
+        setAllClasses(displayClasses);
       } catch (err) {
+        if (signal?.aborted) return;
         setError(err instanceof Error ? err.message : "Failed to load classes");
         setAllClasses([]);
       } finally {
-        setLoading(false);
+        if (!signal?.aborted) setLoading(false);
       }
     },
     [],
   );
 
   useEffect(() => {
-    if (location && step === "calendar") fetchClasses(location, calYear, calMonth);
-  }, [location, step, calYear, calMonth, fetchClasses]);
+    if (!location || step !== "calendar") return;
+    const controller = new AbortController();
+    void fetchClasses(location, controller.signal);
+    return () => controller.abort();
+  }, [location, step, fetchClasses]);
+
+  useEffect(() => {
+    if (renderedStepRef.current === step) return;
+    renderedStepRef.current = step;
+    const frame = window.requestAnimationFrame(() => {
+      const heading = document.querySelector<HTMLElement>("#trial-step-heading");
+      heading?.focus({ preventScroll: true });
+      heading?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [step]);
 
   function selectLoc(loc: Location) {
+    if (!isTrialLocationBrowsable(loc)) return;
+    const [year, month] = siteCalendarYearMonth(loc);
+    setCalYear(year);
+    setCalMonth(month);
     setLocation(loc);
-  }
-
-  function continueFromLoc() {
-    if (location) setStep("calendar");
+    setGlobalLoc(loc);
+    setSelectedDate(null);
+    setSelectedClass(null);
+    setAgeFilter(null);
+    setStep("calendar");
+    router.push(`/trial?location=${encodeURIComponent(loc.id)}`, { scroll: false });
   }
 
   function backToLoc() {
     setStep("location");
+    setLocation(null);
+    setShowFormModal(false);
+    setSubmissionId(null);
     setSelectedDate(null);
     setSelectedClass(null);
+    setAgeFilter(null);
+    router.push("/trial", { scroll: false });
   }
 
   function handleDateSelect(date: string) {
@@ -143,8 +357,46 @@ function TrialInner() {
   }
 
   function handleClassSelect(tc: TrialClass) {
+    // Recheck at interaction time so a tab left open across the 48-hour
+    // cutoff cannot open a now-unavailable class. Negative IDs belong to the
+    // synthetic no-inventory preview, and regular kids schedules are display
+    // references rather than trial inventory.
+    if (
+      tc.classId > 0 &&
+      !kidsSchedulePreview &&
+      location &&
+      !isTrialClassBookingOpen(tc, location.timezone)
+    ) {
+      return;
+    }
     setSelectedClass(tc);
+    setSubmissionId(window.crypto.randomUUID());
     setShowFormModal(true);
+  }
+
+  function previewFormWithoutInventory() {
+    if (!location || !previewOnly) return;
+    const date = todayStrInTz(location.timezone);
+    const dateValue = new Date(`${date}T00:00:00`);
+    const dayOfWeek = new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(
+      dateValue,
+    );
+    handleClassSelect({
+      classScheduleId: -(location.siteId * 10 + 1),
+      classId: -(location.siteId * 10 + 2),
+      name: "Sample kids trial — inventory pending",
+      levelName: "Sample class",
+      time: "Time TBD",
+      endTime: "TBD",
+      date,
+      dayOfWeek,
+      coach: "Coach TBD",
+      court: "Court TBD",
+      spotsAvailable: 0,
+      maxCapacity: 0,
+      recurrence: "Preview only",
+      startsAt: `${date}T12:00:00`,
+    });
   }
 
   function handlePrevMonth() {
@@ -159,15 +411,15 @@ function TrialInner() {
   }
 
   function handleNextMonth() {
-    // Booking window: don't navigate past the month containing the last
-    // bookable date (CalendarView also disables the button; this is belt
+    // Display window: don't navigate past the month containing the last
+    // visible date (CalendarView also disables the button; this is belt
     // and suspenders).
     if (location) {
       const nextFirst =
         calMonth === 12
           ? `${calYear + 1}-01-01`
           : `${calYear}-${String(calMonth + 1).padStart(2, "0")}-01`;
-      if (nextFirst > maxBookableDateStr(location.timezone)) return;
+      if (nextFirst > maxCalendarDateStr(location.timezone)) return;
     }
     setSelectedDate(null);
     setSelectedClass(null);
@@ -180,6 +432,14 @@ function TrialInner() {
   }
 
   async function handleTrialSubmit(request: TrialRequest) {
+    // Preview forms are deliberately traversable, but they must never reach
+    // the production intake route. The final button and form handler enforce
+    // the same rule; the API independently rejects any forced direct POST.
+    if (!isTrialLocationReady(location ?? undefined)) {
+      throw new Error(
+        "Submission is locked until this club's booking setup and launch workflow are verified.",
+      );
+    }
     // HubSpot attribution context: pageUri/pageName make the Contact's
     // "form inquiry" activity link to THIS page instead of the legacy
     // website form; hutk (when the tracking cookie exists) ties the
@@ -208,60 +468,50 @@ function TrialInner() {
       throw new Error(message);
     }
     const data = await resp.json().catch(() => ({}));
+    const status: TrialSubmissionStatus =
+      data.status === "pending_staff" ||
+      data.status === "manual_review" ||
+      data.status === "duplicate_email_softwall"
+        ? data.status
+        : "manual_review";
     setSubmittedRequest(request);
     setSubmittedCorrelationId(data.correlationId);
+    setSubmittedStatus(status);
     setShowFormModal(false);
+    setSubmissionId(null);
     setStep("confirmed");
   }
 
   if (step === "confirmed" && submittedRequest) {
     return (
-      <>
+      <div className="trial-page-shell">
         <RedesignChrome />
-        <ConfirmationScreen request={submittedRequest} correlationId={submittedCorrelationId} />
-      </>
+        <ConfirmationScreen
+          request={submittedRequest}
+          correlationId={submittedCorrelationId}
+          status={submittedStatus}
+        />
+        <TrialSiteFooter />
+      </div>
     );
   }
 
   return (
-    <>
-      <RedesignChrome />
-      <div className="c16-container">
-        <ProgressBar step={step} />
+    <div className="trial-page-shell">
+      <RedesignChrome previewScope={step === "calendar" ? previewScope : null} />
+      <main className="c16-container" id="main-content">
+        <ProgressBar
+          step={showFormModal ? "details" : step}
+          previewScope={step === "calendar" ? previewScope : null}
+        />
 
         {step === "location" && (
           <>
-            <LocationSelector selectedId={location?.id ?? null} onSelect={selectLoc} />
-            {location && (
-              <div className="sticky-continue">
-                <div className="sc-inner">
-                  <div className="sc-label">
-                    <span className="eyebrow">Selected</span>
-                    <strong>{location.name}</strong>
-                    <span className="sc-addr">
-                      {location.address}, {location.city}
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    className="btn primary"
-                    onClick={continueFromLoc}
-                  >
-                    See available classes
-                    <svg viewBox="0 0 16 16" width="14" height="14">
-                      <path
-                        d="M2 8h11M9 4l4 4-4 4"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  </button>
-                </div>
-              </div>
-            )}
+            <LocationSelector
+              selectedId={location?.id ?? null}
+              onSelect={selectLoc}
+              trialOnly
+            />
           </>
         )}
 
@@ -269,129 +519,180 @@ function TrialInner() {
           <section className="calendar-section">
             <div className="cal-topline">
               <button type="button" className="back-link" onClick={backToLoc}>
-                <svg viewBox="0 0 16 16" width="12" height="12">
-                  <path
-                    d="M10 3l-5 5 5 5"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
-                Change club
+                <span aria-hidden="true">←</span> Change club
               </button>
               <div className="cal-context">
-                <span className="eyebrow">Step 2 of 2</span>
-                <h1 className="section-title">Available trial classes</h1>
+                <span className="eyebrow">
+                  Step 2 of 3
+                </span>
+                <h2 id="trial-step-heading" className="section-title" tabIndex={-1}>
+                  {kidsSchedulePreview
+                    ? "Choose a class to preview the request form."
+                    : previewOnly
+                      ? "Choose a time to preview the request form."
+                      : "Choose their trial class."}
+                </h2>
+                <p className="section-sub">
+                  {kidsSchedulePreview
+                    ? "Select a highlighted day, then choose a regular kids class to review the full form experience."
+                    : previewOnly
+                      ? "Select a highlighted day, then choose a dedicated trial time to review the full form experience."
+                      : "Select a highlighted day, then choose the class that best fits your child."}
+                </p>
                 <div className="loc-breadcrumb">
-                  <svg viewBox="0 0 14 14" width="14" height="14" aria-hidden="true">
-                    <path
-                      d="M7 1c-2.5 0-4.5 2-4.5 4.5 0 3.5 4.5 7.5 4.5 7.5s4.5-4 4.5-7.5C11.5 3 9.5 1 7 1z"
-                      fill="#e53935"
-                      stroke="#1a1a1a"
-                      strokeWidth="1"
-                    />
-                    <circle cx="7" cy="5.5" r="1.4" fill="#fff" />
-                  </svg>
+                  <span className="loc-pin" aria-hidden="true" />
                   <span>
                     {location.state} — {location.name}
                   </span>
                 </div>
+                <div
+                  className="trial-reassurance"
+                  aria-label={kidsSchedulePreview ? "Schedule details" : "Trial essentials"}
+                >
+                  {kidsSchedulePreview ? (
+                    <>
+                      <span>Public schedule</span>
+                      <span>Full form preview</span>
+                      <span>Submission off</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Free trial</span>
+                      <span>No credit card</span>
+                      <span>Racquet provided</span>
+                      <span>Ages 3–17</span>
+                    </>
+                  )}
+                </div>
+                {previewOnly && (
+                  <p className="trial-preview-note">
+                    {kidsSchedulePreview
+                      ? `Schedule preview — these are regular kids classes, not confirmed trial openings. Choose a class to preview the full request form. Final submission stays locked until dedicated trial inventory and launch checks are verified for ${location.name}.`
+                      : `Trial form preview — times are shown for four weeks. Booking opens 7 days before each class and closes 48 hours before it starts. Final submission stays locked until site-specific booking setup and launch checks are verified for ${location.name}.`}
+                  </p>
+                )}
               </div>
             </div>
 
             {loading && (
-              <div className="empty-state">
-                <div className="es-title">Loading classes…</div>
-                <div className="es-sub">Fetching live availability from MindBody.</div>
+              <div className="empty-state" role="status" aria-live="polite">
+                <div className="loading-ball" aria-hidden="true" />
+                <div className="es-title">
+                  {kidsSchedulePreview ? "Loading the kids schedule…" : "Checking trial availability…"}
+                </div>
+                <div className="es-sub">This usually takes only a moment.</div>
               </div>
             )}
 
             {error && (
-              <div
-                className="empty-state"
-                style={{
-                  borderColor: "#FFE033",
-                  background: "#FFF7CC",
-                  color: "#1a1a1a",
-                  borderStyle: "solid",
-                  padding: 28,
-                }}
-              >
-                <div className="es-title" style={{ marginBottom: 6 }}>
-                  Live booking is briefly offline at {location?.name || "this club"}
+              <div className="empty-state booking-error" role="alert">
+                <div className="es-title">
+                  We can still help at {location?.name || "this club"}.
                 </div>
-                <div className="es-sub" style={{ marginBottom: 18 }}>
-                  Our team can hand-match you to a trial slot in under a few business hours — fastest path right now is a quick call or email.
+                <div className="es-sub">
+                  {kidsSchedulePreview
+                    ? "The live kids schedule did not load. Call or email and our team can help with class times and trial options."
+                    : "Live trial availability did not load. Call or email and our team will match your child to a trial class."}
                 </div>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <div className="error-actions">
+                  {previewOnly && (
+                    <button
+                      type="button"
+                      className="btn primary"
+                      onClick={previewFormWithoutInventory}
+                    >
+                      Preview the full form
+                    </button>
+                  )}
                   <a
                     href="tel:+17188755550"
-                    style={{
-                      background: "#1a1a1a",
-                      color: "#fff",
-                      padding: "12px 20px",
-                      borderRadius: 999,
-                      fontWeight: 600,
-                      fontSize: 14,
-                      textDecoration: "none",
-                    }}
+                    className={`btn ${previewOnly ? "ghost" : "primary"}`}
                   >
                     Call 718-875-5550
                   </a>
                   <a
-                    href={`mailto:hello@court16.com?subject=Trial%20at%20${encodeURIComponent(location?.name || "Court 16")}&body=Hi%20—%20I'd%20like%20to%20book%20a%20trial%20class%20at%20${encodeURIComponent(location?.name || "")}.%20Please%20get%20back%20to%20me%20with%20available%20times.`}
-                    style={{
-                      background: "transparent",
-                      color: "#1a1a1a",
-                      padding: "12px 20px",
-                      borderRadius: 999,
-                      fontWeight: 600,
-                      fontSize: 14,
-                      boxShadow: "inset 0 0 0 1.5px #1a1a1a",
-                      textDecoration: "none",
-                    }}
+                    href={
+                      kidsSchedulePreview
+                        ? `mailto:hello@court16.com?subject=Kids%20schedule%20and%20trial%20at%20${encodeURIComponent(location?.name || "Court 16")}&body=Hi%20—%20I'd%20like%20help%20with%20the%20kids%20schedule%20and%20trial%20options%20at%20${encodeURIComponent(location?.name || "")}.`
+                        : `mailto:hello@court16.com?subject=Trial%20at%20${encodeURIComponent(location?.name || "Court 16")}&body=Hi%20—%20I'd%20like%20to%20book%20a%20trial%20class%20at%20${encodeURIComponent(location?.name || "")}.%20Please%20get%20back%20to%20me%20with%20available%20times.`
+                    }
+                    className="btn ghost"
                   >
-                    Email hello@court16.com
-                  </a>
-                  <a
-                    href="/redesign/locations.html"
-                    style={{
-                      background: "transparent",
-                      color: "#5a5a5a",
-                      padding: "12px 20px",
-                      borderRadius: 999,
-                      fontWeight: 500,
-                      fontSize: 13,
-                      textDecoration: "none",
-                    }}
-                  >
-                    ← Try another club
+                    Email our team
                   </a>
                 </div>
-                <div style={{ marginTop: 16, fontSize: 12, color: "#5a5a5a" }}>
-                  Tech detail: {error}
-                </div>
+                {previewOnly && (
+                  <p className="empty-preview-note">
+                    Uses clearly labeled sample class details for design review only.
+                    Nothing will be submitted.
+                  </p>
+                )}
               </div>
             )}
 
-            {!loading && !error && (
+            {!loading && !error && allClasses.length === 0 && (
+              <div className="empty-state no-classes-state" role="status">
+                <div className="empty-ball" aria-hidden="true" />
+                <div className="es-title">
+                  {kidsSchedulePreview
+                    ? "No kids classes are scheduled right now."
+                    : "No online trial times are posted right now."}
+                </div>
+                <div className="es-sub">
+                  {kidsSchedulePreview ? (
+                    <>
+                      {location.name} has no public kids classes in the next{" "}
+                      {TRIAL_CALENDAR_DISPLAY_DAYS} days. Our team can help
+                      with opening details and trial options.
+                    </>
+                  ) : (
+                    <>
+                      {location.name} has no kids-trial classes in the next{" "}
+                      {TRIAL_CALENDAR_DISPLAY_DAYS} days. Our team can help
+                      find the next opening.
+                    </>
+                  )}
+                </div>
+                <div className="error-actions">
+                  {previewOnly && (
+                    <button
+                      type="button"
+                      className="btn primary"
+                      onClick={previewFormWithoutInventory}
+                    >
+                      Preview the full form
+                    </button>
+                  )}
+                  <a
+                    href="tel:+17188755550"
+                    className={`btn ${previewOnly ? "ghost" : "primary"}`}
+                  >
+                    Call 718-875-5550
+                  </a>
+                  <a
+                    href={`mailto:hello@court16.com?subject=Kids%20trial%20at%20${encodeURIComponent(location.name)}&body=Hi%20—%20I'd%20like%20to%20ask%20about%20a%20kids%20trial%20at%20${encodeURIComponent(location.name)}.`}
+                    className="btn ghost"
+                  >
+                    Ask about the next trial
+                  </a>
+                </div>
+                {previewOnly && (
+                  <p className="empty-preview-note">
+                    Uses clearly labeled sample class details for design review only.
+                    Nothing will be submitted.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {!loading && !error && allClasses.length > 0 && (
               <>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 10,
-                    alignItems: "center",
-                    margin: "0 0 14px",
-                  }}
-                >
+                <div className="age-filter-row">
                   <label
                     htmlFor="age-filter"
                     className="eyebrow"
-                    style={{ letterSpacing: "0.08em" }}
                   >
-                    Filter by age
+                    Child&apos;s age
                   </label>
                   <select
                     id="age-filter"
@@ -399,14 +700,7 @@ function TrialInner() {
                     onChange={(e) =>
                       setAgeFilter(e.target.value === "" ? null : Number(e.target.value))
                     }
-                    style={{
-                      padding: "8px 12px",
-                      border: "1.5px solid var(--c16-line)",
-                      borderRadius: "var(--r-md)",
-                      fontSize: 14,
-                      background: "#fff",
-                      cursor: "pointer",
-                    }}
+                    className="age-filter-select"
                   >
                     <option value="">All ages</option>
                     {[3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17].map((age) => (
@@ -416,53 +710,95 @@ function TrialInner() {
                     ))}
                   </select>
                   {ageFilter != null && visibleClasses.length === 0 && (
-                    <span style={{ fontSize: 13, color: "var(--c16-ink-3)" }}>
+                    <span className="age-filter-empty" role="status">
                       No classes match age {ageFilter}.
                     </span>
                   )}
                 </div>
-              <div className="cal-grid">
-                <div className="cal-col">
-                  <CalendarView
-                    classes={visibleClasses}
-                    year={calYear}
-                    month={calMonth}
-                    selectedDate={selectedDate}
-                    onSelectDate={handleDateSelect}
-                    onPrevMonth={handlePrevMonth}
-                    onNextMonth={handleNextMonth}
-                    maxDateStr={maxBookableDateStr(location.timezone)}
-                  />
+                <div className="cal-grid">
+                  <div className="cal-col">
+                    <CalendarView
+                      classes={visibleClasses}
+                      year={calYear}
+                      month={calMonth}
+                      selectedDate={selectedDate}
+                      onSelectDate={handleDateSelect}
+                      onPrevMonth={handlePrevMonth}
+                      onNextMonth={handleNextMonth}
+                      todayStr={todayStrInTz(location.timezone)}
+                      contentScope={kidsSchedulePreview ? "kids_schedule" : "trial"}
+                      showSpotCounts={false}
+                      bookableClassIds={bookableClassIds}
+                      maxVisibleDateStr={maxCalendarDateStr(location.timezone)}
+                    />
+                  </div>
+                  <aside className="detail-col">
+                    <DayDetail
+                      classes={dayClasses}
+                      date={selectedDate}
+                      timezone={location.timezone}
+                      bookingPolicy="kids_trial"
+                      bookingWindowNowMs={bookingWindowNowMs}
+                      interaction={
+                        previewScope
+                          ? {
+                              kind: "preview",
+                              scope: previewScope,
+                              selectedClassId: selectedClass?.classId ?? null,
+                              onPick: handleClassSelect,
+                            }
+                          : {
+                              kind: "select",
+                              selectedClassId: selectedClass?.classId ?? null,
+                              onPick: handleClassSelect,
+                            }
+                      }
+                    />
+                  </aside>
                 </div>
-                <aside className="detail-col">
-                  <DayDetail
-                    classes={dayClasses}
-                    date={selectedDate}
-                    selectedClassId={selectedClass?.classScheduleId ?? null}
-                    onPick={handleClassSelect}
-                  />
-                </aside>
-              </div>
+                {previewOnly &&
+                  !kidsSchedulePreview &&
+                  bookableClassIds?.size === 0 && (
+                    <div className="booking-window-preview-fallback">
+                      <p>
+                        <strong>No posted trial time is currently within the booking window.</strong>{" "}
+                        You can still review the form with clearly labeled sample details;
+                        this does not represent availability.
+                      </p>
+                      <button
+                        type="button"
+                        className="btn ghost"
+                        onClick={previewFormWithoutInventory}
+                      >
+                        Preview form with sample class
+                      </button>
+                    </div>
+                  )}
               </>
             )}
           </section>
         )}
-      </div>
+      </main>
 
-      {showFormModal && selectedClass && location && (
+      {showFormModal && selectedClass && location && submissionId && (
         <TrialRequestForm
+          submissionId={submissionId}
           trialClass={selectedClass}
           kids={DEFAULT_KIDS}
           locationId={location.id}
           locationName={location.fullName}
+          genderOptions={TRIAL_CONFIG[location.id]?.mindbodyGenderOptions ?? []}
+          submissionEnabled={isTrialLocationReady(location)}
           onSubmit={handleTrialSubmit}
           onCancel={() => {
             setShowFormModal(false);
+            setSubmissionId(null);
             setSelectedClass(null);
           }}
         />
       )}
-    </>
+      <TrialSiteFooter />
+    </div>
   );
 }
 

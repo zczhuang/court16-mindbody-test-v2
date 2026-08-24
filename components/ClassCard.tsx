@@ -1,33 +1,60 @@
 "use client";
 
 import type { TrialClass } from "@/lib/trial-types";
+import type { KidsTrialCalendarPreviewScope } from "@/config/kids-trial-readiness";
+import {
+  trialBookingWindowMessage,
+  type TrialBookingWindowState,
+} from "@/lib/trial-booking-window";
 
 interface Props {
   trialClass: TrialClass;
-  isSelected: boolean;
-  onSelect: (tc: TrialClass) => void;
+  timezone?: string;
+  bookingWindow?: TrialBookingWindowState;
+  interaction:
+    | {
+        kind: "select";
+        isSelected: boolean;
+        onSelect: (tc: TrialClass) => void;
+      }
+    | {
+        kind: "preview";
+        scope: KidsTrialCalendarPreviewScope;
+        isSelected: boolean;
+        onSelect: (tc: TrialClass) => void;
+      };
 }
 
-export default function ClassCard({ trialClass, isSelected, onSelect }: Props) {
+export default function ClassCard({
+  trialClass,
+  timezone,
+  bookingWindow,
+  interaction,
+}: Props) {
   const spotTone =
     trialClass.spotsAvailable <= 1
       ? "low"
       : trialClass.spotsAvailable <= 3
         ? "mid"
         : "ok";
+  const bookingLocked = bookingWindow != null && bookingWindow.status !== "open";
+  const showCapacity =
+    !bookingLocked &&
+    (interaction.kind === "select" || interaction.scope === "trial_program");
+  const bookingMessage = bookingWindow
+    ? trialBookingWindowMessage(bookingWindow, timezone ?? "America/New_York")
+    : null;
 
-  return (
-    <button
-      type="button"
-      className={`class-card ${isSelected ? "on" : ""}`}
-      onClick={() => onSelect(trialClass)}
-    >
+  const content = (
+    <>
       <div className="cc-top">
         <span className="lvl-chip">{trialClass.levelName}</span>
-        <span className={`spots-chip spots-${spotTone}`}>
-          <span className="dot" /> {trialClass.spotsAvailable}{" "}
-          {trialClass.spotsAvailable === 1 ? "spot" : "spots"}
-        </span>
+        {showCapacity && (
+          <span className={`spots-chip spots-${spotTone}`}>
+            <span className="dot" /> {trialClass.spotsAvailable}{" "}
+            {trialClass.spotsAvailable === 1 ? "spot" : "spots"}
+          </span>
+        )}
       </div>
       <div className="cc-title">{trialClass.name}</div>
       <div className="cc-meta">
@@ -37,19 +64,46 @@ export default function ClassCard({ trialClass, isSelected, onSelect }: Props) {
         <span className="sep">·</span>
         <span>{trialClass.coach}</span>
       </div>
-      <div className="cc-go">
-        Request this trial
-        <svg viewBox="0 0 16 16" width="14" height="14">
-          <path
-            d="M2 8h11M9 4l4 4-4 4"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
-      </div>
+      {bookingMessage && <div className="cc-window">{bookingMessage}</div>}
+      {!bookingLocked && (
+        <div className="cc-go">
+          {interaction.kind === "select"
+            ? "Request this class"
+            : "Preview trial request"}
+          <span aria-hidden="true">→</span>
+        </div>
+      )}
+    </>
+  );
+
+  if (interaction.kind === "preview") {
+    return (
+      <button
+        type="button"
+        className={`class-card class-card--preview ${bookingLocked ? "class-card--disabled" : ""} ${interaction.isSelected && !bookingLocked ? "on" : ""}`}
+        disabled={bookingLocked}
+        onClick={() => {
+          if (!bookingLocked) interaction.onSelect(trialClass);
+        }}
+        aria-pressed={!bookingLocked ? interaction.isSelected : undefined}
+        aria-label={`Preview the trial request form for ${trialClass.name}, ${trialClass.time} to ${trialClass.endTime}${bookingMessage ? `; ${bookingMessage}` : ""}; final submission is unavailable until the club's booking setup and launch checks are verified`}
+      >
+        {content}
+      </button>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className={`class-card ${bookingLocked ? "class-card--disabled" : ""} ${interaction.isSelected && !bookingLocked ? "on" : ""}`}
+      disabled={bookingLocked}
+      onClick={() => {
+        if (!bookingLocked) interaction.onSelect(trialClass);
+      }}
+      aria-label={`${trialClass.name}, ${trialClass.time} to ${trialClass.endTime}${bookingMessage ? `; ${bookingMessage}` : "; request this class"}`}
+    >
+      {content}
     </button>
   );
 }

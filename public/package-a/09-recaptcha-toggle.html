@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>09 · Turn off reCAPTCHA on the Trial form · Package A</title>
+<title>09 · Archived reCAPTCHA toggle proposal · Package A</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -15,32 +15,33 @@
 <header class="doc-head">
   <a class="back-link" href="./index.html">Back to Package A index</a>
   <div class="brand">Court 16 × Cedarwind · Package A · Spec 09</div>
-  <h1>Turn off reCAPTCHA on the Trial form</h1>
-  <p class="subtitle">A ten-second HubSpot portal toggle that unblocks every API-driven submission the booking app makes.</p>
+  <h1>Archived reCAPTCHA toggle proposal</h1>
+  <p class="subtitle">Historical May instruction only. It is not current authorization to change the live Court 16 form.</p>
 </header>
+
+<div class="callout warn"><strong>Do not execute this toggle from the archived spec.</strong> First verify current Forms v3 Integration behavior, all embedded website forms, duplicate nurture enrollment, spam controls, and the rollback owner. The current app code does not treat reCAPTCHA as a required server-to-server Forms API change.</div>
 
 <section class="summary-pkg">
   <dl>
-    <dt>What</dt><dd>Uncheck "Protect this form from spam with Google reCAPTCHA" on the Court 16 Trial form (<code>3e966ac4-872e-49ec-9b93-1f114fa6d39b</code>) in HubSpot.</dd>
-    <dt>Why</dt><dd>The booking app submits to the Forms v3 Integration endpoint server-side. HubSpot currently returns <code>400 FORM_HAS_RECAPTCHA_ENABLED</code> on every submission because reCAPTCHA is turned on. With reCAPTCHA off, the existing nurture + the new Package A workflows receive submissions as intended.</dd>
-    <dt>Who</dt><dd><strong>Ibtissam</strong>. Takes under a minute once she's in the HubSpot portal.</dd>
-    <dt>Status</dt><dd><span class="pill partial"><span class="dot"></span>Instructions documented · awaiting Ibtissam</span></dd>
+    <dt>Historical proposal</dt><dd>Uncheck "Protect this form from spam with Google reCAPTCHA" on form <code>3e966ac4-872e-49ec-9b93-1f114fa6d39b</code>.</dd>
+    <dt>Why it was proposed</dt><dd>A May test attributed a Forms API 400 to the toggle. That observation has not been revalidated against the current route and form configuration.</dd>
+    <dt>Owner</dt><dd>Unassigned until Ibtissam and Cedarwind review current embeds, spam controls, nurture enrollment, and rollback.</dd>
+    <dt>Status</dt><dd><span class="pill partial"><span class="dot"></span>Archived · no live-form change approved</span></dd>
   </dl>
 </section>
 
-<h2>Why this is unblocking</h2>
+<h2>Why this was proposed in May</h2>
 
-<p>The current booking app has a graceful-degradation path: when MindBody is
+<p>The booking app has a graceful-degradation path: when MindBody is
 down, the app still submits to HubSpot as <code>status: manual_review</code>
-so a human can follow up. Today those submissions get rejected by HubSpot's
-reCAPTCHA check, so the "we'll reach out" response the parent sees
-corresponds to zero actual lead capture.</p>
+so a human can follow up. The May test recorded a reCAPTCHA-related rejection,
+but this archived page does not prove the current cause or scope.</p>
 
-<p>Once this toggle flips, every <code>manual_review</code> submission (and
-every other form-backed flow) lands on the Contact as expected. No code
-changes needed on the app side.</p>
+<p>Do not assume the toggle is the fix. Reproduce the current server-to-server
+request first and compare it with every browser-embedded form that would lose
+the visible challenge.</p>
 
-<h2>The steps</h2>
+<h2>Historical portal steps — do not execute</h2>
 
 <ol class="steps">
   <li>Log into HubSpot (<code>app.hubspot.com</code>) as an admin with Marketing permissions.</li>
@@ -60,17 +61,17 @@ changes needed on the app side.</p>
   action needed.
 </div>
 
-<h2>Verification</h2>
+<h2>Current verification requirement</h2>
 
-<ol class="steps">
-  <li>After saving, curl the app's <code>/api/book/intro</code> against a sandbox-degraded MindBody setup — expect the trace to show <code>hubspot.submitTrialForm</code> status=ok rather than the 400 error previously.</li>
-  <li>Open the corresponding Contact in HubSpot → confirm the <code>court16_*</code> custom properties are populated on the Contact.</li>
-  <li>If anything breaks, re-enable the checkbox — it's a one-click reversal.</li>
-</ol>
+<p>Do not test by submitting through a route that can create durable Mindbody
+records. First reproduce the HubSpot Forms API request in an isolated,
+non-customer fixture; inventory every live embed and nurture consumer; define
+spam metrics and rollback ownership; then request approval for a reversible
+form test. This archive is not the test plan.</p>
 
-<div class="meta-row"><div class="k">Canonical source</div><div class="v"><code>STATUS.md</code> lines 139–145 in the repo</div></div>
-<div class="meta-row"><div class="k">Owned by</div><div class="v"><span class="tag">Ibtissam</span> · portal toggle only</div></div>
-<div class="meta-row"><div class="k">Executes on</div><div class="v">Kickoff Day 1 · May 7 (or earlier if portal access available during PTO)</div></div>
+<div class="meta-row"><div class="k">Source status</div><div class="v">Archived May proposal; no current canonical toggle instruction</div></div>
+<div class="meta-row"><div class="k">Owner</div><div class="v">Requires Ibtissam + Cedarwind review before assignment</div></div>
+<div class="meta-row"><div class="k">Execution</div><div class="v">Not approved</div></div>
 
 <footer>
   <div>Prepared by Stuart Chuang · Cedarwind Consulting · <a href="mailto:stuart@cedarwind.io">stuart@cedarwind.io</a></div>

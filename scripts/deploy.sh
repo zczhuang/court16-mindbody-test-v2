@@ -85,12 +85,10 @@ if [ "$MODE_SKIP_ENV" -eq 0 ]; then
     # APP_BASE_URL intentionally NOT synced — local is localhost, prod is
     # the Vercel deploy URL; set it once via `vercel env add` in prod and
     # leave it alone here so deploy.sh doesn't overwrite it.
-    STAFF_NOTIFY_EMAIL
     SLACK_ALERT_WEBHOOK
     HUBSPOT_ACCESS_TOKEN
     HUBSPOT_PORTAL_ID
     HUBSPOT_TRIAL_FORM_GUID
-    HUBSPOT_ENV
     HUBSPOT_REQUIRED
     HUBSPOT_CUSTOM_OBJECT_TYPE_ID
   )
@@ -126,9 +124,11 @@ if [ "$MODE_SKIP_ENV" -eq 0 ]; then
   for k in "${REQUIRED_KEYS[@]}"; do push_var "$k" required; done
   for k in "${OPTIONAL_KEYS[@]}"; do push_var "$k" optional; done
 
-  # Warn if MINDBODY_WRITE_MODE=live — this is the safety railing.
+  echo
+  echo "  ⚠ MINDBODY_WRITE_MODE is not a global write kill switch."
+  echo "    AddClient/AddClientToClass persist on real sites even when it is 'test'."
+
   if [ "${MINDBODY_WRITE_MODE:-test}" = "live" ]; then
-    echo
     echo "  ⚠ MINDBODY_WRITE_MODE=live — deployed instance will make REAL MindBody writes."
     echo "    Make sure MINDBODY_SITE_ID is -99 (sandbox) unless you mean production."
   fi

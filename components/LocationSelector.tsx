@@ -1,78 +1,145 @@
 "use client";
 
 import { LOCATIONS, type Location } from "@/config/locations";
+import { TRIAL_CONFIG } from "@/config/trial-config";
+import { getDealPipeline, getHubspotPreferredLocation } from "@/config/hubspot-deals";
+import {
+  getKidsTrialCalendarPreviewReadiness,
+  getKidsTrialReadiness,
+} from "@/config/kids-trial-readiness";
 
 interface Props {
   selectedId: string | null;
   onSelect: (location: Location) => void;
+  /** Use the stricter kids-trial readiness gate instead of general booking readiness. */
+  trialOnly?: boolean;
   /** Hide the built-in eyebrow + title + subtitle (used when a parent page provides its own). */
   suppressHead?: boolean;
 }
 
-export default function LocationSelector({ selectedId, onSelect, suppressHead }: Props) {
+export default function LocationSelector({
+  selectedId,
+  onSelect,
+  trialOnly = false,
+  suppressHead,
+}: Props) {
   return (
     <section className="loc-section">
       {!suppressHead && (
         <div className="section-head">
-          <div className="eyebrow">Step 1 of 2</div>
-          <h1 className="section-title">Choose your club</h1>
+          <div className="eyebrow">Step 1</div>
+          <h2 id="trial-step-heading" className="section-title" tabIndex={-1}>
+            Start with your club.
+          </h2>
           <p className="section-sub">
-            Six clubs across NY, PA &amp; MA. Pick the one nearest you — we&apos;ll show only the
-            classes at that location.
+            Choose any club to view its current calendar and preview the full request
+            form. Final submission stays off until that club&apos;s dedicated trial
+            calendar and launch workflow are verified.
           </p>
         </div>
       )}
 
       <div className="loc-grid">
         {LOCATIONS.map((loc) => {
-          const on = selectedId === loc.id;
+          const fullyReady = trialOnly
+            ? getKidsTrialReadiness({
+                location: loc,
+                trialConfig: TRIAL_CONFIG[loc.id],
+                pipeline: getDealPipeline(loc.id),
+                preferredLocation: getHubspotPreferredLocation(loc.id),
+              }).ready
+            : loc.publicBookingEnabled;
+          const previewReadiness =
+            trialOnly &&
+            !fullyReady
+              ? getKidsTrialCalendarPreviewReadiness({ location: loc })
+              : null;
+          const previewOnly = Boolean(previewReadiness?.ready);
+          const previewScope =
+            previewReadiness?.ready === true ? previewReadiness.scope : null;
+          const kidsSchedulePreview = previewScope === "kids_schedule";
+          const enabled = fullyReady || previewOnly;
+          const on = enabled && selectedId === loc.id;
+          const unavailableReason = trialOnly
+            ? loc.trialUnavailableReason
+            : "Opening details are being finalized.";
+          const cardContent = (
+            <>
+              <div className="loc-top">
+                <span className="state-chip">{loc.state}</span>
+                <span className="loc-status" aria-hidden="true">
+                  {enabled
+                    ? on
+                      ? "Selected"
+                      : previewOnly
+                        ? kidsSchedulePreview
+                          ? "Kids calendar"
+                          : "Trial calendar"
+                        : "Online"
+                    : "Setup in progress"}
+                </span>
+              </div>
+              <div className="loc-name">{loc.name}</div>
+              <div className="loc-addr">{shortAddress(loc)}</div>
+              {previewOnly && (
+                <div className="loc-unavailable-reason">
+                  {kidsSchedulePreview
+                    ? "Browse the public kids schedule and preview the request form while dedicated trial inventory is being loaded."
+                    : "Preview the dedicated trial calendar and request form while site-specific booking setup and launch checks are completed."}
+                </div>
+              )}
+              {!enabled && unavailableReason && (
+                <div className="loc-unavailable-reason">{unavailableReason}</div>
+              )}
+              <div className="loc-foot">
+                {enabled ? (
+                  <span className="loc-go">
+                    {on
+                      ? "Selected"
+                      : previewOnly
+                        ? "Explore calendar & form"
+                        : trialOnly
+                          ? "See trial classes"
+                          : "Choose this club"}
+                    <span aria-hidden="true">→</span>
+                  </span>
+                ) : (
+                  <a className="loc-followup" href="https://www.court16.com/contact">
+                    Ask our team about trials <span aria-hidden="true">↗</span>
+                  </a>
+                )}
+              </div>
+            </>
+          );
+
+          if (!enabled) {
+            return (
+              <article
+                key={loc.id}
+                className="loc-card is-unavailable"
+                aria-label={`${loc.name}: online trial setup in progress`}
+              >
+                {cardContent}
+              </article>
+            );
+          }
+
           return (
             <button
               key={loc.id}
               type="button"
               onClick={() => onSelect(loc)}
               aria-pressed={on}
-              className={`loc-card ${on ? "on" : ""}`}
+              aria-label={
+                previewOnly
+                  ? kidsSchedulePreview
+                    ? `View the kids schedule and preview the request form at ${loc.name}; final submission is unavailable until dedicated trial inventory and launch checks are verified`
+                    : `Preview the dedicated trial calendar and request form at ${loc.name}; final submission is unavailable until site-specific booking setup and launch checks are verified`
+                  : `See trial classes at ${loc.name}`
+              }
+              className={`loc-card loc-card--enabled ${on ? "on" : ""}`}
             >
-              <div className="loc-top">
-                <span className="state-chip">{loc.state}</span>
-                <span className="loc-check" aria-hidden="true">
-                  {on ? (
-                    <svg viewBox="0 0 20 20" width="20" height="20">
-                      <circle cx="10" cy="10" r="10" fill="#1a1a1a" />
-                      <path
-                        d="M5.5 10.5l3 3 6-7"
-                        fill="none"
-                        stroke="#FFE033"
-                        strokeWidth="2.4"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    </svg>
-                  ) : (
-                    <svg viewBox="0 0 20 20" width="20" height="20">
-                      <circle cx="10" cy="10" r="9.5" fill="none" stroke="#e5e5e5" />
-                    </svg>
-                  )}
-                </span>
-              </div>
-              <div className="loc-name">{loc.name}</div>
-              <div className="loc-addr">{shortAddress(loc)}</div>
-              <div className="loc-foot">
-                <span className="loc-go">
-                  {on ? "Selected" : "Choose this club"}
-                  <svg viewBox="0 0 16 16" width="14" height="14">
-                    <path
-                      d="M2 8h11M9 4l4 4-4 4"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.8"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                </span>
-              </div>
+              {cardContent}
             </button>
           );
         })}

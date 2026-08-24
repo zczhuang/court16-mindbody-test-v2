@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Trial confirm validation — June 12, 2026 · Court 16</title>
+<style>
+  :root{
+    --yellow:#FFE033; --ink:#1a1a1a; --body:#3a3732; --muted:#6b6760;
+    --line:#e9e6dd; --paper:#fbfaf6;
+    --green-bg:#e7f4ec; --green-tx:#1d7a45;
+    --red-bg:#fcece9; --red-tx:#b3261e;
+    --amber-bg:#fff3cd; --amber-tx:#7a5a00;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--paper);font-family:Arial,Helvetica,sans-serif;color:var(--body)}
+  .wrap{max-width:760px;margin:0 auto;background:#fff;min-height:100vh}
+  .bar{height:6px;background:var(--yellow)}
+  .pad{padding:0 34px}
+  .eyebrow{font:700 12px/1 Arial;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  h1{font:800 24px/1.25 Arial;color:var(--ink);margin:10px 0 8px}
+  h2{font:800 15px/1.3 Arial;color:var(--ink);margin:34px 0 10px;letter-spacing:.02em}
+  p{font:400 14px/1.65 Arial;margin:8px 0}
+  table{border-collapse:collapse;width:100%;font:400 13px/1.5 Arial}
+  th{font:700 11px/1 Arial;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-align:left;padding:8px 10px;border-bottom:2px solid var(--line)}
+  td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  code,pre{font-family:ui-monospace,Menlo,Consolas,monospace}
+  code{background:#f4f2ec;border-radius:4px;padding:1px 5px;font-size:12px}
+  pre{background:#26241f;color:#f2efe6;border-radius:10px;padding:14px 16px;font-size:12px;line-height:1.55;overflow-x:auto}
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;white-space:nowrap}
+  .ok{background:var(--green-bg);color:var(--green-tx)}
+  .fail{background:var(--red-bg);color:var(--red-tx)}
+  .warn{background:var(--amber-bg);color:var(--amber-tx)}
+  .verdict{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin:18px 0}
+  .src{font:400 12px/1.5 Arial;color:var(--muted);margin-top:6px}
+  .footer{border-top:1px solid var(--line);margin-top:40px;padding:20px 34px 30px}
+  .footer img{display:block;max-width:140px;height:auto;opacity:.92}
+  .footer div{font:400 12px/1.6 Arial;color:var(--muted);margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="bar"></div>
+  <div class="pad" style="padding-top:30px">
+    <div class="eyebrow">Court 16 · Online trial process · Reference log</div>
+    <h1>Why one trial confirm failed on June 12</h1>
+    <p>Companion log for the “Trial Process Review” thread. Two test trial requests were approved by staff on the morning of June&nbsp;12, 2026 (ET). One booked into MindBody; one was refused. This page shows the evidence from all three systems.</p>
+
+    <div class="verdict">
+      <p style="margin:0"><b style="color:var(--ink)">Verdict:</b> the approval flow worked correctly. The Friday class had been <b>cancelled in MindBody overnight</b> — after the request was created — so MindBody refused the enrollment, and the system marked the request <i>Failed</i> in HubSpot with the exact reason. The only defect was a too-vague error page for staff, fixed the same morning.</p>
+    </div>
+
+    <h2>Timeline (June 11–12, 2026)</h2>
+    <table>
+      <tr><th>Time (ET)</th><th>Event</th><th>Result</th></tr>
+      <tr><td>Jun 11, 7:36 PM</td><td>Test request created for Junior/Senior 7–12.9yo, <b>Fri Jun 12, 3:45 PM</b> (class 15680) — class showed 0/3 booked, available</td><td><span class="pill ok">OK</span></td></tr>
+      <tr><td>overnight</td><td>Class 15680 cancelled in MindBody</td><td><span class="pill warn">CANCELLED</span></td></tr>
+      <tr><td>Jun 12, 10:46:38 AM</td><td>Staff clicks <b>Confirm</b> on the Friday request → MindBody refuses</td><td><span class="pill fail">502</span></td></tr>
+      <tr><td>Jun 12, 10:46:48 AM</td><td>Retry</td><td><span class="pill fail">502</span></td></tr>
+      <tr><td>Jun 12, 10:46:53 AM</td><td>Re-click of the <b>Wednesday</b> confirm link (that booking had already succeeded)</td><td><span class="pill warn">410 already confirmed</span></td></tr>
+      <tr><td>Jun 12, 10:47:03 AM</td><td>Third try on the Friday link</td><td><span class="pill fail">502</span></td></tr>
+      <tr><td>Jun 12, 10:49 AM</td><td>Request marked <b>Failed</b> in HubSpot with MindBody’s reason recorded</td><td><span class="pill ok">CAPTURED</span></td></tr>
+    </table>
+
+    <h2>Evidence 1 · Server logs (Vercel, production)</h2>
+    <pre>14:46:38Z  GET /api/staff/confirm   502   (Friday request — MindBody refused)
+14:46:48Z  GET /api/staff/confirm   502   (retry)
+14:46:53Z  GET /api/staff/confirm   410   (Wednesday link — already confirmed)
+14:47:03Z  GET /api/staff/confirm   502   (retry)</pre>
+    <div class="src">Source: Vercel runtime logs, project court16-mindbody-test, deployment on court16-mindbody-test.vercel.app. Times in UTC (ET = UTC−4).</div>
+
+    <h2>Evidence 2 · MindBody live API</h2>
+    <pre>GET /class/classes  (site 5748154 · Ridge Hill · Jun 12–13)
+
+{
+  "Id": 15680,
+  "ClassDescription": { "Name": "Junior/Senior 7 - 12.9yo" },
+  "StartDateTime": "2026-06-12T15:45:00",
+  "IsCanceled": true,        ← cancelled
+  "IsAvailable": true        ← MindBody still flags it “available”
+}</pre>
+    <div class="src">Queried live on Jun 12 after the failure. Note MindBody keeps <code>IsAvailable: true</code> on cancelled occurrences — see “Fixes shipped” below.</div>
+
+    <h2>Evidence 3 · HubSpot contact record (captured at click time)</h2>
+    <pre>Contact: stuart+trialfix-live2@cedarwind.io   (test record)
+court16_booking_status: failed
+
+court16_failure_reason:
+AddClientToClass: {
+  "name": "MindbodyError",
+  "message": "POST /class/addclienttoclass → 400",
+  "status": 400,
+  "body": { "Error": {
+    "Message": "Class is cancelled and cannot be booked.",
+    "Code": "ValidationFailed"
+  }}
+}</pre>
+    <div class="src">Written by the confirm endpoint at the moment of refusal — this is MindBody’s verbatim response.</div>
+
+    <h2>Fixes shipped (same morning)</h2>
+    <table>
+      <tr><th>Fix</th><th>Before</th><th>After</th></tr>
+      <tr>
+        <td><b style="color:var(--ink)">Staff error page</b></td>
+        <td>“MindBody booking failed. Staff: check admin queue.”</td>
+        <td>Shows MindBody’s actual reason (e.g. “Class is cancelled and cannot be booked.”) and points staff to the <b>Reassign</b> link.</td>
+      </tr>
+      <tr>
+        <td><b style="color:var(--ink)">Booking calendar</b></td>
+        <td>Cancelled classes could still appear as bookable (MindBody keeps them “available”), so a parent could request one.</td>
+        <td>Cancelled classes are filtered out server-side. Verified live: the cancelled weekend classes no longer appear; only genuinely active classes show.</td>
+      </tr>
+    </table>
+
+    <p style="margin-top:22px;color:var(--muted);font-size:13px">Net effect: this scenario can no longer start from the booking site, and if a class is ever cancelled after a request is made, staff now see exactly why the confirm was refused and what to do next.</p>
+  </div>
+
+  <div class="footer">
+    <img src="/assets/cedarwind-logo-dark.png" alt="Cedarwind">
+    <div>Prepared by Stuart Chuang · stuart@cedarwind.io · cedarwind.io<br>Internal reference for the Court 16 team · June 12, 2026</div>
+  </div>
+</div>
+</body>
+</html>

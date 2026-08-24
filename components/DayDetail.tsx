@@ -2,12 +2,32 @@
 
 import ClassCard from "@/components/ClassCard";
 import type { TrialClass } from "@/lib/trial-types";
+import type { KidsTrialCalendarPreviewScope } from "@/config/kids-trial-readiness";
+import { siteLocalToUtcIso } from "@/lib/class-utils";
+import {
+  getTrialBookingWindowState,
+  isValidMindbodyClassStart,
+  type TrialBookingWindowState,
+} from "@/lib/trial-booking-window";
 
 interface Props {
   classes: TrialClass[];
   date: string | null;
-  selectedClassId: number | null;
-  onPick: (tc: TrialClass) => void;
+  timezone?: string;
+  bookingPolicy?: "kids_trial";
+  bookingWindowNowMs?: number;
+  interaction:
+    | {
+        kind: "select";
+        selectedClassId: number | null;
+        onPick: (tc: TrialClass) => void;
+      }
+    | {
+        kind: "preview";
+        scope: KidsTrialCalendarPreviewScope;
+        selectedClassId: number | null;
+        onPick: (tc: TrialClass) => void;
+      };
 }
 
 const DOW_LONG = [
@@ -18,24 +38,41 @@ const MONTH_NAMES = [
   "July", "August", "September", "October", "November", "December",
 ];
 
-export default function DayDetail({ classes, date, selectedClassId, onPick }: Props) {
+function bookingWindowForClass(
+  trialClass: TrialClass,
+  timezone: string,
+  now?: number,
+): TrialBookingWindowState {
+  if (!isValidMindbodyClassStart(trialClass.startsAt)) return { status: "invalid" };
+  try {
+    return getTrialBookingWindowState(
+      siteLocalToUtcIso(trialClass.startsAt, timezone),
+      now,
+    );
+  } catch {
+    return { status: "invalid" };
+  }
+}
+
+export default function DayDetail({
+  classes,
+  date,
+  timezone,
+  bookingPolicy,
+  bookingWindowNowMs,
+  interaction,
+}: Props) {
+  const kidsSchedule = interaction.kind === "preview" && interaction.scope === "kids_schedule";
+  const previewOnly = interaction.kind === "preview";
+
   if (!date) {
     return (
-      <div className="detail empty-state">
-        <div className="illus" aria-hidden="true">
-          <svg viewBox="0 0 80 80" width="72" height="72">
-            <rect x="8" y="16" width="64" height="56" rx="6" fill="#fff" stroke="#1a1a1a" strokeWidth="2" />
-            <rect x="8" y="16" width="64" height="14" fill="#FFE033" stroke="#1a1a1a" strokeWidth="2" />
-            <line x1="24" y1="10" x2="24" y2="22" stroke="#1a1a1a" strokeWidth="3" strokeLinecap="round" />
-            <line x1="56" y1="10" x2="56" y2="22" stroke="#1a1a1a" strokeWidth="3" strokeLinecap="round" />
-            <circle cx="40" cy="50" r="10" fill="#FFE033" stroke="#1a1a1a" strokeWidth="2" />
-            <path d="M31 50 Q40 44 49 50" fill="none" stroke="#1a1a1a" strokeWidth="1.2" />
-            <path d="M31 50 Q40 56 49 50" fill="none" stroke="#1a1a1a" strokeWidth="1.2" />
-          </svg>
-        </div>
+      <div className="detail empty-state" role="status" aria-live="polite">
+        <div className="empty-ball" aria-hidden="true" />
         <div className="es-title">Pick a day to see classes</div>
         <div className="es-sub">
-          Tap any green-chipped day on the calendar to browse available trial slots.
+          Choose any highlighted day on the calendar to see the {kidsSchedule ? "kids" : "trial"}{" "}
+          classes.
         </div>
       </div>
     );
@@ -43,9 +80,14 @@ export default function DayDetail({ classes, date, selectedClassId, onPick }: Pr
 
   if (classes.length === 0) {
     return (
-      <div className="detail empty-state">
-        <div className="es-title">No trials on this day</div>
-        <div className="es-sub">Try another day — most clubs have weekend openings.</div>
+      <div className="detail empty-state" role="status" aria-live="polite">
+        <div className="es-title">
+          {kidsSchedule ? "No kids classes on this day" : "No trials on this day"}
+        </div>
+        <div className="es-sub">
+          Try another highlighted day for {kidsSchedule ? "scheduled kids" : "scheduled trial"}{" "}
+          classes.
+        </div>
       </div>
     );
   }
@@ -54,20 +96,39 @@ export default function DayDetail({ classes, date, selectedClassId, onPick }: Pr
   const dLabel = `${DOW_LONG[dt.getDay()]}, ${MONTH_NAMES[dt.getMonth()]} ${dt.getDate()}`;
 
   return (
-    <div className="detail">
+    <div className="detail" aria-live="polite">
       <div className="detail-head">
         <div className="eyebrow">{dLabel}</div>
         <div className="detail-count">
-          {classes.length} {classes.length === 1 ? "class" : "classes"} available
+          {classes.length} {classes.length === 1 ? "class" : "classes"}{" "}
+          {kidsSchedule ? "scheduled" : "shown"}
         </div>
       </div>
-      <div className="class-list">
+      <div className={`class-list ${previewOnly ? "class-list--preview" : ""}`}>
         {classes.map((c) => (
           <ClassCard
-            key={`${c.classScheduleId}-${c.date}`}
+            key={`${c.classId}-${c.date}`}
             trialClass={c}
-            isSelected={selectedClassId === c.classScheduleId}
-            onSelect={onPick}
+            timezone={timezone}
+            bookingWindow={
+              bookingPolicy === "kids_trial" && timezone && !kidsSchedule
+                ? bookingWindowForClass(c, timezone, bookingWindowNowMs)
+                : undefined
+            }
+            interaction={
+              interaction.kind === "preview"
+                ? {
+                    kind: "preview",
+                    scope: interaction.scope,
+                    isSelected: interaction.selectedClassId === c.classId,
+                    onSelect: interaction.onPick,
+                  }
+                : {
+                    kind: "select",
+                    isSelected: interaction.selectedClassId === c.classId,
+                    onSelect: interaction.onPick,
+                  }
+            }
           />
         ))}
       </div>

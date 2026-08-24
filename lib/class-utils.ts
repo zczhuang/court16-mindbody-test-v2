@@ -1,5 +1,6 @@
-import type { MindBodyClass, TrialClass } from "./trial-types";
+import type { CalendarClassDto, MindBodyClass, TrialClass } from "./trial-types";
 import { TRIAL_CONFIG, ENFORCE_TRIAL_ELIGIBILITY } from "@/config/trial-config";
+import { getCourt16KidsLevelAgeRange } from "./kids-calendar";
 
 /**
  * Convert a MindBody-style wall-clock ISO ("YYYY-MM-DDTHH:MM:SS", no TZ
@@ -138,26 +139,23 @@ export function ageFromDob(dobIso: string): number {
  * Class name lives at `ClassDescription.Name` in MindBody v6; some older
  * proxies surface it as a top-level `ClassName` — accept both.
  */
-export function parseClass(mb: MindBodyClass): TrialClass {
-  const start = new Date(mb.StartDateTime);
-  const end = new Date(mb.EndDateTime);
-  const rawName =
-    (mb as unknown as { ClassName?: string }).ClassName ||
-    mb.ClassDescription?.Name ||
-    "Class";
+export function parseClass(mb: CalendarClassDto): TrialClass {
+  const start = new Date(mb.startDateTime);
+  const end = new Date(mb.endDateTime);
+  const rawName = mb.name || "Class";
   const levelName = extractLevelName(rawName);
 
   return {
-    classScheduleId: mb.ClassScheduleId,
-    classId: mb.Id,
+    classScheduleId: mb.classScheduleId,
+    classId: mb.classId,
     name: rawName,
     levelName,
     time: formatTime(start),
     endTime: formatTime(end),
     date: formatDateISO(start),
     dayOfWeek: start.toLocaleDateString("en-US", { weekday: "long" }),
-    coach: mb.Staff?.DisplayName || "TBD",
-    court: mb.Resource?.Name || "",
+    coach: mb.coach || "TBD",
+    court: mb.court || "",
     // Web-bookable capacity is what AddClientToClass actually accepts.
     // MaxCapacity - TotalBooked includes admin/walk-in bookings; using
     // WebCapacity - WebBooked correctly hides classes that have spots
@@ -166,16 +164,15 @@ export function parseClass(mb: MindBodyClass): TrialClass {
     // with "Online booking capacity met its threshold").
     // Fall back to MaxCapacity for sites that don't use WebCapacity.
     spotsAvailable:
-      typeof (mb as unknown as { WebCapacity?: number }).WebCapacity === "number"
+      typeof mb.webCapacity === "number"
         ? Math.max(
             0,
-            ((mb as unknown as { WebCapacity?: number }).WebCapacity ?? 0) -
-              ((mb as unknown as { WebBooked?: number }).WebBooked ?? 0),
+            (mb.webCapacity ?? 0) - (mb.webBooked ?? 0),
           )
-        : Math.max(0, mb.MaxCapacity - mb.TotalBooked),
-    maxCapacity: mb.MaxCapacity,
+        : Math.max(0, mb.maxCapacity - mb.totalBooked),
+    maxCapacity: mb.maxCapacity,
     recurrence: "",
-    startsAt: mb.StartDateTime,
+    startsAt: mb.startDateTime,
   };
 }
 
@@ -205,7 +202,9 @@ export function extractLevelName(className: string): string {
  *
  * Decimal bounds are ceil/floored to integers since the calendar
  * dropdown collects integer ages 3–17. Returns null when no parseable
- * range is found — caller treats that as "no age constraint" (permissive).
+ * range is found. When a regular schedule title omits numbers, the known
+ * Court 16 level family supplies a broad band (Freshman/Sophomore 4–6,
+ * Junior/Senior 7–12). Unknown titles remain permissive.
  *
  * Replaces the older level-name → CLASS_AGE_METADATA pipeline, which
  * mis-classified combo titles ("Freshman/Sophomore", "Junior/Senior")
@@ -227,7 +226,7 @@ export function parseAgeRangeFromTitle(
   if (open) {
     return { ageMin: Number(open[1]), ageMax: 99 };
   }
-  return null;
+  return getCourt16KidsLevelAgeRange(title);
 }
 
 export function filterByAge(classes: TrialClass[], age: number): TrialClass[] {

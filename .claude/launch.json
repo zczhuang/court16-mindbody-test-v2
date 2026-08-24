@@ -8,10 +8,25 @@
       "port": 3000
     },
     {
+      "name": "Next.js dev HTTPS (court16-mindbody-test)",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:https"],
+      "port": 3000
+    },
+    {
       "name": "docs static",
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "4173", "--directory", "docs"],
       "port": 4173
+    },
+    {
+      "name": "campaigns-dev",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd '/Volumes/Project-1/Code-projects/Court16/Court16 Signups/court16-campaigns' && npm run dev -- -p 3100"
+      ],
+      "port": 3100
     }
   ]
 }

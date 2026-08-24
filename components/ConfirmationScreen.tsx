@@ -1,111 +1,131 @@
 "use client";
 
-import type { TrialRequest } from "@/lib/trial-types";
+import type { TrialRequest, TrialSubmissionStatus } from "@/lib/trial-types";
 
 interface Props {
   request: TrialRequest;
   correlationId?: string;
+  status: TrialSubmissionStatus;
 }
 
-export default function ConfirmationScreen({ request, correlationId }: Props) {
-  const enrollUrl = `https://court-16-online-enrollment.onrender.com/enroll?location=${request.locationId}`;
+export default function ConfirmationScreen({ request, correlationId, status }: Props) {
+  const accountCreated = status === "pending_staff";
+  const duplicateReview = status === "duplicate_email_softwall";
+  const childName =
+    request.children.length > 1
+      ? request.children.map((child) => child.firstName).join(" & ")
+      : request.childFirstName;
 
   return (
-    <div className="max-w-lg mx-auto text-center py-12 px-6">
-      <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-c16-yellow flex items-center justify-center text-4xl">
-        🎾
-      </div>
-
-      <h2 className="text-2xl font-extrabold mb-2">You&apos;re in!</h2>
-
-      <p className="text-lg text-c16-gray-dark mb-6">
-        We&apos;re confirming{" "}
-        <strong>
-          {request.children.length > 1
-            ? request.children.map((c) => c.firstName).join(" & ")
-            : request.childFirstName}
-        </strong>
-        &apos;s spot in{" "}
-        <strong>{request.className.split(" I ")[0]}</strong> on{" "}
-        <strong>{request.classDay}</strong> at{" "}
-        <strong>{request.classTime}</strong> at{" "}
-        <strong>{request.locationName}</strong>.
-      </p>
-
-      {request.children.length > 1 && (
-        <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 text-left">
-          <h4 className="font-bold text-xs text-c16-gray-dark uppercase mb-2">
-            Trial requested for:
-          </h4>
-          {request.children.map((child, i) => (
-            <div key={i} className="flex items-center gap-2 text-sm py-1">
-              <span className="w-6 h-6 rounded-full bg-c16-yellow flex items-center justify-center text-xs font-bold">
-                {i + 1}
-              </span>
-              <span>
-                <strong>{child.firstName}</strong> (age {child.age})
-              </span>
-            </div>
-          ))}
+    <main className="confirmation-shell">
+      <section className="confirmation-hero">
+        <div className="confirmation-mark" aria-hidden="true">
+          ✓
         </div>
-      )}
-
-      <div className="bg-yellow-50 rounded-xl p-6 text-left mb-6">
-        <h3 className="font-bold text-sm mb-3">What happens next:</h3>
-        <ol className="space-y-2 text-sm text-c16-gray-dark">
-          <li className="flex gap-2">
-            <span className="font-bold text-c16-black">1.</span>
-            Check your inbox — we just sent you a confirmation email at{" "}
-            <strong>{request.parentEmail}</strong>
-          </li>
-          <li className="flex gap-2">
-            <span className="font-bold text-c16-black">2.</span>
-            Our team will confirm the class spot within a few hours
-          </li>
-          <li className="flex gap-2">
-            <span className="font-bold text-c16-black">3.</span>
-            You&apos;ll get a final confirmation with everything you need to know — what
-            to bring, where to go, and who {request.childFirstName}&apos;s coach will be
-          </li>
-        </ol>
-      </div>
-
-      <div className="bg-gray-50 rounded-xl p-4 text-sm text-c16-gray-dark mb-6">
+        <div className="eyebrow">Trial request received</div>
+        <h1 id="trial-step-heading" tabIndex={-1}>
+          {accountCreated
+            ? "Request received. Check your Mindbody email."
+            : "Request received. Our team is checking the account."}
+        </h1>
         <p>
-          <strong>What to bring:</strong> Sneakers, water bottle, and a smile. We provide the racquet! Arrive 10 minutes early.
+          We&apos;re checking <strong>{childName}&apos;s</strong> spot in{" "}
+          <strong>{request.className.split(" I ")[0]}</strong> on{" "}
+          <strong>{request.classDay}</strong> at <strong>{request.classTime}</strong>,{" "}
+          <strong>{request.locationName}</strong>.
         </p>
-      </div>
+      </section>
 
-      <div className="bg-white rounded-xl border-2 border-c16-yellow p-6 mb-8">
-        <h3 className="font-bold text-base mb-2">
-          Ready to enroll {request.childFirstName} for the full season?
-        </h3>
-        <p className="text-sm text-c16-gray-dark mb-4">
-          After the trial, you can enroll directly into {request.childFirstName}&apos;s level at{" "}
-          {request.locationName.split(" - ").pop()}.
-        </p>
-        <a
-          href={enrollUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-block px-6 py-3 bg-c16-black text-white rounded-xl font-semibold text-sm hover:bg-c16-dark transition-colors"
-        >
-          View Season Enrollment &rarr;
-        </a>
+      <div className="confirmation-grid">
+        <section className="confirmation-card confirmation-card--yellow">
+          <div className="eyebrow">{accountCreated ? "Your family account" : "Account review"}</div>
+          <h2>{accountCreated ? "One parent login. No child password." : "Don’t create another profile."}</h2>
+          {accountCreated ? (
+            <ol className="next-steps">
+              <li>
+                <span>1</span>
+                <div>
+                  <strong>Open the Mindbody email.</strong>
+                  <p>
+                    Look for a native Mindbody welcome or password email at{" "}
+                    <strong>{request.parentEmail}</strong>. Use its secure link to claim the
+                    parent account.
+                  </p>
+                </div>
+              </li>
+              <li>
+                <span>2</span>
+                <div>
+                  <strong>Wait for Court 16 to confirm the trial.</strong>
+                  <p>Staff checks the requested class and follows up with the final details.</p>
+                </div>
+              </li>
+              <li>
+                <span>3</span>
+                <div>
+                  <strong>We&apos;ll help finish the family link if needed.</strong>
+                  <p>
+                    Staff may ask you to add {request.childFirstName} as a family member and
+                    approve one secure Mindbody link. Do not create another child profile or a
+                    separate child login.
+                  </p>
+                </div>
+              </li>
+            </ol>
+          ) : (
+            <ol className="next-steps">
+              <li>
+                <span>1</span>
+                <div>
+                  <strong>Your request needs a quick account check.</strong>
+                  <p>
+                    {duplicateReview
+                      ? "We found an existing Mindbody record and paused automatic account creation to prevent a duplicate."
+                      : "Our automation could not finish account setup. Staff will verify what, if anything, was created before making another change."}
+                  </p>
+                </div>
+              </li>
+              <li>
+                <span>2</span>
+                <div>
+                  <strong>Watch for a Court 16 follow-up.</strong>
+                  <p>Staff will verify the family record and confirm the requested trial.</p>
+                </div>
+              </li>
+              <li>
+                <span>3</span>
+                <div>
+                  <strong>Use Mindbody&apos;s secure link only if it arrives.</strong>
+                  <p>
+                    An account email is not guaranteed during review. Do not register again,
+                    add another child, or create a separate child login.
+                  </p>
+                </div>
+              </li>
+            </ol>
+          )}
+        </section>
+
+        <aside className="confirmation-card confirmation-card--dark">
+          <div className="eyebrow">For the first visit</div>
+          <h2>Bring the player. We&apos;ve got the gear.</h2>
+          <ul className="bring-list">
+            <li>Sneakers</li>
+            <li>Water bottle</li>
+            <li>Arrive 10 minutes early</li>
+            <li>Racquet provided</li>
+          </ul>
+          <a href="https://www.court16.com" className="btn light">
+            Back to Court16.com <span aria-hidden="true">↗</span>
+          </a>
+        </aside>
       </div>
 
       {correlationId && (
-        <p className="text-xs text-c16-gray mb-4">
-          Reference: <code>{correlationId}</code>
+        <p className="confirmation-reference">
+          Request reference: <code>{correlationId}</code>
         </p>
       )}
-
-      <a
-        href="https://www.court16.com"
-        className="text-sm text-c16-gray-dark hover:text-c16-black transition-colors underline"
-      >
-        Back to Court16.com
-      </a>
-    </div>
+    </main>
   );
 }

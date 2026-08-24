@@ -16,38 +16,39 @@
   <a class="back-link" href="/tracker.html">Back to tracker</a>
   <div class="brand">Court 16 × Cedarwind · Phase 2 · Package A</div>
   <h1>HubSpot Deals Pipeline &amp; Automation</h1>
-  <p class="subtitle">Nine spec sheets that cover every deliverable in the $3,500 Package A scope.
-    Ibtissam executes the HubSpot-admin items; Stuart executes the code items.
-    Each spec is a one-pager — scan in 60 seconds, execute in an hour.</p>
+  <p class="subtitle">Implementation record plus the current safe-state handoff for the kids-trial family flow.
+    Use specs 06 and 10 for the live family-account decisions; older kickoff sheets remain available only as historical context.</p>
   <div style="margin-top: 14px;">
-    <span class="pill progress"><span class="dot"></span>Built — workflows + copy ready for Ibtissam</span>
+    <span class="pill progress"><span class="dot"></span>Draft handoff — Mindbody access complete; club setup and launch tests pending</span>
   </div>
   <div style="margin-top: 18px; padding: 14px 18px; background: var(--yellow-soft); border-left: 3px solid var(--yellow); border-radius: 0 8px 8px 0;">
-    <strong style="font-size: 13px;">👉 Want to verify it works?</strong>
-    <a href="./test-walkthrough.html" style="margin-left: 8px; color: var(--amber); font-weight: 600;">Run the 20-minute test walkthrough →</a>
+    <strong style="font-size: 13px;">Current rollout state:</strong>
+    <a href="https://github.com/zczhuang/court16-mindbody-test-v2/blob/agent/family-account-handoff/docs/multi-site-automation-audit.md" style="margin-left: 8px; color: var(--amber); font-weight: 600;">Open the multi-site readiness audit →</a>
   </div>
   <div style="margin-top: 10px; padding: 14px 18px; background: #FCE4EC; border-left: 3px solid #93144D; border-radius: 0 8px 8px 0;">
     <strong style="font-size: 13px; color: #93144D;">👩‍💼 Ibtissam:</strong>
-    <a href="./ibtissam-handoff.html" style="margin-left: 8px; color: #93144D; font-weight: 600;">Email copy + workflow assembly handoff (45 min, copy-paste ready) →</a>
+    <a href="./family-account-handoff.html" style="margin-left: 8px; color: #93144D; font-weight: 600;">Open the canonical family-account handoff →</a>
+    <span style="display:block; margin:8px 0 0; font-size:12px; color:#6b6760;">Do not bulk-publish emails or enable workflows. The <a href="./ibtissam-handoff.html" style="color:#6b6760;">May kickoff sheet</a> is archived and begins with a current-state warning.</span>
   </div>
   <div style="margin-top: 10px; padding: 14px 18px; background: var(--green-soft); border-left: 3px solid var(--green); border-radius: 0 8px 8px 0;">
-    <strong style="font-size: 13px; color: var(--green);">🟢 Pre-launch:</strong>
-    <a href="./smoke-tests.html" style="margin-left: 8px; color: var(--green); font-weight: 600;">Ridge Hill pilot smoke tests — gates + 10 scenarios + acceptance criteria →</a>
+    <strong style="font-size: 13px; color: var(--green);">Historical test records:</strong>
+    <a href="./smoke-tests.html" style="margin-left: 8px; color: var(--green); font-weight: 600;">Archived Ridge Hill smoke log</a>
+    <span style="font-size:12px;color:#356b4b;"> · do not run the old live-write steps</span>
   </div>
 </header>
 
-<h2 style="margin-top: 8px;">Execution order on kickoff day</h2>
-<p>Day 1 is Ibtissam's HubSpot admin work (specs 1, 2, 9) to unblock the rest.
-   Day 2–3 is Stuart's code changes (specs 3, 4, 5). Day 4–5 is Ibtissam's workflow
-   + email work (specs 6, 7, 8) once the Deal pipeline + code changes are live.</p>
+<h2 style="margin-top: 8px;">Current execution order</h2>
+  <p>HubSpot API access is working, the trusted family-status nudge is saved off, and all seven Mindbody sites are now API-authorized. Next build or verify each site's exact trial configuration, review each
+     current HubSpot asset without enabling it, and run the controlled Ridge Hill test matrix. Only an individually
+     approved workflow may be enabled; the parent-account nudge stays off until every status branch is proven.</p>
 
 <div class="doc-grid">
 
   <a class="doc-card" href="./01-contact-properties.html">
     <div class="num">01</div>
     <div class="body">
-      <h3>12 Contact custom properties</h3>
-      <p>Schema Ibtissam adds in HubSpot so the app can carry booking state + signed staff URLs on each Contact.</p>
+      <h3>Historical Contact property sheet</h3>
+      <p>Original Track 1 schema for reference only. The page links to the current GitHub property contract and warns against using the old count.</p>
     </div>
     <div class="open">Open spec →</div>
   </a>
@@ -55,8 +56,8 @@
   <a class="doc-card" href="./02-trials-deal-pipeline.html">
     <div class="num">02</div>
     <div class="body">
-      <h3>Trials Deal pipeline</h3>
-      <p>Five-stage pipeline (Requested → Scheduled → Attended / No-Show / Denied) with entry, exit, and automation rules per stage.</p>
+      <h3>Historical Trials pipeline proposal</h3>
+      <p>Original five-stage design. The current Deny route does not create or move to a Denied stage.</p>
     </div>
     <div class="open">Open spec →</div>
   </a>
@@ -73,8 +74,8 @@
   <a class="doc-card" href="./04-staff-confirm-moves-deal.html">
     <div class="num">04</div>
     <div class="body">
-      <h3>Staff confirm moves Deal to Scheduled</h3>
-      <p>Code change: the existing one-click staff-confirm URL moves the Deal stage instead of only flipping a Contact property.</p>
+      <h3>Historical staff-confirm implementation sheet</h3>
+      <p>Original implementation and test plan. Current write acceptance is governed by the multi-site audit.</p>
     </div>
     <div class="open">Open spec →</div>
   </a>
@@ -83,7 +84,7 @@
     <div class="num">05</div>
     <div class="body">
       <h3>Deny action (Confirm / Reassign / Deny)</h3>
-      <p>New staff button with a five-reason picklist. Moves Deal to Denied, cancels the MindBody booking, and triggers a reason-specific email.</p>
+      <p>Staff action with a five-reason picklist. Keeps the Deal stage, records reason/note, marks the Contact failed, and rejects already-confirmed bookings with HTTP 410.</p>
     </div>
     <div class="open">Open spec →</div>
   </a>
@@ -91,8 +92,8 @@
   <a class="doc-card" href="./06-password-setup-email.html">
     <div class="num">06</div>
     <div class="body">
-      <h3>Password-setup email workflow</h3>
-      <p>HubSpot workflow: on Deal create, delay 1 hour and send a password-setup email so parents can access their MindBody account.</p>
+      <h3>Mindbody account + family-link email handoff</h3>
+      <p>Live-tested visual guide: Mindbody sends the secure link; HubSpot only nudges. Includes the parent/staff family-link steps and current published-asset/workflow-off state.</p>
     </div>
     <div class="open">Open spec →</div>
   </a>
@@ -100,8 +101,8 @@
   <a class="doc-card" href="./07-24h-reminder-workflow.html">
     <div class="num">07</div>
     <div class="body">
-      <h3>24-hour reminder workflow</h3>
-      <p>HubSpot workflow: 24 hours before the class, email the parent a reminder with directions + "what to bring".</p>
+      <h3>Historical 24-hour reminder proposal</h3>
+      <p>Keep off until timing, classification, and a trustworthy cancellation-suppression signal are tested.</p>
     </div>
     <div class="open">Open spec →</div>
   </a>
@@ -110,7 +111,7 @@
     <div class="num">08</div>
     <div class="body">
       <h3>Four email templates</h3>
-      <p>Confirmation · password-setup · 24-hour reminder · denial (five reason variants). Subject, preheader, body, and variables per email.</p>
+      <p>Confirmation · parent Mindbody account nudge · 24-hour reminder · denial (five reason variants). Subject, preheader, body, and variables per email.</p>
     </div>
     <div class="open">Open spec →</div>
   </a>
@@ -118,10 +119,37 @@
   <a class="doc-card" href="./09-recaptcha-toggle.html">
     <div class="num">09</div>
     <div class="body">
-      <h3>Turn off reCAPTCHA on the Trial form</h3>
-      <p>Ten-second portal toggle in Marketing → Forms. Unblocks every API-driven submission Cedarwind's app makes.</p>
+      <h3>Historical reCAPTCHA toggle proposal</h3>
+      <p>Archived May instruction. Do not change the live form until current API behavior, embeds, nurture enrollment, and spam controls are audited.</p>
     </div>
     <div class="open">Open spec →</div>
+  </a>
+
+  <a class="doc-card" href="./10-family-account-staff-guide.html">
+    <div class="num">10</div>
+    <div class="body">
+      <h3>Family-account completion staff guide</h3>
+      <p>Four-state, screenshot-based SOP: parent claim, Add Member, connect the original child once, and verify Manage Family Account.</p>
+    </div>
+    <div class="open">Open guide →</div>
+  </a>
+
+  <a class="doc-card" href="./11-automation-simplification.html">
+    <div class="num">11</div>
+    <div class="body">
+      <h3>Automation simplification audit</h3>
+      <p>Per-site Mindbody + HubSpot automation state (18 Jul), the seven same-job-done-twice redundancies, and the single-owner change list.</p>
+    </div>
+    <div class="open">Open audit →</div>
+  </a>
+
+  <a class="doc-card" href="./12-rollout-status.html">
+    <div class="num">12</div>
+    <div class="body">
+      <h3>Rollout status &amp; path to all clubs</h3>
+      <p>What's built (product, safety architecture, documents), automation state per system, the per-club scoreboard, and the owned steps to activate all six new sites.</p>
+    </div>
+    <div class="open">Open status →</div>
   </a>
 
 </div>

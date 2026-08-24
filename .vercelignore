@@ -1,0 +1,10 @@
+# Local agent/workspace state is never part of an application deployment.
+.claude/
+.private/
+tmp/
+AGENTS.md.png
+CLAUDE.md
+
+# Research and generated reports are review artifacts, not public app assets.
+docs/
+public/reports/

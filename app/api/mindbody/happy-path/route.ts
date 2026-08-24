@@ -3,7 +3,7 @@ import {
   addClient,
   addClientRelationship,
   addClientToClass,
-  checkCallerToken,
+  checkDiagnosticToken,
   getClientsByEmail,
   loadConfigFromEnv,
   MindbodyError,
@@ -40,7 +40,7 @@ export async function POST(req: Request) {
   const correlationId = makeCorrelationId();
   const log = createLogger(correlationId);
 
-  const auth = checkCallerToken(req);
+  const auth = checkDiagnosticToken(req);
   if (!auth.ok) {
     return NextResponse.json({ ok: false, correlationId, error: auth.reason }, { status: auth.status });
   }

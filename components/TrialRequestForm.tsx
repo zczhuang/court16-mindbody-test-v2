@@ -1,85 +1,222 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { TrialClass, TrialRequest } from "@/lib/trial-types";
 import type { ChildEntry } from "@/components/AgeSelector";
 import { ageFromDob } from "@/lib/class-utils";
+import {
+  MAX_KIDS_TRIAL_AGE,
+  MINDBODY_STANDARD_GENDERS,
+  MIN_KIDS_TRIAL_AGE,
+  US_STATE_AND_TERRITORY_CODES,
+  isValidIsoDate,
+  type MindbodyStandardGender,
+} from "@/lib/trial-intake";
 
 interface Props {
+  submissionId: string;
   trialClass: TrialClass;
   kids: ChildEntry[];
   locationId: string;
   locationName: string;
+  genderOptions: readonly MindbodyStandardGender[];
+  initialValues?: Partial<TrialRequest>;
+  testMode?: boolean;
+  submissionEnabled: boolean;
   onSubmit: (request: TrialRequest) => Promise<void>;
   onCancel: () => void;
 }
 
-const MIN_TRIAL_AGE = 3;
-const MAX_TRIAL_AGE = 17;
+
+const TRIAL_DATE_FORMATTER = new Intl.DateTimeFormat("en-US", {
+  weekday: "long",
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+});
 
 export default function TrialRequestForm({
+  submissionId,
   trialClass,
   locationId,
   locationName,
+  genderOptions,
+  initialValues,
+  testMode = false,
+  submissionEnabled,
   onSubmit,
   onCancel,
 }: Props) {
-  const [parentFirstName, setParentFirstName] = useState("");
-  const [parentLastName, setParentLastName] = useState("");
-  const [parentEmail, setParentEmail] = useState("");
-  const [parentPhone, setParentPhone] = useState("");
-  const [parentBirthDate, setParentBirthDate] = useState("");
-  const [childFirstName, setChildFirstName] = useState("");
-  const [childLastName, setChildLastName] = useState("");
-  const [childBirthDate, setChildBirthDate] = useState("");
-  const [notes, setNotes] = useState("");
+  const [parentFirstName, setParentFirstName] = useState(initialValues?.parentFirstName ?? "");
+  const [parentLastName, setParentLastName] = useState(initialValues?.parentLastName ?? "");
+  const [parentEmail, setParentEmail] = useState(initialValues?.parentEmail ?? "");
+  const [parentPhone, setParentPhone] = useState(initialValues?.parentPhone ?? "");
+  const [parentBirthDate, setParentBirthDate] = useState(initialValues?.parentBirthDate ?? "");
+  const [parentGender, setParentGender] = useState<MindbodyStandardGender | "">(
+    initialValues?.parentGender ?? "",
+  );
+  const [childFirstName, setChildFirstName] = useState(initialValues?.childFirstName ?? "");
+  const [childLastName, setChildLastName] = useState(initialValues?.childLastName ?? "");
+  const [childBirthDate, setChildBirthDate] = useState(initialValues?.childBirthDate ?? "");
+  const [childGender, setChildGender] = useState<MindbodyStandardGender | "">(
+    initialValues?.childGender ?? "",
+  );
+  const [householdAddress1, setHouseholdAddress1] = useState(
+    initialValues?.householdAddress1 ?? "",
+  );
+  const [householdCity, setHouseholdCity] = useState(initialValues?.householdCity ?? "");
+  const [householdState, setHouseholdState] = useState(initialValues?.householdState ?? "");
+  const [householdPostalCode, setHouseholdPostalCode] = useState(
+    initialValues?.householdPostalCode ?? "",
+  );
+  const [parentEmergencyContactName, setParentEmergencyContactName] = useState(
+    initialValues?.parentEmergencyContactName ?? "",
+  );
+  const [parentEmergencyContactPhone, setParentEmergencyContactPhone] = useState(
+    initialValues?.parentEmergencyContactPhone ?? "",
+  );
+  const [parentEmergencyContactEmail, setParentEmergencyContactEmail] = useState(
+    initialValues?.parentEmergencyContactEmail ?? "",
+  );
+  const [parentEmergencyContactRelationship, setParentEmergencyContactRelationship] =
+    useState(initialValues?.parentEmergencyContactRelationship ?? "");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const dialogCardRef = useRef<HTMLDivElement>(null);
+  const formBodyRef = useRef<HTMLFormElement>(null);
+  const formTitleRef = useRef<HTMLHeadingElement>(null);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onCancel();
+      if (e.key === "Escape" && !submitting) onCancel();
+      if (e.key !== "Tab") return;
+
+      const focusable = Array.from(
+        dialogCardRef.current?.querySelectorAll<HTMLElement>(
+          'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      ).filter((element) => element.offsetParent !== null);
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const activeIndex = focusable.indexOf(document.activeElement as HTMLElement);
+      if (e.shiftKey && activeIndex <= 0) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && (activeIndex === -1 || document.activeElement === last)) {
+        e.preventDefault();
+        first.focus();
+      }
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [onCancel]);
+  }, [onCancel, submitting]);
 
   useEffect(() => {
+    const previousFocus =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = prev;
+      previousFocus?.focus();
     };
   }, []);
 
+  useEffect(() => {
+    // Announce the heading when the dialog opens so keyboard and screen-reader
+    // users land at the start of the form rather than wherever the page was.
+    formBodyRef.current?.scrollTo({ top: 0, behavior: "auto" });
+    formTitleRef.current?.focus({ preventScroll: true });
+  }, []);
+
   const derivedAge = childBirthDate ? ageFromDob(childBirthDate) : NaN;
+  const trialDateLabel = TRIAL_DATE_FORMATTER.format(
+    new Date(`${trialClass.date}T00:00:00`),
+  );
+  const previewOnly = !submissionEnabled;
+  const usingPreviewGenderOptions = previewOnly && genderOptions.length === 0;
+  const displayedGenderOptions = usingPreviewGenderOptions
+    ? MINDBODY_STANDARD_GENDERS
+    : genderOptions;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!childBirthDate || Number.isNaN(derivedAge)) {
+
+    // Production preview is a design-review lane, not an intake lane. A
+    // reviewer can read the whole form without entering real personal
+    // information; every submission stops here, before validation or onSubmit.
+    // The button stays pressable rather than disabled so the form does not read
+    // as broken, so pressing it must explain itself instead of doing nothing.
+    if (!submissionEnabled) {
+      document
+        .getElementById("trial-submission-lock")
+        ?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      return;
+    }
+
+    // Revalidate in React as well as with native form constraints, so a server
+    // response is never the first time the family learns a field is invalid.
+    if (!parentFirstName.trim() || !parentLastName.trim()) {
+      setError("Enter the parent or guardian's first and last name.");
+      return;
+    }
+    if (!/^\S+@\S+\.\S+$/.test(parentEmail.trim())) {
+      setError("Enter a valid parent or guardian email address.");
+      return;
+    }
+    if (parentPhone.replace(/\D/g, "").length < 7) {
+      setError("Enter a valid parent or guardian mobile phone number.");
+      return;
+    }
+    if (!isValidIsoDate(parentBirthDate) || ageFromDob(parentBirthDate) < 18) {
+      setError("Enter the date of birth of an adult parent or guardian (18+).");
+      return;
+    }
+    if (!childFirstName.trim() || !childLastName.trim()) {
+      setError("Enter the child's first and last name.");
+      return;
+    }
+    if (!isValidIsoDate(childBirthDate) || Number.isNaN(derivedAge)) {
       setError("Child's date of birth is required.");
       return;
     }
-    if (derivedAge < MIN_TRIAL_AGE || derivedAge > MAX_TRIAL_AGE) {
+    if (derivedAge < MIN_KIDS_TRIAL_AGE || derivedAge > MAX_KIDS_TRIAL_AGE) {
       setError(
-        `Trials are for kids ages ${MIN_TRIAL_AGE}–${MAX_TRIAL_AGE} (this date of birth makes your child ${derivedAge}).`,
+        `Trials are for kids ages ${MIN_KIDS_TRIAL_AGE}–${MAX_KIDS_TRIAL_AGE} (this date of birth makes your child ${derivedAge}).`,
       );
+      return;
+    }
+    if (!parentGender || !childGender) {
+      setError("Select the required gender field for both the parent and child.");
       return;
     }
     setSubmitting(true);
 
     try {
       await onSubmit({
+        submissionId,
         parentFirstName,
         parentLastName,
         parentEmail,
         parentPhone,
         parentBirthDate,
+        parentGender,
         childFirstName,
         childLastName,
         childAge: derivedAge,
         childBirthDate,
+        childGender,
+        householdAddress1,
+        householdCity,
+        householdState,
+        householdPostalCode,
+        parentEmergencyContactName,
+        parentEmergencyContactPhone,
+        parentEmergencyContactEmail,
+        parentEmergencyContactRelationship,
         children: [
           {
             firstName: childFirstName,
@@ -97,10 +234,13 @@ export default function TrialRequestForm({
         classTime: trialClass.time,
         classStartsAt: trialClass.startsAt,
         coachName: trialClass.coach,
-        notes: notes || undefined,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setError(
+        err instanceof Error && err.message
+          ? err.message
+          : "We couldn't send the trial request. Please try again, or call 718-875-5550 and we'll help.",
+      );
       setSubmitting(false);
     }
   }
@@ -110,24 +250,31 @@ export default function TrialRequestForm({
       role="dialog"
       aria-modal="true"
       aria-labelledby="trial-form-title"
+      aria-describedby={previewOnly ? "trial-form-preview-note" : undefined}
+      aria-busy={submitting}
       className="trf-backdrop"
       onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onCancel();
+        if (e.target === e.currentTarget && !submitting) onCancel();
       }}
     >
-      <div className="trf-card">
+      <div ref={dialogCardRef} className="trf-card">
         <div className="trf-head">
           <div>
             <div className="eyebrow" style={{ marginBottom: 4 }}>
-              Request this trial
+              {previewOnly ? "Trial form preview" : "Final details"}
             </div>
-            <h3 id="trial-form-title" className="trf-title">
-              {trialClass.name}
+            <h3
+              ref={formTitleRef}
+              id="trial-form-title"
+              className="trf-title"
+              tabIndex={-1}
+            >
+              Tell us about your player.
             </h3>
             <div className="trf-meta">
-              <span className="mono">
-                {trialClass.dayOfWeek}, {trialClass.time}
-              </span>
+              <strong>{trialClass.name}</strong>
+              <span className="sep">·</span>
+              <span className="mono">{trialDateLabel} at {trialClass.time}</span>
               <span className="sep">·</span>
               <span>{trialClass.coach}</span>
               <span className="sep">·</span>
@@ -139,145 +286,417 @@ export default function TrialRequestForm({
             aria-label="Close"
             className="trf-close"
             type="button"
+            disabled={submitting}
           >
             ×
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="trf-body">
-          <div className="trf-section">
-            <div className="eyebrow">Parent</div>
-            <div className="trf-grid">
-              <Field label="First name *">
-                <input
-                  type="text"
-                  required
-                  value={parentFirstName}
-                  onChange={(e) => setParentFirstName(e.target.value)}
-                  placeholder="First name"
-                  className="trf-input"
-                />
-              </Field>
-              <Field label="Last name *">
-                <input
-                  type="text"
-                  required
-                  value={parentLastName}
-                  onChange={(e) => setParentLastName(e.target.value)}
-                  placeholder="Last name"
-                  className="trf-input"
-                />
-              </Field>
-            </div>
-            <Field label="Email *">
-              <input
-                type="email"
-                required
-                value={parentEmail}
-                onChange={(e) => setParentEmail(e.target.value)}
-                placeholder="you@email.com"
-                className="trf-input"
-              />
-            </Field>
-            <div className="trf-grid">
-              <Field label="Mobile phone *" hint="Staff calls to confirm within a few hours.">
-                <input
-                  type="tel"
-                  required
-                  value={parentPhone}
-                  onChange={(e) => setParentPhone(e.target.value)}
-                  placeholder="(212) 555-0100"
-                  className="trf-input"
-                />
-              </Field>
-              <Field label="Your date of birth *" hint="Sets up your MindBody account correctly.">
-                <input
-                  type="date"
-                  required
-                  value={parentBirthDate}
-                  onChange={(e) => setParentBirthDate(e.target.value)}
-                  className="trf-input"
-                />
-              </Field>
-            </div>
-          </div>
+        <form
+          ref={formBodyRef}
+          id="trial-request-form"
+          onSubmit={handleSubmit}
+          className="trf-body"
+          autoComplete={testMode || previewOnly ? "off" : undefined}
+          noValidate={previewOnly}
+        >
+          <fieldset className="trf-fields" disabled={testMode}>
+              <div className="trf-account-note">
+                <strong>
+                  {testMode
+                    ? "Synthetic test data is prefilled and locked."
+                    : previewOnly
+                      ? "Preview only — nothing will be sent."
+                      : "One quick form. We'll handle the setup."}
+                </strong>
+                <span id={previewOnly ? "trial-form-preview-note" : undefined}>
+                  {testMode
+                    ? "This exact production form is connected only to the protected E2E lane. Court 16 notification adapters are absent; Site -99 mode also requests native email and text suppression."
+                    : previewOnly
+                      ? `Read through the form without entering real personal information. Final submission will open after Court 16 verifies site-specific booking setup and the launch workflow for ${locationName}.`
+                      : "No credit card is needed. We'll use these details to prepare the family records, and Mindbody will send any secure account email."}
+                </span>
+              </div>
+              <div className="trf-section">
+                <div className="eyebrow">Parent or guardian</div>
+                <div className="trf-grid">
+                  <Field label="First name *">
+                    <input
+                      type="text"
+                      required
+                      autoComplete="given-name"
+                      value={parentFirstName}
+                      onChange={(e) => setParentFirstName(e.target.value)}
+                      placeholder="First name"
+                      className="trf-input"
+                    />
+                  </Field>
+                  <Field label="Last name *">
+                    <input
+                      type="text"
+                      required
+                      autoComplete="family-name"
+                      value={parentLastName}
+                      onChange={(e) => setParentLastName(e.target.value)}
+                      placeholder="Last name"
+                      className="trf-input"
+                    />
+                  </Field>
+                </div>
+                <Field
+                  label="Email *"
+                  hint={
+                    testMode
+                      ? "The locked, non-deliverable test address cannot receive email."
+                      : previewOnly
+                        ? "Preview only — you can leave this blank and no email will be sent."
+                        : "We'll send trial updates here. Mindbody may also send a secure account email."
+                  }
+                >
+                  <input
+                    type="email"
+                    required
+                    autoComplete="email"
+                    value={parentEmail}
+                    onChange={(e) => setParentEmail(e.target.value)}
+                    placeholder="you@email.com"
+                    className="trf-input"
+                  />
+                </Field>
+                <Field
+                  label="Mobile phone *"
+                  hint={
+                    testMode
+                      ? "Locked synthetic data; the app invokes no call or text adapter."
+                      : previewOnly
+                        ? "Preview only — you can leave this blank and no call or text will be triggered."
+                        : "Staff calls to confirm within a few hours."
+                  }
+                >
+                  <input
+                    type="tel"
+                    required
+                    autoComplete="tel"
+                    value={parentPhone}
+                    onChange={(e) => setParentPhone(e.target.value)}
+                    placeholder="(212) 555-0100"
+                    className="trf-input"
+                  />
+                </Field>
+                <div className="trf-grid">
+                  <Field
+                    label="Your date of birth *"
+                    hint={
+                      previewOnly
+                        ? "Preview only — no date is required."
+                        : "Needed to prepare the family account."
+                    }
+                  >
+                    <input
+                      type="date"
+                      required
+                      autoComplete="bday"
+                      value={parentBirthDate}
+                      onChange={(e) => setParentBirthDate(e.target.value)}
+                      className="trf-input"
+                    />
+                  </Field>
+                  <Field
+                    label="Parent or guardian gender *"
+                    hint={
+                      usingPreviewGenderOptions
+                        ? "Preview values — this club's Mindbody options still need verification."
+                        : "Required by Mindbody for this club."
+                    }
+                  >
+                    <select
+                      required
+                      value={parentGender}
+                      onChange={(event) =>
+                        setParentGender(event.target.value as MindbodyStandardGender)
+                      }
+                      className="trf-input"
+                    >
+                      <option value="" disabled>
+                        Select
+                      </option>
+                      {displayedGenderOptions.map((gender) => (
+                        <option key={gender} value={gender}>
+                          {gender}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                </div>
+              </div>
 
-          <div className="trf-section">
-            <div className="eyebrow">Child</div>
-            <div className="trf-grid">
-              <Field label="First name *">
-                <input
-                  type="text"
-                  required
-                  value={childFirstName}
-                  onChange={(e) => setChildFirstName(e.target.value)}
-                  placeholder="Child's first name"
-                  className="trf-input"
-                />
-              </Field>
-              <Field label="Last name *">
-                <input
-                  type="text"
-                  required
-                  value={childLastName}
-                  onChange={(e) => setChildLastName(e.target.value)}
-                  placeholder="Child's last name"
-                  className="trf-input"
-                />
-              </Field>
-            </div>
-            <Field
-              label="Child's date of birth *"
-              hint={
-                !Number.isNaN(derivedAge)
-                  ? `Age ${derivedAge} — we'll match the right class level.`
-                  : "Sets up their MindBody profile correctly."
-              }
-            >
-              <input
-                type="date"
-                required
-                value={childBirthDate}
-                onChange={(e) => setChildBirthDate(e.target.value)}
-                className="trf-input"
-              />
-            </Field>
-            <Field label="Anything we should know? (optional)">
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={2}
-                placeholder="Allergies, experience level, special requests…"
-                className="trf-input"
-                style={{ resize: "vertical", minHeight: 60 }}
-              />
-            </Field>
-          </div>
+              <div className="trf-section">
+                <div className="eyebrow">Child</div>
+                <div className="trf-grid">
+                  <Field label="First name *">
+                    <input
+                      type="text"
+                      required
+                      value={childFirstName}
+                      onChange={(e) => setChildFirstName(e.target.value)}
+                      placeholder="Child's first name"
+                      className="trf-input"
+                    />
+                  </Field>
+                  <Field label="Last name *">
+                    <input
+                      type="text"
+                      required
+                      value={childLastName}
+                      onChange={(e) => setChildLastName(e.target.value)}
+                      placeholder="Child's last name"
+                      className="trf-input"
+                    />
+                  </Field>
+                </div>
+                <div className="trf-grid">
+                  <Field
+                    label="Child's date of birth *"
+                    hint={
+                      previewOnly && Number.isNaN(derivedAge)
+                        ? "Preview only — no date is required."
+                        : !Number.isNaN(derivedAge)
+                          ? `Age ${derivedAge} — we'll match the right class level.`
+                          : "Used to match the right class."
+                    }
+                  >
+                    <input
+                      type="date"
+                      required
+                      value={childBirthDate}
+                      onChange={(e) => setChildBirthDate(e.target.value)}
+                      className="trf-input"
+                    />
+                  </Field>
+                  <Field
+                    label="Child gender *"
+                    hint={
+                      usingPreviewGenderOptions
+                        ? "Preview values — this club's Mindbody options still need verification."
+                        : "Required by Mindbody for this club."
+                    }
+                  >
+                    <select
+                      required
+                      value={childGender}
+                      onChange={(event) =>
+                        setChildGender(event.target.value as MindbodyStandardGender)
+                      }
+                      className="trf-input"
+                    >
+                      <option value="" disabled>
+                        Select
+                      </option>
+                      {displayedGenderOptions.map((gender) => (
+                        <option key={gender} value={gender}>
+                          {gender}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                </div>
+                <div className="trf-family-note">
+                  Your child shares the parent contact email and never needs a separate
+                  login. Court 16 staff will help with any final family-account link.
+                </div>
+              </div>
+              <div className="trf-section">
+                <div className="eyebrow">Household address</div>
+                <div className="trf-family-note">
+                  Mindbody requires an address to create the family&apos;s account. We use
+                  it for both parent and child, and protect it under Court 16&apos;s
+                  Privacy Policy.
+                </div>
+                <Field label="Street address *">
+                  <input
+                    type="text"
+                    required
+                    autoComplete="address-line1"
+                    value={householdAddress1}
+                    onChange={(e) => setHouseholdAddress1(e.target.value)}
+                    placeholder="123 Main Street"
+                    className="trf-input"
+                  />
+                </Field>
+                <div className="trf-address-grid">
+                  <Field label="City *">
+                    <input
+                      type="text"
+                      required
+                      autoComplete="address-level2"
+                      value={householdCity}
+                      onChange={(e) => setHouseholdCity(e.target.value)}
+                      className="trf-input"
+                    />
+                  </Field>
+                  <Field label="State *">
+                    <select
+                      required
+                      autoComplete="address-level1"
+                      value={householdState}
+                      onChange={(event) => setHouseholdState(event.target.value)}
+                      className="trf-input"
+                    >
+                      <option value="" disabled>
+                        Select
+                      </option>
+                      {US_STATE_AND_TERRITORY_CODES.map((stateCode) => (
+                        <option key={stateCode} value={stateCode}>
+                          {stateCode}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label="ZIP code *">
+                    <input
+                      type="text"
+                      required
+                      autoComplete="postal-code"
+                      inputMode="numeric"
+                      pattern="[0-9]{5}(-[0-9]{4})?"
+                      value={householdPostalCode}
+                      onChange={(e) => setHouseholdPostalCode(e.target.value)}
+                      placeholder="10001"
+                      className="trf-input"
+                    />
+                  </Field>
+                </div>
+              </div>
 
-          {error && <div className="trf-error">{error}</div>}
+              <div className="trf-section">
+                <div className="eyebrow">Alternate emergency contact</div>
+                <p className="trf-section-copy">
+                  Mindbody requires an emergency contact for each profile. We&apos;ll
+                  use the parent or guardian above for your child and this alternate
+                  contact for the adult profile.
+                </p>
+                <div className="trf-grid">
+                  <Field label="Full name *">
+                    <input
+                      type="text"
+                      required
+                      autoComplete="section-emergency name"
+                      value={parentEmergencyContactName}
+                      onChange={(event) =>
+                        setParentEmergencyContactName(event.target.value)
+                      }
+                      className="trf-input"
+                    />
+                  </Field>
+                  <Field label="Relationship *">
+                    <input
+                      type="text"
+                      required
+                      autoComplete="off"
+                      value={parentEmergencyContactRelationship}
+                      onChange={(event) =>
+                        setParentEmergencyContactRelationship(event.target.value)
+                      }
+                      placeholder="Spouse, sibling, friend…"
+                      className="trf-input"
+                    />
+                  </Field>
+                </div>
+                <div className="trf-grid">
+                  <Field label="Mobile phone *">
+                    <input
+                      type="tel"
+                      required
+                      autoComplete="section-emergency tel"
+                      value={parentEmergencyContactPhone}
+                      onChange={(event) =>
+                        setParentEmergencyContactPhone(event.target.value)
+                      }
+                      className="trf-input"
+                    />
+                  </Field>
+                  <Field label="Email *">
+                    <input
+                      type="email"
+                      required
+                      autoComplete="section-emergency email"
+                      value={parentEmergencyContactEmail}
+                      onChange={(event) =>
+                        setParentEmergencyContactEmail(event.target.value)
+                      }
+                      className="trf-input"
+                    />
+                  </Field>
+                </div>
+              </div>
+          </fieldset>
+
+          <p className="trf-privacy">
+            {testMode ? (
+              <>
+                Protected test lane only. Court 16 production HubSpot, Mindbody, staff, and
+                admin routes are not used. Site -99 mode can create synthetic records only in
+                Mindbody&apos;s public sandbox.
+              </>
+            ) : previewOnly ? (
+              <>
+                This production preview keeps your entries in this browser. Nothing is
+                sent to Court 16, Mindbody, HubSpot, staff, or administrators. Close the
+                form to clear them; you can leave every field blank while reviewing.
+              </>
+            ) : (
+              <>
+                By sending this request, you agree Court 16 may use these details to arrange
+                the trial and prepare linked Mindbody records. See our{" "}
+                <a href="https://www.court16.com/terms/privacy-policy">Privacy Policy</a> and{" "}
+                <a href="https://www.court16.com/terms/terms-of-use">Terms of Use</a>.
+              </>
+            )}
+          </p>
+
+          {error && (
+            <div className="trf-error" role="alert">
+              {error}
+            </div>
+          )}
+
+          {previewOnly && (
+            <div id="trial-submission-lock" className="trf-submit-lock">
+              <strong>Submission locked.</strong>
+              <span>
+                {locationName} isn&apos;t fully launch-ready yet. The site-specific booking
+                service, routing, and remaining launch checks must be verified. Your
+                details haven&apos;t been sent.
+              </span>
+            </div>
+          )}
         </form>
 
         <div className="trf-foot">
-          <button type="button" onClick={onCancel} className="btn ghost">
+          <button
+            type="button"
+            onClick={() => {
+              setError(null);
+              onCancel();
+            }}
+            className="btn ghost"
+            disabled={submitting}
+          >
             ← Back
           </button>
           <button
             type="submit"
-            onClick={handleSubmit}
+            form="trial-request-form"
             disabled={submitting}
+            aria-describedby={!submissionEnabled ? "trial-submission-lock" : undefined}
             className="btn primary"
           >
-            {submitting ? "Sending…" : "Request this trial"}
-            <svg viewBox="0 0 16 16" width="14" height="14">
-              <path
-                d="M2 8h11M9 4l4 4-4 4"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
+            {submitting
+              ? "Sending…"
+              : testMode
+                ? "Run safe test request"
+                : "Send trial request"}
+            <span aria-hidden="true">→</span>
           </button>
         </div>
       </div>
@@ -290,7 +709,10 @@ export default function TrialRequestForm({
           display: flex;
           align-items: flex-start;
           justify-content: center;
-          padding: 24px;
+          padding: max(12px, env(safe-area-inset-top))
+            max(12px, env(safe-area-inset-right))
+            max(12px, env(safe-area-inset-bottom))
+            max(12px, env(safe-area-inset-left));
           background: color-mix(in oklab, var(--c16-ink), transparent 40%);
           backdrop-filter: blur(4px);
           overflow-y: auto;
@@ -302,7 +724,7 @@ export default function TrialRequestForm({
         }
         .trf-card {
           width: 100%;
-          max-width: 560px;
+          max-width: 680px;
           background: var(--c16-paper);
           border: 2px solid var(--c16-black);
           border-radius: var(--r-2xl);
@@ -310,21 +732,22 @@ export default function TrialRequestForm({
           overflow: hidden;
           display: flex;
           flex-direction: column;
-          max-height: calc(100vh - 48px);
+          max-height: calc(100vh - 24px);
+          max-height: calc(100dvh - 24px);
         }
         .trf-head {
-          padding: 22px 22px 16px;
-          border-bottom: 1px solid var(--c16-line);
+          padding: 24px 26px 20px;
+          border-bottom: 2px solid var(--c16-black);
           display: flex;
           align-items: flex-start;
           justify-content: space-between;
           gap: 12px;
-          background: #fff;
+          background: var(--c16-yellow);
         }
         .trf-title {
           font-family: var(--f-display);
-          font-weight: 700;
-          font-size: 22px;
+          font-weight: 800;
+          font-size: 30px;
           line-height: 1.2;
           letter-spacing: -0.03em;
           margin: 0 0 6px;
@@ -361,25 +784,60 @@ export default function TrialRequestForm({
           background: var(--c16-paper-2);
           color: var(--c16-black);
         }
+        .trf-close:disabled {
+          cursor: not-allowed;
+          opacity: 0.45;
+        }
         .trf-body {
-          padding: 18px 22px;
+          padding: 22px 26px;
           overflow-y: auto;
           display: flex;
           flex-direction: column;
-          gap: 16px;
+          gap: 18px;
         }
         .trf-section {
           display: flex;
           flex-direction: column;
           gap: 10px;
+          padding: 18px;
+          border: 1px solid var(--c16-line);
+          background: #fff;
+        }
+        .trf-fields {
+          min-width: 0;
+          margin: 0;
+          padding: 0;
+          border: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 18px;
+        }
+        .trf-fields:disabled {
+          opacity: 1;
         }
         .trf-section .eyebrow {
           margin-bottom: 2px;
+        }
+        .trf-section-copy {
+          margin: 0 0 2px;
+          color: var(--c16-ink-2);
+          font-size: 12px;
+          line-height: 1.5;
         }
         .trf-grid {
           display: grid;
           grid-template-columns: 1fr;
           gap: 10px;
+        }
+        .trf-address-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr);
+          gap: 10px;
+        }
+        @media (min-width: 520px) {
+          .trf-address-grid {
+            grid-template-columns: minmax(0, 2fr) minmax(76px, 0.7fr) minmax(110px, 1fr);
+          }
         }
         @media (min-width: 520px) {
           .trf-grid {
@@ -388,14 +846,15 @@ export default function TrialRequestForm({
         }
         .trf-input {
           width: 100%;
+          min-height: 44px;
           padding: 11px 14px;
           font-size: 14px;
           font-family: var(--f-sans);
-          font-weight: 500;
+          font-weight: 600;
           color: var(--c16-black);
           background: #fff;
-          border: 1.5px solid var(--c16-line);
-          border-radius: var(--r-md);
+          border: 1.5px solid #bdbdb4;
+          border-radius: 8px;
           outline: none;
           transition: border-color 0.12s ease, box-shadow 0.12s ease;
         }
@@ -411,8 +870,55 @@ export default function TrialRequestForm({
           font-size: 13px;
           font-weight: 600;
         }
+        .trf-submit-lock {
+          display: grid;
+          gap: 3px;
+          padding: 12px 14px;
+          border: 1.5px solid #777770;
+          border-radius: var(--r-md);
+          background: #e5e4df;
+          color: #3f3f3b;
+          font-size: 12px;
+          line-height: 1.45;
+        }
+        .trf-submit-lock strong {
+          font-family: var(--f-display);
+          font-size: 15px;
+        }
+        .trf-privacy {
+          margin: 0;
+          color: var(--c16-ink-3);
+          font-size: 11px;
+          line-height: 1.55;
+        }
+        .trf-privacy a {
+          color: var(--c16-black);
+          font-weight: 800;
+          text-decoration: underline;
+          text-decoration-color: var(--c16-yellow);
+          text-underline-offset: 3px;
+        }
+        .trf-account-note,
+        .trf-family-note {
+          display: grid;
+          gap: 4px;
+          padding: 14px 16px;
+          border: 1.5px solid var(--c16-black);
+          background: var(--c16-yellow-soft);
+          font-size: 13px;
+          line-height: 1.45;
+        }
+        .trf-account-note strong {
+          font-family: var(--f-display);
+          font-size: 16px;
+        }
+        .trf-family-note {
+          border-color: var(--c16-line);
+          background: var(--c16-paper-2);
+          color: var(--c16-ink-2);
+        }
         .trf-foot {
-          padding: 14px 22px;
+          padding: 16px 26px max(16px, env(safe-area-inset-bottom));
           border-top: 1px solid var(--c16-line);
           background: var(--c16-paper-2);
           display: flex;
@@ -452,7 +958,7 @@ function Field({
         <span
           style={{
             fontSize: 11,
-            fontWeight: 500,
+            fontWeight: 600,
             color: "var(--c16-ink-3)",
             fontFamily: "var(--f-sans)",
             letterSpacing: "0",

@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>11 · Automation simplification · Court 16 × Cedarwind</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="./styles.css" />
+<style>
+  .verdict { display:inline-block; padding:2px 8px; border-radius:999px; font:700 10.5px/1.7 'Geist Mono', monospace; letter-spacing:.03em; }
+  .verdict.keep { background:#dff2e6; color:#2e7d52; }
+  .verdict.off { background:#fbe8c4; color:#8b570b; }
+  .verdict.retire { background:#f9e3e3; color:#a12828; }
+  .verdict.build { background:#e3ecfa; color:#1d4f9c; }
+  .owner-grid { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:14px; margin:14px 0; }
+  .owner-card { padding:16px 18px; border:1px solid var(--border); border-radius:10px; background:#fff; }
+  .owner-card h3 { margin:0 0 8px; font-size:15px; }
+  .owner-card ol { margin:0; padding-left:18px; }
+  .owner-card li { margin:6px 0; font-size:13px; line-height:1.5; }
+  .callout { border-left:4px solid var(--yellow); background:#fff; padding:14px 16px; border-radius:0 9px 9px 0; margin:14px 0; }
+  .redundancy-table td:first-child { font-weight:600; font-size:13px; }
+  @media (max-width:720px) { .owner-grid { grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="doc-head">
+  <a class="back-link" href="./index.html">Back to Package A</a>
+  <div class="brand">Court 16 × Cedarwind · Automation audit · updated 20 Jul 2026</div>
+  <h1>One message, one owner: simplifying the trial automation</h1>
+  <p class="subtitle">What runs today across Mindbody's seven sites and the HubSpot portal, where the same job is done twice, and the exact change list to remove the redundancy before multi-club launch.</p>
+</header>
+
+<section class="summary-pkg">
+  <dl>
+    <dt>Evidence</dt><dd>Read-only Mindbody API audit re-run 20 Jul 2026 (all seven Site IDs) + the HubSpot portal inventory verified via the production private-app token on 17 Jul 2026 (137 workflows; the kids-trial set is itemized below).</dd>
+    <dt>Headline</dt><dd>Every redundancy traces to one root cause: two systems (and previously two intake paths) each believing they own the same customer message or the same record. The fix is the single-owner map — not more automation.</dd>
+    <dt>Safe state today</dt><dd>All Cedarwind workflows OFF · legacy form workflows unchanged and ON for the current form · all seven clubs disabled in the new app · all seven sites authorized for API reads.</dd>
+  </dl>
+</section>
+
+<h2>1 · Mindbody, per site</h2>
+<table>
+  <tr><th>Club</th><th>Site ID</th><th>20 Jul API state</th><th>Automation findings / to-do</th></tr>
+  <tr><td>Ridge Hill</td><td>5748154</td><td>Authorized; all six read probes 200</td><td>Program 61 + $0 Service 100328 verified, but <strong>zero upcoming Program 61 occurrences</strong> — the schedule must exist before any live family test. Native business Welcome email observed valid; explicit ConsumerWelcomeEmail produced a broken duplicate (never use). Child account-emails stay off.</td></tr>
+  <tr><td>Allston</td><td>5754600</td><td>Authorized; all six read probes 200</td><td>No Kid's Trials Program; audited schedule has zero classes. The production AddClient-mode contract requires <code>EmergContact</code> at every club and <code>Email</code> at Allston. Service-name candidate <code>100183</code> appears, but price/applicability and auto-email settings still need verification.</td></tr>
+  <tr><td>Downtown Brooklyn</td><td>135479</td><td>Authorized; all six read probes 200</td><td>No Kid's Trials Program or kids-trial Service-name candidate surfaced. Build inventory, then re-run configuration and auto-email checks.</td></tr>
+  <tr><td>Fishtown</td><td>5742169</td><td>Authorized; all six read probes 200</td><td>No Kid's Trials Program or kids-trial Service-name candidate surfaced. Build inventory, then re-run configuration and auto-email checks.</td></tr>
+  <tr><td>Long Island City</td><td>985499</td><td>Authorized; all six read probes 200</td><td>No Kid's Trials Program or kids-trial Service-name candidate surfaced; its gender catalog additionally includes <code>Not Specified</code> (id 6).</td></tr>
+  <tr><td>Manhattan–FiDi</td><td>5728093</td><td>Authorized; all six read probes 200</td><td>No Kid's Trials Program or kids-trial Service-name candidate surfaced. Build inventory, then re-run configuration and auto-email checks.</td></tr>
+  <tr><td>Newton</td><td>5751422</td><td>Authorized; all six read probes 200</td><td>No Kid's Trials Program. Service-name candidate <code>100183</code> appears, but price/applicability and auto-email settings still need verification.</td></tr>
+</table>
+<div class="callout"><strong>Mindbody keeps only what Mindbody alone can do:</strong> credential/claim emails, OTP verification, the family-link token, and schedule-change notices. Once HubSpot owns trial confirmations and reminders, each club's Mindbody auto-emails for class confirmation and class reminder should be disabled <em>for trial bookings</em> so parents never receive the same message twice. That per-club toggle review is part of each site's enablement checklist.</div>
+
+<h2>2 · HubSpot: what runs, what to change</h2>
+<table>
+  <tr><th>Asset</th><th>State (verified 17 Jul)</th><th>Change</th></tr>
+  <tr><td>Legacy step-by-step account guide — workflow <code>1735576602</code> + six emails</td><td>ON, fires from the legacy form</td><td><span class="verdict keep">KEEP FOR OLD FORM</span> The new app no longer emits the legacy form event, so API-created parents never get the obsolete 11-step instructions. Retire together with the old form at Squarespace cutover.</td></tr>
+  <tr><td>Legacy per-club Deal creation — <code>67896418</code>, <code>177727332</code>, <code>395103245</code>, <code>1734544004</code>, <code>1734818196</code>, <code>1790080829</code></td><td>ON, fire from the same form</td><td><span class="verdict keep">KEEP FOR OLD FORM</span> The app creates its own correlated Deal, so these must never see API traffic (<code>HUBSPOT_SUBMIT_LEGACY_TRIAL_FORM=false</code> stays). Retire at cutover; no Allston branch exists, so do not extend them.</td></tr>
+  <tr><td>Parent Mindbody-account nudge — Contact workflow <code>1853127851</code> (+ superseded shell <code>1820551993</code>)</td><td>OFF</td><td><span class="verdict retire">DO NOT ENABLE AS-IS</span> Ledger v1 no longer writes family state to Contacts, so this workflow would never fire (or fire on stale data). Rebuild as a Deal-based workflow gated on <code>court16_family_account_status</code>; review email <code>212772629316</code> copy/classification first.</td></tr>
+  <tr><td>Staff new-request notification — <code>1835369220</code></td><td>OFF</td><td><span class="verdict build">REBUILD ON DEALS — FIRST PRIORITY</span> With the ledger, pending requests live on Deals and nothing emails staff the signed confirm/deny links. Build the Deal-based staff notification (spec in docs/hubspot-workflows.md), test OFF, then it is the first workflow to activate.</td></tr>
+  <tr><td>Parent trial confirmation — <code>1820575928</code> + email <code>212773423758</code></td><td>OFF</td><td><span class="verdict build">REBUILD ON DEALS</span> Trigger on Deal status confirmed. HubSpot is the single sender; the matching Mindbody auto-confirmation gets disabled per club.</td></tr>
+  <tr><td>24-hour reminder — <code>1820562947</code> + email <code>212773969554</code></td><td>OFF</td><td><span class="verdict build">REBUILD ON DEALS</span> Re-check status at send time; disable each club's overlapping Mindbody auto-reminder for trials.</td></tr>
+  <tr><td>Trial denied — <code>1820568681</code> + four reason emails</td><td>OFF</td><td><span class="verdict build">REBUILD ON DEALS</span> Branch on <code>denial_reason</code>; add the missing default branch for unmapped reasons. Mindbody sends nothing on denial.</td></tr>
+  <tr><td>Manual-review / failed alert</td><td>Not built</td><td><span class="verdict build">BUILD ONCE</span> One internal workflow for <code>manual_review</code> + <code>failed</code> with club owner, failure reason, correlation ID, and the staff runbook link — replaces ad-hoc inbox digging.</td></tr>
+</table>
+
+<h2>3 · The redundancy list</h2>
+<table class="redundancy-table">
+  <tr><th>Same job, done twice</th><th>Today</th><th>Single owner going forward</th></tr>
+  <tr><td>Trial Deal creation</td><td>App Deal + (previously) legacy form Deal for the same request</td><td>App only. Legacy form event stays disabled for API traffic; legacy workflows retire with the old form.</td></tr>
+  <tr><td>Account-setup instructions</td><td>Legacy 11-step HubSpot email vs Mindbody's native claim email</td><td>Mindbody's one native claim email. HubSpot may only remind the parent to find it (rebuilt nudge, off until tested).</td></tr>
+  <tr><td>Trial confirmation email</td><td>Mindbody auto-confirmation + planned HubSpot confirmation</td><td>HubSpot. Disable the Mindbody auto-email per club for trials.</td></tr>
+  <tr><td>Class reminder</td><td>Mindbody auto-reminder + planned HubSpot 24h reminder</td><td>HubSpot. Disable the Mindbody trial reminder per club.</td></tr>
+  <tr><td>Request state</td><td>Contact mirror properties + the per-request Deal ledger</td><td>The Deal. Contact booking-state mirrors are legacy read-only; staff denial now clears a stale-active mirror automatically.</td></tr>
+  <tr><td>Family-account status</td><td>Contact dropdown + Deal property</td><td>The Deal property <code>court16_family_account_status</code>; staff and workflows read/write only that.</td></tr>
+  <tr><td>Welcome email</td><td>Native business welcome + explicit ConsumerWelcomeEmail</td><td>Native only — the explicit resend produced a broken duplicate in the live test.</td></tr>
+</table>
+
+<h2>4 · Who does what next</h2>
+<div class="owner-grid">
+  <div class="owner-card">
+    <h3>Anthony / club owners</h3>
+    <ol>
+      <li><strong>Done 20 Jul:</strong> all six activation links approved and read access re-verified.</li>
+      <li>Confirm each club's kids-trial schedule owner so Program/Service setup can proceed.</li>
+    </ol>
+  </div>
+  <div class="owner-card">
+    <h3>Ibtissam</h3>
+    <ol>
+      <li>Approve the single-owner message map (section 3) — especially HubSpot-vs-Mindbody for confirmations and reminders.</li>
+      <li>Review the nudge email <code>212772629316</code> copy and subscription classification.</li>
+      <li>Approve the Deal-based rebuild order: staff notification → confirmation → denial → reminder → nudge.</li>
+      <li>Name the per-club staff owner + backup for notifications.</li>
+    </ol>
+  </div>
+  <div class="owner-card">
+    <h3>Club staff (per site)</h3>
+    <ol>
+      <li>Create/verify the Kid's Trials Program, age-band classes, schedule, and $0 Service.</li>
+      <li>Review Mindbody auto-email toggles with Cedarwind so trials get exactly one confirmation and one reminder.</li>
+    </ol>
+  </div>
+  <div class="owner-card">
+    <h3>Cedarwind</h3>
+    <ol>
+      <li>Re-run the read-only site audit after club setup and record exact Program/Service applicability, schedule, fields, catalogs, write permissions, and auto-email settings.</li>
+      <li>Build the Deal-based workflows OFF per the specs, then test each stop branch with fixtures.</li>
+      <li>Run the per-club acceptance suite (multi-site audit doc) before proposing any club's launch flag.</li>
+    </ol>
+  </div>
+</div>
+
+<div class="callout"><strong>Order matters:</strong> nothing above requires new automation to be turned on today. Site authorization is complete. The remaining sequence is: configure clubs → verify each configuration → build Deal-based workflows OFF → test → enable one club (Ridge Hill control) → disable the duplicated Mindbody auto-emails for that club → repeat per club.</div>
+
+<footer>
+  <div>Court 16 × Cedarwind · Automation simplification · updated 20 Jul 2026</div>
+  <div><a href="./06-password-setup-email.html">Email + family handoff</a> · <a href="./10-family-account-staff-guide.html">Staff guide</a> · <a href="./index.html">Package A index</a></div>
+</footer>
+
+</div>
+</body>
+</html>

@@ -12,11 +12,16 @@
 
 import crypto from "node:crypto";
 
-export type StaffAction = "confirm" | "reassign" | "deny" | "retry";
+export type StaffAction =
+  | "confirm"
+  | "reassign"
+  | "deny"
+  | "intro_payment_confirm";
 
 export interface TokenPayload {
   correlationId: string;
   action: StaffAction;
+  iat?: number; // unix seconds; required for new payment-confirm state
   exp: number; // unix seconds
 }
 
@@ -53,10 +58,12 @@ export function signToken(
   params: { correlationId: string; action: StaffAction; ttlHours?: number },
 ): string {
   const ttl = params.ttlHours ?? defaultTtlHours();
+  const now = Math.floor(Date.now() / 1000);
   const payload: TokenPayload = {
     correlationId: params.correlationId,
     action: params.action,
-    exp: Math.floor(Date.now() / 1000) + ttl * 3600,
+    iat: now,
+    exp: now + ttl * 3600,
   };
   const body = base64urlEncode(Buffer.from(JSON.stringify(payload), "utf8"));
   const sig = base64urlEncode(
@@ -98,6 +105,12 @@ export function verifyToken(token: string): TokenPayload {
   if (typeof payload.exp !== "number" || payload.exp * 1000 < Date.now()) {
     throw new InvalidTokenError("expired");
   }
+  if (
+    (payload.action === "intro_payment_confirm" && typeof payload.iat !== "number") ||
+    (typeof payload.iat === "number" && payload.iat > Math.floor(Date.now() / 1000) + 300)
+  ) {
+    throw new InvalidTokenError("malformed");
+  }
   return payload;
 }
 
@@ -110,6 +123,9 @@ export function buildStaffUrl(
     action: params.action,
     ttlHours: params.ttlHours,
   });
-  const path = params.action === "retry" ? "/api/admin/retry" : `/api/staff/${params.action}`;
+  if (params.action === "intro_payment_confirm") {
+    throw new Error("intro_payment_confirm tokens are API state and do not have a staff URL");
+  }
+  const path = `/api/staff/${params.action}`;
   return `${params.baseUrl.replace(/\/$/, "")}${path}?token=${encodeURIComponent(token)}`;
 }

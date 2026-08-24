@@ -12,11 +12,9 @@ export interface Location {
   city: string;
   state: string;
   /**
-   * 5-digit ZIP. Used as the default `PostalCode` on MindBody AddClient
-   * when the booking form doesn't collect the parent's home address —
-   * MindBody's required-fields config on real sites mandates one
-   * (site 5748154 returns MissingRequiredFields without it). Studio
-   * address is a safe placeholder; staff updates at first visit.
+   * Club ZIP used for display and club-level routing. The kids-trial flow
+   * collects the family's real household address and must never substitute
+   * this value into a parent or child profile.
    */
   postalCode: string;
   /**
@@ -27,6 +25,51 @@ export interface Location {
    * workflow fires at the correct absolute instant (caught by smoke #2 v2).
    */
   timezone: string;
+  /**
+   * Whether the club can accept any public booking through this app.
+   * Keep false for announced clubs until their address and operational
+   * configuration are verified. API routes enforce this server-side.
+   */
+  publicBookingEnabled: boolean;
+  /**
+   * Explicit go-live gate for the kids-trial automation. A Site ID alone is
+   * not sufficient: Cedarwind source access, a dedicated Kid's Trials
+   * Program, the matching $0 service, and HubSpot routing must all be verified
+   * before this becomes true.
+   */
+  trialBookingEnabled: boolean;
+  /**
+   * Preview-only escape hatch for an authorized Mindbody site. A club with a
+   * dedicated Kid's Trials Program gets a trial-program preview; otherwise it
+   * gets a separately labeled regular-kids schedule preview constrained to
+   * `kidsCalendarProgramIds`. The calendar and full form may be reviewed, but
+   * submission stays fail-closed and no broad, unfiltered class query is
+   * allowed.
+   */
+  trialCalendarPreviewEnabled?: boolean;
+  /**
+   * Site-scoped allowlist for the preview-only regular-kids schedule.
+   * These IDs never satisfy trial-booking readiness and are never accepted by
+   * the booking route. Keep the list empty when no kids schedule is live.
+   */
+  kidsCalendarProgramIds?: readonly number[];
+  /**
+   * Operational evidence required in addition to static IDs. Every boolean
+   * must be true before this club can appear in the public kids-trial flow.
+   * Update only from dated acceptance evidence, not from configuration alone.
+   */
+  trialLaunchEvidence?: {
+    mindbodySiteAuthorized: boolean;
+    upcomingTrialInventoryVerified: boolean;
+    hubspotRoutingVerified: boolean;
+    hubspotDealLedgerVerified: boolean;
+    durableMutationLockVerified: boolean;
+    endToEndAcceptancePassed: boolean;
+    designOwnerApproved: boolean;
+    reviewedAt: string;
+  };
+  /** Short parent-facing reason shown for a club that is not trial-ready. */
+  trialUnavailableReason?: string;
   /**
    * Per-location Sign in destination. Falls back to the generic
    * court16.com/login when undefined. Replace with per-location URLs
@@ -49,11 +92,9 @@ export interface Location {
    *      trial-eligible times (e.g. Mon 3:45 PM, Sat 9 AM, etc.)
    *   5. Share the Program ID with Cedarwind → set here per location
    *
-   * If undefined, the calendar route falls back to the legacy
-   * `filterChildrenOnly` post-filter (which surfaces ALL recurring kid
-   * classes — risk: parents pick a non-trial class and the AddClientToClass
-   * call fails because the Kid's Trial SKU only grants access to Program
-   * 61 sessions). Set per-site as each location ships its own Kid's Trials.
+   * If undefined, `trialBookingEnabled` MUST remain false. A separately
+   * labeled read-only kids schedule may still use `kidsCalendarProgramIds`,
+   * but those regular classes can never enter the trial booking path.
    */
   kidTrialProgramId?: number;
 }
@@ -98,17 +139,52 @@ const LOGIN_URLS: Record<string, string> = {
  * from the Phase 2A prototype's scaffolding, not Court 16's real
  * MindBody sites — replaced with the confirmed ones below.
  */
+/**
+ * Launch scope, 2026-08-06: Ridge Hill's live end-to-end run exercised the
+ * shared intake, checkout, and enrollment path with Program 61. The other six
+ * clubs use Program 120; their site-specific Service-to-Program bindings have
+ * not been individually write-tested.
+ */
 export const LOCATIONS: Location[] = [
   {
     id: "brooklyn",
     name: "Downtown Brooklyn",
     fullName: "NY - Downtown Brooklyn",
     siteId: 135479,
-    address: "526 Atlantic Ave",
+    address: "445 Albee Square W, Suite 4-500",
     city: "Brooklyn",
     state: "NY",
-    postalCode: "11217",
+    postalCode: "11201",
     timezone: "America/New_York",
+    publicBookingEnabled: true,
+    trialBookingEnabled: true,
+    trialCalendarPreviewEnabled: true,
+    // Retained as the explicit regular-kids fallback; Program 120 below now
+    // drives the dedicated trial-calendar preview.
+    kidsCalendarProgramIds: [76, 70, 74],
+    // Live read-only audit 2026-07-31: Program 120 (Kids' Trials) returned
+    // three open occurrences in the current seven-day app window.
+    kidTrialProgramId: 120,
+    trialUnavailableReason: "Kids trial scheduling is being connected for this club.",
+    // Authorization and upcoming trial inventory are verified. Shared launch
+    // evidence is dated 6 Aug; see the binding limitation above.
+    trialLaunchEvidence: {
+      mindbodySiteAuthorized: true,
+      upcomingTrialInventoryVerified: true,
+      // This club's HubSpot pipeline and stage IDs are recorded in config.
+      hubspotRoutingVerified: true,
+      // The 39-property Deal ledger was applied to the live portal on 6 Aug;
+      // verification reports 0 missing and 0 incompatible properties.
+      hubspotDealLedgerVerified: true,
+      // The Upstash mutation-lock store is connected to the project.
+      durableMutationLockVerified: true,
+      // Ridge Hill's 6 Aug live run exercised the shared intake, checkout, and
+      // enrollment path; the Program 120 limitation is documented above.
+      endToEndAcceptancePassed: true,
+      // The client approved opening this club on 6 Aug 2026.
+      designOwnerApproved: true,
+      reviewedAt: "2026-08-06",
+    },
     loginUrl: LOGIN_URLS.brooklyn,
   },
   {
@@ -116,11 +192,40 @@ export const LOCATIONS: Location[] = [
     name: "Long Island City, Queens",
     fullName: "NY - Long Island City, Queens",
     siteId: 985499,
-    address: "4-33 Vernon Blvd",
+    address: "13-06 Queens Plaza South",
     city: "Long Island City",
     state: "NY",
     postalCode: "11101",
     timezone: "America/New_York",
+    publicBookingEnabled: true,
+    trialBookingEnabled: true,
+    trialCalendarPreviewEnabled: true,
+    // Retained as the explicit regular-kids fallback; Program 120 below now
+    // drives the dedicated trial-calendar preview.
+    kidsCalendarProgramIds: [29],
+    // Live read-only audit 2026-07-31: Program 120 (Kids' Trials) returned
+    // two open occurrences in the current seven-day app window.
+    kidTrialProgramId: 120,
+    trialUnavailableReason: "Kids trial scheduling is being connected for this club.",
+    // Authorization and upcoming trial inventory are verified. Shared launch
+    // evidence is dated 6 Aug; see the binding limitation above.
+    trialLaunchEvidence: {
+      mindbodySiteAuthorized: true,
+      upcomingTrialInventoryVerified: true,
+      // This club's HubSpot pipeline and stage IDs are recorded in config.
+      hubspotRoutingVerified: true,
+      // The 39-property Deal ledger was applied to the live portal on 6 Aug;
+      // verification reports 0 missing and 0 incompatible properties.
+      hubspotDealLedgerVerified: true,
+      // The Upstash mutation-lock store is connected to the project.
+      durableMutationLockVerified: true,
+      // Ridge Hill's 6 Aug live run exercised the shared intake, checkout, and
+      // enrollment path; the Program 120 limitation is documented above.
+      endToEndAcceptancePassed: true,
+      // The client approved opening this club on 6 Aug 2026.
+      designOwnerApproved: true,
+      reviewedAt: "2026-08-06",
+    },
     loginUrl: LOGIN_URLS.lic,
   },
   {
@@ -128,11 +233,40 @@ export const LOCATIONS: Location[] = [
     name: "FiDi, Manhattan",
     fullName: "NY - FiDi, Manhattan",
     siteId: 5728093,
-    address: "30 Broad St",
+    address: "28 Liberty Street, SC1",
     city: "New York",
     state: "NY",
-    postalCode: "10004",
+    postalCode: "10005",
     timezone: "America/New_York",
+    publicBookingEnabled: true,
+    trialBookingEnabled: true,
+    trialCalendarPreviewEnabled: true,
+    // Retained as the explicit regular-kids fallback; Program 120 below now
+    // drives the dedicated trial-calendar preview.
+    kidsCalendarProgramIds: [32],
+    // Live read-only audit 2026-07-31: Program 120 (Kids' Trials) returned
+    // four non-cancelled open occurrences in the current seven-day app window.
+    kidTrialProgramId: 120,
+    trialUnavailableReason: "Kids trial scheduling is being connected for this club.",
+    // Authorization and upcoming trial inventory are verified. Shared launch
+    // evidence is dated 6 Aug; see the binding limitation above.
+    trialLaunchEvidence: {
+      mindbodySiteAuthorized: true,
+      upcomingTrialInventoryVerified: true,
+      // This club's HubSpot pipeline and stage IDs are recorded in config.
+      hubspotRoutingVerified: true,
+      // The 39-property Deal ledger was applied to the live portal on 6 Aug;
+      // verification reports 0 missing and 0 incompatible properties.
+      hubspotDealLedgerVerified: true,
+      // The Upstash mutation-lock store is connected to the project.
+      durableMutationLockVerified: true,
+      // Ridge Hill's 6 Aug live run exercised the shared intake, checkout, and
+      // enrollment path; the Program 120 limitation is documented above.
+      endToEndAcceptancePassed: true,
+      // The client approved opening this club on 6 Aug 2026.
+      designOwnerApproved: true,
+      reviewedAt: "2026-08-06",
+    },
     loginUrl: LOGIN_URLS.fidi,
   },
   {
@@ -145,6 +279,32 @@ export const LOCATIONS: Location[] = [
     state: "NY",
     postalCode: "10710",
     timezone: "America/New_York",
+    publicBookingEnabled: true,
+    // Ridge Hill was the 6 Aug pilot; the client has now approved live booking
+    // configuration for all seven clubs.
+    trialBookingEnabled: true,
+    trialCalendarPreviewEnabled: true,
+    // Kept separate from dedicated Kid's Trials Program 61 below.
+    kidsCalendarProgramIds: [37],
+    trialUnavailableReason: "The next online kids trial times are being finalized.",
+    trialLaunchEvidence: {
+      mindbodySiteAuthorized: true,
+      upcomingTrialInventoryVerified: true,
+      // Pipeline 830977386 and the Requested/Scheduled stages are recorded in
+      // config and were re-read live on 5 Aug.
+      hubspotRoutingVerified: true,
+      // The 39-property Deal ledger was applied to the live portal on 6 Aug;
+      // hubspot:deal-ledger-schema:verify reports 0 missing, 0 incompatible.
+      hubspotDealLedgerVerified: true,
+      // Upstash store upstash-kv-cerulean-lantern connected to the project on
+      // 6 Aug; the lock reads it through KV_REST_API_URL/TOKEN.
+      durableMutationLockVerified: true,
+      endToEndAcceptancePassed: true,
+      // Ibtissam Kahkour asked for Ridge Hill to be opened for team testing,
+      // 6 Aug 2026.
+      designOwnerApproved: true,
+      reviewedAt: "2026-08-06",
+    },
     loginUrl: LOGIN_URLS.ridgehill,
     // Ibtissam created Program 61 + 4 ClassDescriptions on May 20-21:
     // Little Freshman Trial (115), Freshman/Sophomore Trial (116),
@@ -157,11 +317,40 @@ export const LOCATIONS: Location[] = [
     name: "Fishtown, Philadelphia",
     fullName: "PA - Fishtown, Philadelphia",
     siteId: 5742169,
-    address: "1241 N Front St",
+    address: "1400 N Howard Street",
     city: "Philadelphia",
     state: "PA",
     postalCode: "19122",
     timezone: "America/New_York",
+    publicBookingEnabled: true,
+    trialBookingEnabled: true,
+    trialCalendarPreviewEnabled: true,
+    // Retained as the explicit regular-kids fallback; Program 120 below now
+    // drives the dedicated trial-calendar preview.
+    kidsCalendarProgramIds: [42],
+    // Live read-only audit 2026-07-31: Program 120 (Kids' Trials) returned
+    // eight open occurrences in the current seven-day app window.
+    kidTrialProgramId: 120,
+    trialUnavailableReason: "Kids trial scheduling is being connected for this club.",
+    // Authorization and upcoming trial inventory are verified. Shared launch
+    // evidence is dated 6 Aug; see the binding limitation above.
+    trialLaunchEvidence: {
+      mindbodySiteAuthorized: true,
+      upcomingTrialInventoryVerified: true,
+      // This club's HubSpot pipeline and stage IDs are recorded in config.
+      hubspotRoutingVerified: true,
+      // The 39-property Deal ledger was applied to the live portal on 6 Aug;
+      // verification reports 0 missing and 0 incompatible properties.
+      hubspotDealLedgerVerified: true,
+      // The Upstash mutation-lock store is connected to the project.
+      durableMutationLockVerified: true,
+      // Ridge Hill's 6 Aug live run exercised the shared intake, checkout, and
+      // enrollment path; the Program 120 limitation is documented above.
+      endToEndAcceptancePassed: true,
+      // The client approved opening this club on 6 Aug 2026.
+      designOwnerApproved: true,
+      reviewedAt: "2026-08-06",
+    },
     loginUrl: LOGIN_URLS.fishtown,
   },
   {
@@ -172,9 +361,83 @@ export const LOCATIONS: Location[] = [
     address: "300 Needham St",
     city: "Newton",
     state: "MA",
-    postalCode: "02464",
+    postalCode: "02459",
     timezone: "America/New_York",
+    publicBookingEnabled: true,
+    trialBookingEnabled: true,
+    trialCalendarPreviewEnabled: true,
+    // Retained as the explicit regular-kids fallback; Program 120 below now
+    // drives the dedicated trial-calendar preview.
+    kidsCalendarProgramIds: [37, 36],
+    // Live read-only audit 2026-08-05: Program 120 (Kids' Trials) returned
+    // nine upcoming occurrences in the 30-day audit window. Parents see 28 days
+    // and can only book inside the separate 7-day/48-hour window.
+    kidTrialProgramId: 120,
+    trialUnavailableReason: "Kids trial scheduling is being connected for this club.",
+    // Authorization and upcoming trial inventory are verified. Shared launch
+    // evidence is dated 6 Aug; see the binding limitation above.
+    trialLaunchEvidence: {
+      mindbodySiteAuthorized: true,
+      upcomingTrialInventoryVerified: true,
+      // This club's HubSpot pipeline and stage IDs are recorded in config.
+      hubspotRoutingVerified: true,
+      // The 39-property Deal ledger was applied to the live portal on 6 Aug;
+      // verification reports 0 missing and 0 incompatible properties.
+      hubspotDealLedgerVerified: true,
+      // The Upstash mutation-lock store is connected to the project.
+      durableMutationLockVerified: true,
+      // Ridge Hill's 6 Aug live run exercised the shared intake, checkout, and
+      // enrollment path; the Program 120 limitation is documented above.
+      endToEndAcceptancePassed: true,
+      // The client approved opening this club on 6 Aug 2026.
+      designOwnerApproved: true,
+      reviewedAt: "2026-08-06",
+    },
     loginUrl: LOGIN_URLS.newton,
+  },
+  {
+    id: "allston",
+    name: "Allston",
+    fullName: "MA - Allston",
+    siteId: 5754600,
+    // Court 16 has announced Allston Yards, but has not yet published the
+    // club's exact street address. This record is intentionally disabled so
+    // the placeholder is never written to a Mindbody client profile.
+    address: "Allston Yards — exact address pending",
+    city: "Boston",
+    state: "MA",
+    postalCode: "02134",
+    timezone: "America/New_York",
+    publicBookingEnabled: true,
+    trialBookingEnabled: true,
+    trialCalendarPreviewEnabled: true,
+    // Retained as an empty regular-kids fallback; Program 120 below now drives
+    // the dedicated trial-calendar preview.
+    kidsCalendarProgramIds: [],
+    // Live read-only audit 2026-08-05: Program 120 (Kids' Trials) returned
+    // eight upcoming occurrences in the 30-day audit window, superseding the
+    // 20 Jul census that recorded an empty Allston schedule.
+    kidTrialProgramId: 120,
+    trialUnavailableReason: "Opening details and kids trial scheduling are being finalized.",
+    // Authorization and upcoming trial inventory are verified. Shared launch
+    // evidence is dated 6 Aug; see the binding limitation above.
+    trialLaunchEvidence: {
+      mindbodySiteAuthorized: true,
+      upcomingTrialInventoryVerified: true,
+      // This club's HubSpot pipeline and stage IDs are recorded in config.
+      hubspotRoutingVerified: true,
+      // The 39-property Deal ledger was applied to the live portal on 6 Aug;
+      // verification reports 0 missing and 0 incompatible properties.
+      hubspotDealLedgerVerified: true,
+      // The Upstash mutation-lock store is connected to the project.
+      durableMutationLockVerified: true,
+      // Ridge Hill's 6 Aug live run exercised the shared intake, checkout, and
+      // enrollment path; the Program 120 limitation is documented above.
+      endToEndAcceptancePassed: true,
+      // The client approved opening this club on 6 Aug 2026.
+      designOwnerApproved: true,
+      reviewedAt: "2026-08-06",
+    },
   },
 ];
 

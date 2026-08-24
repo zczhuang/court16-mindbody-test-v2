@@ -67,9 +67,9 @@ export class MindbodyV5MissingPasswordError extends Error {
 function loadV5Config(): { sourcePassword: string; siteId: number } {
   const sourcePassword = process.env.MINDBODY_SOURCE_PASSWORD;
   if (!sourcePassword) throw new MindbodyV5MissingPasswordError();
-  // SiteId for this test surface is hardcoded to RH (5748154) since that's
-  // the only site Cedarwind's API key has authorization on. Multi-site
-  // support comes when we scale.
+  // This legacy SOAP test surface remains intentionally hardcoded to Ridge
+  // Hill (5748154). All seven sites now have API authorization, but multi-site
+  // SOAP behavior is outside this surface's scope.
   return { sourcePassword, siteId: 5748154 };
 }
 

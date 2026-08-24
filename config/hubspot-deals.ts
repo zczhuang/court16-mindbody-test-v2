@@ -9,10 +9,8 @@
  * matching per-location pipeline at submit time.
  *
  * IDs below were captured live from HubSpot on 2026-05-12. If staff
- * archives or recreates a pipeline these will need re-capturing — the
- * code degrades gracefully: missing entries fall back to `default`
- * (the BK pipeline, which lives on the HubSpot default Deal pipeline
- * slot).
+ * archives or recreates a pipeline these will need re-capturing. Missing
+ * mappings fail closed; they never fall back to another club's pipeline.
  */
 
 export interface DealPipelineConfig {
@@ -20,7 +18,7 @@ export interface DealPipelineConfig {
   pipelineId: string;
   /** Stage IDs we use directly from the app. */
   stages: {
-    /** Where a Deal lands on form submit. */
+    /** Where the app-created Deal lands on a new request. */
     requested: string;
     /** Where staff-confirm / intro-confirm moves a Deal to. */
     scheduled: string;
@@ -28,8 +26,10 @@ export interface DealPipelineConfig {
 }
 
 /**
- * Keyed by `Location.id` in `config/locations.ts`. Every location in
- * LOCATIONS has an entry here.
+ * Keyed by `Location.id` in `config/locations.ts`. A location must remain
+ * disabled until it has an explicit entry; never route a missing club to a
+ * different pipeline by default. Allston is intentionally absent pending
+ * verified pipeline and stage IDs.
  */
 export const DEAL_PIPELINES: Record<string, DealPipelineConfig> = {
   brooklyn: {
@@ -77,13 +77,21 @@ export const DEAL_PIPELINES: Record<string, DealPipelineConfig> = {
       scheduled: "1031324174", // "Scheduled Trial"
     },
   },
+  // Read live from GET /crm/v3/pipelines/deals on 2026-08-06 when Allston was
+  // opened for booking. Without this the club is enabled but fails readiness
+  // on hubspot_pipeline, so intake refuses every request.
+  allston: {
+    pipelineId: "922409889",
+    stages: {
+      requested: "1409074569", // "Requested Trial"
+      scheduled: "1409074572", // "Scheduled Trial"
+    },
+  },
 };
 
 /**
- * Look up the pipeline config for a location slug. Returns null when
- * the slug isn't recognized — callers should skip the Deal-creation
- * step rather than fail the booking entirely (form submit + MindBody
- * write are the user-visible critical path).
+ * Look up the pipeline config for a location slug. Kids-trial callers treat
+ * null as not ready and stop before any Mindbody or HubSpot write.
  */
 export function getDealPipeline(locationId: string): DealPipelineConfig | null {
   return DEAL_PIPELINES[locationId] ?? null;
@@ -96,7 +104,10 @@ export function getDealPipeline(locationId: string): DealPipelineConfig | null {
  * with `INVALID_OPTION`. Map our internal `location.id` slugs to the
  * verbatim dropdown labels.
  *
- * Verified against the live portal 4832170 on 2026-05-12.
+ * Verified against the live portal 4832170 on 2026-05-12, with Allston's
+ * option added from a fresh live-property read on 2026-07-17. A preferred
+ * location may be known before its Deal pipeline is ready; the launch gate
+ * still requires both.
  */
 export const HUBSPOT_PREFERRED_LOCATION_LABEL: Record<string, string> = {
   brooklyn: "Gowanus, Brooklyn",
@@ -105,6 +116,7 @@ export const HUBSPOT_PREFERRED_LOCATION_LABEL: Record<string, string> = {
   ridgehill: "Ridge Hill - Yonkers",
   fishtown: "Fishtown, Philadelphia",
   newton: "Newton - Massachusetts",
+  allston: "Allston - Massachusetts",
 };
 
 export function getHubspotPreferredLocation(locationId: string): string | undefined {

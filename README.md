@@ -1,12 +1,13 @@
 # Court 16 — MindBody Happy-Path Test
 
 > [!IMPORTANT]
-> **AI-agent handoff (August 24, 2026):** the default `main` branch is a
-> historical harness baseline. The current trial-product candidate is
+> **AI-agent handoff (August 24, 2026):** this
+> `agent/family-account-handoff` branch is the current trial-product candidate.
+> The application code under review is
 > [`agent/family-account-handoff`](https://github.com/zczhuang/court16-mindbody-test-v2/tree/agent/family-account-handoff)
 > at `ebdf254`, reviewed through draft
 > [PR #12](https://github.com/zczhuang/court16-mindbody-test-v2/pull/12).
-> Start new work from that branch, not from `main`.
+> Start here rather than from the historical `main` application baseline.
 
 ## AI agent: start here
 
@@ -264,11 +265,16 @@ endpoints that support it. It is not a global write lock.
 Do not change this value or redeploy without explicit authorization and a
 named test/cleanup/readback plan.
 
-Before flipping:
-- Point at a real site ID (not `-99`)
-- Use production staff credentials (not `Siteowner`)
-- Run `get-clients` with a known-real email first to confirm auth
-- Bake in a synthetic guardrail like sending writes only for emails matching `*+mbtest@*`
+The public kids-trial flow adds two independent controls: a default-off public
+release gate with per-club acceptance evidence, and a server-only real-write
+gate with an exact Mindbody Site-ID allowlist. See `.env.example` and
+`docs/multi-site-automation-audit.md`.
+
+Before any real-site run:
+- Require explicit approval for that exact Site ID and fixture.
+- Confirm the club remains hidden from the public kids-trial flow unless its full launch evidence passes.
+- Run `get-clients` first and use a unique, clearly labeled fixture email.
+- Have a Mindbody UI deactivation/cleanup owner; the public API does not provide a dependable delete path.
 
 ---
 
@@ -300,7 +306,7 @@ court16-mindbody-test/
 │   └── page.tsx                          # minimal UI
 ├── lib/
 │   ├── logger.ts                         # correlation-ID-aware structured logger
-│   └── mindbody.ts                       # typed client, token cache, Test=true gate
+│   └── mindbody.ts                       # typed client, token cache, endpoint-specific Test behavior
 ├── .env.example
 ├── next.config.ts
 ├── package.json

@@ -102,6 +102,7 @@ export default function Header() {
               <LocationMenuPanel
                 heading="Pick your club"
                 align="right"
+                locations={LOCATIONS.filter((loc) => loc.publicBookingEnabled)}
                 renderItem={(loc) => (
                   <button
                     key={loc.id}
@@ -165,13 +166,15 @@ function Chevron() {
 function LocationMenuPanel({
   heading,
   align,
+  locations = LOCATIONS,
   renderItem,
 }: {
   heading: string;
   align: "left" | "right";
+  locations?: Location[];
   renderItem: (loc: Location) => React.ReactNode;
 }) {
-  const byState = LOCATIONS.reduce<Record<string, Location[]>>((acc, l) => {
+  const byState = locations.reduce<Record<string, Location[]>>((acc, l) => {
     if (!acc[l.state]) acc[l.state] = [];
     acc[l.state].push(l);
     return acc;
@@ -246,7 +249,7 @@ function LocationMenuPanel({
         :global(.nav-menu .nav-menu-name) {
           display: block;
           font-family: var(--f-display);
-          font-weight: 700;
+          font-weight: 800;
           font-size: 14px;
           letter-spacing: -0.02em;
           color: var(--c16-black);

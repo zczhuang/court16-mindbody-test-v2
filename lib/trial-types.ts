@@ -1,3 +1,6 @@
+import type { MindbodyProfileDetails } from "./trial-intake";
+import type { TrialReportingDetails } from "./trial-reporting";
+
 /** MindBody class object — subset of fields we use from the API response */
 export interface MindBodyClass {
   ClassScheduleId: number;
@@ -7,6 +10,8 @@ export interface MindBodyClass {
   EndDateTime: string;
   MaxCapacity: number;
   TotalBooked: number;
+  WebCapacity?: number;
+  WebBooked?: number;
   IsCanceled: boolean;
   IsAvailable: boolean;
   Staff: {
@@ -37,6 +42,21 @@ export interface MindBodyClass {
   };
 }
 
+/** Narrow parent-facing calendar payload projected from a Mindbody class. */
+export interface CalendarClassDto {
+  classScheduleId: number;
+  classId: number;
+  name: string;
+  startDateTime: string;
+  endDateTime: string;
+  maxCapacity: number;
+  totalBooked: number;
+  webCapacity?: number;
+  webBooked?: number;
+  coach: string;
+  court: string;
+}
+
 /** Parsed class card data for the trial calendar UI */
 export interface TrialClass {
   classScheduleId: number;
@@ -64,14 +84,25 @@ export interface TrialClass {
 export interface ChildInfo {
   firstName: string;
   /** Required by the API (Ibtissam review Jun 11): real MindBody profile needs it. */
-  lastName?: string;
+  lastName: string;
   age: number;
   /** ISO "YYYY-MM-DD". Required by the API; age is derived server-side. */
-  birthDate?: string;
+  birthDate: string;
 }
 
+/** Parent-facing outcome returned by POST /api/book/trial. */
+export type TrialSubmissionStatus =
+  | "pending_staff"
+  | "manual_review"
+  | "duplicate_email_softwall";
+
 /** Trial request form submission */
-export interface TrialRequest {
+export interface TrialRequest extends MindbodyProfileDetails, TrialReportingDetails {
+  /**
+   * Browser-generated UUID for one logical form submission. The client reuses
+   * it across network retries so the server can make booking writes idempotent.
+   */
+  submissionId: string;
   parentFirstName: string;
   /** Required — needed for MindBody client record + downstream comms. */
   parentLastName: string;

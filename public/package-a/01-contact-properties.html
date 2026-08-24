@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>01 · 12 Contact Custom Properties · Package A</title>
+<title>01 · Historical Contact Property Sheet · Package A</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet" />
@@ -15,9 +15,15 @@
 <header class="doc-head">
   <a class="back-link" href="./index.html">Back to Package A index</a>
   <div class="brand">Court 16 × Cedarwind · Package A · Spec 01</div>
-  <h1>12 HubSpot Contact custom properties</h1>
-  <p class="subtitle">The state-machine fields Cedarwind's app writes to every Contact alongside the existing form submission.</p>
+  <h1>Historical Contact property sheet</h1>
+  <p class="subtitle">This is the original Track 1 kickoff list, retained for change history. The current implementation writes additional class metadata and uses a staff deny URL instead of the removed admin-retry placeholder.</p>
 </header>
+
+<div class="callout warn">
+  <strong>Do not build the schema from this old count.</strong> Use the current
+  <a href="https://github.com/zczhuang/court16-mindbody-test-v2/blob/agent/family-account-handoff/docs/hubspot-properties.md">HubSpot property contract on GitHub</a>.
+  The parent-account nudge also remains off until the proposed family-status property has a trustworthy source.
+</div>
 
 <section class="summary-pkg">
   <dl>
@@ -99,19 +105,19 @@
       <td style="padding-left: 14px;">court16_staff_confirm_url</td>
       <td>Court 16 staff confirm URL</td>
       <td>Single-line text</td>
-      <td>Signed, 24h expiry</td>
+      <td>Signed · 72h default, deployment-configurable</td>
     </tr>
     <tr>
       <td style="padding-left: 14px;">court16_staff_reassign_url</td>
       <td>Court 16 staff reassign URL</td>
       <td>Single-line text</td>
-      <td>Signed, 24h expiry</td>
+      <td>Signed · same configurable TTL</td>
     </tr>
     <tr>
-      <td style="padding-left: 14px;">court16_admin_retry_url</td>
-      <td>Court 16 admin retry URL</td>
+      <td style="padding-left: 14px;">court16_staff_deny_url</td>
+      <td>Court 16 staff deny URL</td>
       <td>Single-line text</td>
-      <td>Signed, 24h expiry</td>
+      <td>Signed · same configurable TTL</td>
     </tr>
     <tr>
       <td style="padding-left: 14px;">court16_failure_reason</td>
@@ -124,7 +130,7 @@
 </div>
 
 <div class="callout">
-  That's 12 new properties. <strong>One</strong> of the three URL fields
+  This historical table has 12 properties. <strong>One</strong> of the three URL fields
   (<code>court16_staff_confirm_url</code>) is the single trigger for
   Workflow 1 (staff notification). The other two are passed through to
   the same email body so staff has one-click access to every action.
@@ -135,7 +141,7 @@
 <ul>
   <li><code>crm.objects.contacts.read</code></li>
   <li><code>crm.objects.contacts.write</code></li>
-  <li><code>crm.schemas.contacts.read</code> — so the app can verify the 12 properties exist on boot</li>
+  <li><code>crm.schemas.contacts.read</code> — so the app can verify the current properties exist on boot</li>
 </ul>
 <p>No custom-object scopes are needed. The Deal-pipeline work in spec 02 uses
 standard Deal scopes which are requested separately when that work lands.</p>
@@ -149,7 +155,7 @@ curl -sS "https://api.hubapi.com/crm/v3/properties/contacts?archived=false" \<br
 &nbsp;&nbsp;| jq '.results | map(.name) | map(select(startswith("court16_")))'
 </div>
 
-<p>Should print all 12 names. If any are missing, the app's first run will log a
+<p>Compare the output with the current GitHub property contract. If any required name is missing, the app's first run will log a
 boot-time warning that names the gap.</p>
 
 <h2>Known limitation to note (Track 1)</h2>
